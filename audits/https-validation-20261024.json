@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-10-24T13:20:09.461373+08:00",
+  "domain": "idontknow.site",
+  "https_health": "ok",
+  "http_redirect": 301,
+  "certificate_trusted": true,
+  "certificate_dns_name": "idontknow.site",
+  "certificate_issuer": "Lets Encrypt YE2",
+  "certificate_not_after_utc": "2027-01-22T04:18:45Z",
+  "invalid_key_status": 401,
+  "ordinary_call": {
+    "model": "gpt-6-luna",
+    "passed": true,
+    "seconds": 5.52
+  },
+  "streaming_call": {
+    "model": "gpt-6-luna",
+    "passed": true,
+    "seconds": 3.85
+  },
+  "renewal_dry_run_with_hooks": "passed",
+  "certbot_systemd_service": "completed successfully",
+  "certbot_timer": "enabled and active",
+  "private_backup": "copied to local with matching checksum; certificate and private key matched",
+  "prior_resource_acceptance": "unchanged; previously failed conservative Swap activity check"
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Keep Sub2API HTTPS replies outside the host TUN route
+After=network-online.target
+Wants=network-online.target
+Before=nginx.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/sub2api/web-routing.py start
+ExecStop=/usr/local/lib/sub2api/web-routing.py stop
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

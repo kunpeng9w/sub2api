@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/local/libexec/mihomo_control.py "$@"

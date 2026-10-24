@@ -1,0 +1,30 @@
+# Credentials and runtime state
+/.operator/
+/data/
+/backups/
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Installed binaries, release archives, and cached packages
+/bin/
+/release/
+/scripts/ubuntu-packages/
+
+# Generated logs and Python caches
+logs/
+*.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local editor and OS files
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo

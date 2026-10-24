@@ -1,0 +1,56 @@
+{
+  "checked_at": "2026-10-24T23:06:30.378139+08:00",
+  "deployment": "candidate only; no live installation",
+  "control_and_fingerprint_tests": {
+    "passed": 15,
+    "failed": 0
+  },
+  "isolated_kernel_tests": {
+    "passed_groups": 12,
+    "failed": 0,
+    "checks": [
+      "IPv4/IPv6 TCP and UDP baseline reachable",
+      "new and established direct connections blocked",
+      "loopback and root sockets unaffected",
+      "simulated Mihomo auto-redirect compatible",
+      "TUN removal does not unlock",
+      "persistent state restores lost rules",
+      "altered rules detected and repaired",
+      "explicit unlock works and preserves other tables",
+      "nft installation failure retains locked intent",
+      "corrupt state rejected and failed unlock commit reinstalls protection",
+      "Post-rename directory fsync failure restores the saved locked state and real firewall rules",
+      "Recovered unlock state restores protection after simulated volatile-rule loss at reboot"
+    ]
+  },
+  "systemd_analyze_verify": {
+    "returncode": 0,
+    "scope": "candidate unit files, executable references mapped to workspace copies",
+    "unrelated_host_warnings": "Existing cloudmonitor unit KillMode/PIDFile warnings",
+    "checked_at": "2026-10-24T22:29:20.571022+08:00",
+    "note": "Earlier verification retained; unit files unchanged in this fix"
+  },
+  "syntax_checks": "Python AST parse and bash -n passed",
+  "live_service_snapshot": "MainPID=133103\nId=mihomo.service\nActiveState=active\n\nMainPID=58884\nId=sub2api.service\nActiveState=active\n",
+  "live_nft_tables": "table inet mihomo\n",
+  "not_tested": [
+    "Online rollout",
+    "Actual Mihomo process crash",
+    "Full machine reboot",
+    "Real model HTTP/SSE/WebSocket after installation"
+  ],
+  "installer_fault_tests": {
+    "passed": 6,
+    "failed": 0,
+    "scope": "Temporary deployment paths; guard, systemctl and sync mocked; production installer not run"
+  },
+  "regression_baseline": {
+    "scope": "New tests run against pre-fix copies",
+    "reproduced": [
+      "Elapsed timer incorrectly rejects start",
+      "Failed first installation leaves no boot recovery dependencies",
+      "Post-rename fsync failure leaves off state and no firewall protection"
+    ]
+  },
+  "live_snapshot_checked_at": "2026-10-24T22:29:20.571022+08:00"
+}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Restore persistent Sub2API egress protection
+After=local-fs.target
+Before=sub2api.service mihomo.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/egress_guard.py restore
+RemainAfterExit=yes
+# No ExecStop: shutdown or dependency failure must never release protection.
+
+[Install]
+WantedBy=multi-user.target
