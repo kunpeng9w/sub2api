@@ -61,6 +61,10 @@ GitHub Actions 保留官方 CI，另由 `Source and operations verification` 工
 
 备份 timer 每天新加坡时间 03:30 运行，保留最近三份，备份时短暂停止应用。当前已安装备份脚本的 VERSION/发行校验仍指向官方包，且没有覆盖全部新加的出口保护与代理恢复材料；恢复定制程序时必须结合本仓库部署记录及独立保存的定制构建包，不能把旧备份视为整个运行框架的完整恢复包。本次只记录该差异，不更新线上备份脚本。
 
+## 本地仓库校验
+
+安装 PyYAML 后，可从仓库根目录执行 `python3 ops/scripts/check-repository.py`，检查完整历史、运行文件排除、脱敏模板、语法和文档链接。已有隔离测试可在 `ops/scripts/egress-guard/` 执行 `python3 -m unittest -v test_state.py test_install.py`，不会修改线上服务和防火墙。
+
 ## 只读运行检查
 
 ```bash
