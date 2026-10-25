@@ -1,0 +1,71 @@
+name: Source and operations verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-ops-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  operations:
+    name: Operations configuration and existing unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install PyYAML==6.0.3
+      - run: python ops/scripts/check-repository.py
+      - name: Existing egress control and installer tests (isolated mocks)
+        working-directory: ops/scripts/egress-guard
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m unittest -v test_state.py test_install.py
+
+  embedded-build:
+    name: Frontend template tests and embedded Linux amd64 build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - name: Verify the production template changes and existing catalog behavior
+        run: pnpm --dir frontend exec vitest run src/components/keys/__tests__/UseKeyModal.spec.ts
+      - name: Build frontend before the backend embeds it
+        run: pnpm --dir frontend run build
+      - name: Build the matching source with actual provenance
+        working-directory: backend
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          source_commit=$(git rev-parse HEAD)
+          build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          go build -mod=readonly -tags=embed -trimpath \
+            -ldflags "-s -w -X main.Version=0.2.18 -X main.Commit=$source_commit -X main.Date=$build_date -X main.BuildType=source" \
+            -o "$RUNNER_TEMP/sub2api" ./cmd/server
+          "$RUNNER_TEMP/sub2api" -version
+          go version -m "$RUNNER_TEMP/sub2api"
+          sha256sum "$RUNNER_TEMP/sub2api"
