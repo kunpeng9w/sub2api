@@ -3,8 +3,11 @@ set -Eeuo pipefail
 umask 077
 BASE=/home/pk/workspace/sub2api
 LIB=/usr/local/lib/sub2api
+# Historical official-binary bootstrap, not a custom-build deployment command.
+[[ ${1:-} == --bootstrap-official ]] || { echo 'Fresh host only: install.sh --bootstrap-official' >&2; exit 1; }
+[[ ! -f "$BASE/data/.installed" ]] || { echo 'Existing installation: refuse to overwrite its custom binary.' >&2; exit 1; }
 [[ $EUID == 0 ]] || { echo 'Run this script with sudo.' >&2; exit 1; }
-[[ -d "$BASE/release" && -d "$BASE/scripts" && ! -L "$BASE" ]] || exit 1
+[[ -d "$BASE/release" && -d "$BASE/ops/scripts" && ! -L "$BASE" ]] || exit 1
 trap 'echo "Installation stopped at line $LINENO; no data was removed. Inspect the error before retrying." >&2' ERR
 exec 9>/run/lock/sub2api-install.lock
 flock -n 9
@@ -27,19 +30,13 @@ chown root:root "$BASE/bin/sub2api"
 chmod 0755 "$BASE/bin/sub2api"
 "$BASE/bin/sub2api" -version
 for file in provision.py backup.sh verify.sh observe.py api.py; do
-  install -o root -g root -m 0755 "$BASE/scripts/$file" "$LIB/$file"
+  install -o root -g root -m 0755 "$BASE/ops/scripts/$file" "$LIB/$file"
 done
 python3 "$LIB/provision.py" secrets
 
 # Dedicated cluster: preserve the package configuration and use a late override.
 install -d -m 0755 /etc/postgresql/16/main/conf.d
-cat > /etc/postgresql/16/main/conf.d/99-sub2api.conf <<'EOF'
-listen_addresses = '127.0.0.1'
-max_connections = 30
-shared_buffers = 64MB
-work_mem = 2MB
-maintenance_work_mem = 32MB
-EOF
+install -o root -g root -m 0644 "$BASE/ops/config/postgresql/99-sub2api.conf" /etc/postgresql/16/main/conf.d/99-sub2api.conf
 chmod 0644 /etc/postgresql/16/main/conf.d/99-sub2api.conf
 runuser -u postgres -- test -r /etc/postgresql/16/main/conf.d/99-sub2api.conf
 if [[ ! -f /etc/redis/redis.conf.pre-sub2api ]]; then
@@ -50,50 +47,7 @@ systemctl enable postgresql redis-server
 systemctl restart postgresql@16-main redis-server
 python3 "$LIB/provision.py" database
 
-cat > /etc/systemd/system/sub2api.service <<'EOF'
-[Unit]
-Description=Sub2API v0.2.18 personal gateway
-After=network-online.target postgresql@16-main.service redis-server.service
-Wants=network-online.target postgresql@16-main.service redis-server.service
-StartLimitIntervalSec=120
-StartLimitBurst=5
-
-[Service]
-Type=simple
-User=sub2api
-Group=sub2api
-WorkingDirectory=/home/pk/workspace/sub2api
-ExecStart=/home/pk/workspace/sub2api/bin/sub2api
-Environment=DATA_DIR=/home/pk/workspace/sub2api/data
-Environment=SERVER_HOST=127.0.0.1
-Environment=SERVER_PORT=8080
-Environment=RUN_MODE=simple
-Environment=TZ=Asia/Shanghai
-Environment=GOMEMLIMIT=192MiB
-Environment=LOG_OUTPUT_TO_FILE=false
-Environment=LOG_OUTPUT_TO_STDOUT=true
-Environment=DATABASE_MAX_OPEN_CONNS=10
-Environment=DATABASE_MAX_IDLE_CONNS=2
-Environment=REDIS_POOL_SIZE=16
-Environment=REDIS_MIN_IDLE_CONNS=2
-Restart=on-failure
-RestartSec=5
-TimeoutStopSec=60
-UMask=0077
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=read-only
-PrivateTmp=true
-ReadWritePaths=/home/pk/workspace/sub2api/data
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=sub2api
-LogRateLimitIntervalSec=30s
-LogRateLimitBurst=300
-
-[Install]
-WantedBy=multi-user.target
-EOF
+install -o root -g root -m 0644 "$BASE/ops/config/systemd/sub2api.service" /etc/systemd/system/sub2api.service
 chmod 0644 /etc/systemd/system/sub2api.service
 systemd-analyze verify /etc/systemd/system/sub2api.service
 systemctl daemon-reload
@@ -114,27 +68,8 @@ systemctl restart sub2api
 python3 "$LIB/provision.py" ready
 runuser -u pk -- python3 "$LIB/api.py" bootstrap
 
-cat > /etc/systemd/system/sub2api-backup.service <<'EOF'
-[Unit]
-Description=Consistent Sub2API database and configuration backup
-After=postgresql@16-main.service
-[Service]
-Type=oneshot
-ExecStart=/usr/local/lib/sub2api/backup.sh
-UMask=0077
-Nice=10
-IOSchedulingClass=idle
-EOF
-cat > /etc/systemd/system/sub2api-backup.timer <<'EOF'
-[Unit]
-Description=Daily Sub2API backup at 03:30 Asia/Shanghai
-[Timer]
-OnCalendar=*-*-* 03:30:00 Asia/Shanghai
-Persistent=true
-AccuracySec=1min
-[Install]
-WantedBy=timers.target
-EOF
+install -o root -g root -m 0644 "$BASE/ops/config/systemd/sub2api-backup.service" /etc/systemd/system/sub2api-backup.service
+install -o root -g root -m 0644 "$BASE/ops/config/systemd/sub2api-backup.timer" /etc/systemd/system/sub2api-backup.timer
 chmod 0644 /etc/systemd/system/sub2api-backup.service /etc/systemd/system/sub2api-backup.timer
 systemd-analyze verify /etc/systemd/system/sub2api-backup.service /etc/systemd/system/sub2api-backup.timer
 systemctl daemon-reload

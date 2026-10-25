@@ -1,0 +1,17 @@
+#!/usr/bin/python3
+"""Refuse to take over networking with the unconfigured template."""
+import sys
+import yaml
+
+with open('/etc/mihomo/config.yaml') as f:
+    config = yaml.safe_load(f)
+if not isinstance(config, dict):
+    sys.exit('Mihomo: config.yaml must be a YAML mapping.')
+if not config.get('proxies') and not config.get('proxy-providers'):
+    sys.exit('Mihomo: no nodes configured. Edit /etc/mihomo/config.yaml first.')
+groups = {g['name']: g for g in config.get('proxy-groups', [])}
+group = groups.get('PROXY', {})
+choices = group.get('proxies', [])
+if not group or (not group.get('use') and not group.get('include-all')
+                 and not any(p not in ('REJECT', 'DIRECT', 'REJECT-DROP') for p in choices)):
+    sys.exit('Mihomo: configure the PROXY group with your nodes or providers first.')

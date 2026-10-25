@@ -203,3 +203,4 @@ __pycache__/
 /validation/logs/
 /ops/validation/logs/
 /ops/config/*.local.*
+/ops/config/**/*.local.*

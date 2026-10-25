@@ -1,0 +1,30 @@
+#!/bin/sh
+# Keep replies from the SSH listener on the original main routing table.
+set -eu
+case "${1:-}" in
+  add)
+    mkdir -p /run/mihomo
+    for family in -4 -6; do
+      existing=$(ip "$family" rule show pref 100)
+      if [ -n "$existing" ]; then
+        echo "Routing priority 100 already occupied; refusing to replace it." >&2
+        exit 1
+      fi
+    done
+    ip -4 rule add pref 100 ipproto tcp sport 22 lookup main
+    touch /run/mihomo/ssh-route-v4
+    ip -6 rule add pref 100 ipproto tcp sport 22 lookup main
+    touch /run/mihomo/ssh-route-v6
+    ;;
+  del)
+    if [ -f /run/mihomo/ssh-route-v4 ]; then
+      ip -4 rule del pref 100 ipproto tcp sport 22 lookup main 2>/dev/null || true
+      rm -f /run/mihomo/ssh-route-v4
+    fi
+    if [ -f /run/mihomo/ssh-route-v6 ]; then
+      ip -6 rule del pref 100 ipproto tcp sport 22 lookup main 2>/dev/null || true
+      rm -f /run/mihomo/ssh-route-v6
+    fi
+    ;;
+  *) exit 2 ;;
+esac

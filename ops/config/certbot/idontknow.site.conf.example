@@ -1,0 +1,18 @@
+# Reference only; certificate/account keys are not included.
+# renew_before_expiry = 30 days
+version = 2.9.0
+archive_dir = /etc/letsencrypt/archive/idontknow.site
+cert = /etc/letsencrypt/live/idontknow.site/cert.pem
+privkey = /etc/letsencrypt/live/idontknow.site/privkey.pem
+chain = /etc/letsencrypt/live/idontknow.site/chain.pem
+fullchain = /etc/letsencrypt/live/idontknow.site/fullchain.pem
+
+# Options used in the renewal process
+[renewalparams]
+account = ${CERTBOT_ACCOUNT_ID}
+key_type = ecdsa
+authenticator = webroot
+webroot_path = /var/www/letsencrypt,
+server = https://acme-v02.api.letsencrypt.org/directory
+[[webroot_map]]
+idontknow.site = /var/www/letsencrypt

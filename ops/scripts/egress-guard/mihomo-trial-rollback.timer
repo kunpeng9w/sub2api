@@ -1,7 +1,1 @@
-[Unit]
-Description=180 second Mihomo activation trial
-
-[Timer]
-OnActiveSec=180s
-AccuracySec=1s
-Unit=mihomo-trial-rollback.service
+../../config/systemd/mihomo-trial-rollback.timer

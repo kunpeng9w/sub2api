@@ -1,0 +1,25 @@
+[Unit]
+Description=Mihomo transparent outbound proxy
+Wants=network-online.target
+After=network-online.target systemd-resolved.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=root
+UMask=0077
+RuntimeDirectory=mihomo
+WorkingDirectory=/var/lib/mihomo
+ExecStartPre=/usr/local/libexec/mihomo-check
+ExecStartPre=/usr/local/bin/mihomo -t -d /var/lib/mihomo -f /etc/mihomo/config.yaml
+ExecStartPre=/usr/local/libexec/mihomo-ssh-route add
+ExecStart=/usr/local/bin/mihomo -d /var/lib/mihomo -f /etc/mihomo/config.yaml
+ExecStopPost=/usr/local/libexec/mihomo-ssh-route del
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

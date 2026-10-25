@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-25T15:17:05.255025+08:00",
+  "upstream": {
+    "repository": "https://github.com/Wei-Shaw/sub2api.git",
+    "tag": "v0.2.18",
+    "commit": "ac1b8f1271be0d674fa6f074403c1410f30a3a81"
+  },
+  "running_build": {
+    "path": "/home/pk/workspace/sub2api/bin/sub2api",
+    "sha256": "aa70fe8aaeb5318b98b88def6eb438cef360b116aa2f3f04b4de697669fadcbe",
+    "origin": "external custom build reconstructed from retained patch",
+    "reported_build_commit": "ac1b8f1271be0d674fa6f074403c1410f30a3a81-codex-template",
+    "git_commit_of_external_build": null,
+    "build_time_utc": "2026-10-24T16:33:51Z",
+    "target": "linux/amd64",
+    "embedded_frontend": true,
+    "changes": [
+      "Ordinary OpenAI Codex preferred/default model: gpt-6.1-sol",
+      "Ordinary OpenAI Codex provider: supports_websockets = true",
+      "Ordinary OpenAI Codex template omits model_catalog_url"
+    ],
+    "patch_sha256": "35574bff9a103b0ea6d36c505d6baed4ccce9b2032b0abf74b6ca162f336bd37"
+  },
+  "official_backup": {
+    "path": "/home/pk/workspace/sub2api/bin/sub2api.backup-20261025T013912Z",
+    "sha256": "ffd1b1fc769ed9dc32f9a6166d313a67eb162da6a2237b371caba4780493594e"
+  },
+  "runtime": {
+    "run_mode": "simple",
+    "application_bind": "127.0.0.1:8080",
+    "egress_guard_phase": "confirmed",
+    "web_reply_rules_101_102_present": false
+  },
+  "migration": {
+    "deployment_performed": false,
+    "service_restart_performed": false,
+    "routing_fix_performed": false,
+    "note": "The reconstructed source is versioned independently; future CI builds embed their actual Git SHA. Byte-identical reproduction of the earlier external build is not claimed."
+  }
+}

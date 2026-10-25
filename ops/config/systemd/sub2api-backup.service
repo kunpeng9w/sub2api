@@ -1,0 +1,9 @@
+[Unit]
+Description=Consistent Sub2API database and configuration backup
+After=postgresql@16-main.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/sub2api/backup.sh
+UMask=0077
+Nice=10
+IOSchedulingClass=idle

@@ -1,6 +1,6 @@
-# Sub2API 出站保护设计与候选实现
+# Sub2API 出站保护设计与实现
 
-当前状态：已在工作区完成候选脚本与隔离测试，尚未安装到在线系统。在线的 mihomo-ctl、服务和防火墙尚未替换。
+当前状态（2026-10-25）：本实现已安装到在线系统，已核对脚本一致；保护为 confirmed，规则存在且指纹一致。本次仓库整理未重新安装或修改防火墙。当前记录见 [运维说明](../../README.md)。
 
 ## 控制语义
 
@@ -57,12 +57,12 @@ guard helper 使用独立文件锁串行化状态/规则事务；mihomo-ctl 使�
 - `install.sh`：备份后安装；不会因安装失败自动解除已有保护。
 - `test_state.py`、`test_install.py`、`test_kernel.py`：控制状态、安装故障测试及隔离网络内真实报文测试。
 
-## 安装方式（尚未执行）
+## 安装方式（仅供重建或明确维护时使用）
 
 当前 Mihomo 已运行且启用开机启动。安装时可直接接纳为 confirmed 状态，不重启 Mihomo 或 Sub2API：
 
 ```bash
-sudo bash /home/pk/workspace/sub2api/scripts/egress-guard/install.sh --adopt-confirmed
+sudo bash /home/pk/workspace/sub2api/ops/scripts/egress-guard/install.sh --adopt-confirmed
 sudo mihomo-ctl status
 ```
 

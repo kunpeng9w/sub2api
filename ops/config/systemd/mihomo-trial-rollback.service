@@ -1,0 +1,7 @@
+[Unit]
+Description=Stop unconfirmed Mihomo trial without unlocking Sub2API
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mihomo-ctl expire-trial
+TimeoutStartSec=240
