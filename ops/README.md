@@ -6,7 +6,7 @@
 
 ## 当前部署与源码对应关系
 
-服务器 `aly` 的运行目录仍为 `/home/pk/workspace/sub2api`，systemd 启动 `bin/sub2api`。它是基于 v0.2.18 的既有定制构建：普通 OpenAI Codex 配置模板的首选和兜底模型为 `gpt-6.1-sol`，生成 `supports_websockets = true`，不生成 `model_catalog_url`；模型目录的原有选择逻辑、WebSocket 专用页签和后端 API 保持原样。
+服务器 `aly` 的运行目录仍为 `/home/pk/workspace/sub2api`，systemd 启动 `bin/sub2api`。它是基于 v0.2.18 的既有定制构建：普通 OpenAI Codex 配置模板的首选和兜底模型为 `gpt-6.1-sol`，生成 `supports_websockets = true`，旧线上构建不生成 `model_catalog_url`；本次源码已在 `base_url` 下一行恢复远程模式的 `model_catalog_url = "<base_url>/models"`，待用户手动部署。模型目录的原有选择逻辑、WebSocket 专用页签和后端 API 保持原样。
 
 这些改动已恢复到前端源码及对应测试，不再依赖 `/tmp` 补丁作为维护来源。当前线上程序由此前的外部构建产生，SHA256、原始构建信息、官方基线和本次核对状态保存在 [deployed-build.json](deployed-build.json)。新仓库提交号不代表该旧程序的构建提交，也不承诺不同工具链产生字节相同的程序。
 
@@ -53,7 +53,7 @@ Git 跟踪源码、锁文件、配置模板、脚本、说明及脱敏证据。�
 
 GitHub Actions 保留官方 CI，另由 `Source and operations verification` 工作流运行前端模板测试、前端生产构建和嵌入前端的 Linux amd64 编译，以及运维脚本检查。使用官方锁文件、Node 20、pnpm 9 和 `backend/go.mod` 指定的 Go 工具链。构建顺序是前端先、后端后；根目录默认 `make build` 不能替代这里的嵌入前端构建流程。
 
-构建程序写入 `0.2.18`、真实 Git SHA、UTC 构建时间及 `source` 类型。程序只留在 Actions 临时运行环境，不提交 Git、不上传构建包、不自动发布或部署。后续需要部署时应单独设计交付、回滚和公网验收。
+构建程序写入 `0.2.18`、真实 Git SHA、UTC 构建时间及 `source` 类型。工作流上传 Linux amd64 构建包、SHA256 和来源信息作为 Actions artifact，保留 7 天，不自动部署。本次经用户授权，`build/codex-model-catalog` 分支会触发独立的临时交付任务（`contents: write`），将产物写入 `build-artifacts/codex-model-catalog-<源提交>` 分支，供 Git SSH 下载；下载校验后删除临时交付分支。交付提交包含 `[skip ci]`，避免递归构建。用户手动部署，保留 `deployed-build.json` 登记的官方程序备份，不额外备份当前定制程序。
 
 更新官方版本时，在独立开发克隆里执行 `git fetch upstream --tags`，选择明确版本，建立更新分支并合并对应标签，解决冲突后运行 CI。只有升级任务才变更版本基线和数据库兼容性要求。推送时明确指定自己的分支，不执行 `git push --mirror` 或 `git push --tags`。
 

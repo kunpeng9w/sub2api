@@ -494,7 +494,7 @@ describe('UseKeyModal', () => {
     expect(configToml).toContain('requires_openai_auth = false')
     expect(configToml).toContain('experimental_bearer_token = "sk-test"')
     expect(configToml).toContain('http_headers = { "x-openai-actor-authorization" = "local-image-extension" }')
-    expect(configToml).not.toContain('model_catalog_url')
+    expect(configToml).toContain('base_url = "https://example.com/v1"\nmodel_catalog_url = "https://example.com/v1/models"')
     expect(configToml).not.toContain('model_catalog_json')
     expect(configToml).not.toContain('env_key')
     expect(configToml).not.toContain('image_generation')
@@ -1032,11 +1032,7 @@ describe('UseKeyModal', () => {
         const isWebSocketTab = transport === 'keys.useKeyModal.cliTabs.codexCliWs'
         expect(configToml).toContain(`model = "${isWebSocketTab ? 'gpt-5.5' : 'gpt-6.1-sol'}"`)
         expect(configToml).toContain('[model_providers.OpenAI]\nname = "OpenAI"\nbase_url = "https://example.com/v1"')
-        if (isWebSocketTab) {
-          expect(configToml).toContain('model_catalog_url = "https://example.com/v1/models"')
-        } else {
-          expect(configToml).not.toContain('model_catalog_url')
-        }
+        expect(configToml).toContain('base_url = "https://example.com/v1"\nmodel_catalog_url = "https://example.com/v1/models"')
         expect(configToml).not.toContain('model_catalog_json')
         expect(configToml).toContain('requires_openai_auth = true')
         expect(configToml).not.toContain('client_version')
@@ -1104,7 +1100,7 @@ describe('UseKeyModal', () => {
         expect((mode.get('option[value="remote"]').element as HTMLOptionElement).disabled).toBe(false)
         expect(wrapper.text()).not.toContain('keys.useKeyModal.codexModelCatalog.oversized')
       } else {
-        expect(config).not.toContain('model_catalog_url')
+        expect(config).toContain('model_catalog_url = "https://example.com/v1/models"')
         expect(config).not.toContain('model_catalog_json')
       }
     }
