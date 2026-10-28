@@ -77,6 +77,8 @@ class PolicySimulationTests(unittest.TestCase):
         c = yaml.safe_load(generator.render()["mihomo.yaml.example"])
         self.assertEqual(c["tun"]["route-address"], ["198.18.0.0/16"])
         self.assertFalse(c["tun"]["auto-redirect"])
+        self.assertFalse(c["tun"]["strict-route"])
+        self.assertEqual(c["tun"]["dns-mode"], "disabled")
         self.assertEqual(c["tun"]["dns-hijack"], [])
         self.assertEqual(c["rules"][-1], "MATCH,REJECT")
         self.assertNotIn("proxy-groups", c)

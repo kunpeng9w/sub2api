@@ -22,7 +22,7 @@ def render():
         "profile": {"store-selected": False, "store-fake-ip": True},
         "tun": {"enable": True, "device": "mihomo", "stack": "mixed",
                 "auto-route": True, "auto-redirect": False, "auto-detect-interface": True,
-                "strict-route": True, "mtu": 1500, "dns-hijack": [],
+                "strict-route": False, "mtu": 1500, "dns-mode": "disabled", "dns-hijack": [],
                 "iproute2-table-index": 2022, "iproute2-rule-index": 9000,
                 "route-address": ["198.18.0.0/16"]},
         "dns": {"enable": True, "listen": "127.0.0.1:1053", "ipv6": False,

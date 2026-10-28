@@ -186,7 +186,7 @@ sha256sum "$PRIVATE_DIR/phase2/installed.tar" "$PRIVATE_DIR/phase2/config.yaml" 
 python3 "$POLICY_DIR/templates/egress_guard.py" render > "$PRIVATE_DIR/phase2/guard.nft"
 ```
 
-预期：Mihomo 和 DNS 配置语法通过，规则文本只涉及自有表与 Fake-IP 网段。这里不启动 TUN，不执行 nft 内核测试。预检失败不能进入切换。
+预期：Mihomo 和 DNS 配置语法通过，规则文本只涉及自有表与 Fake-IP 网段。候选明确设置 `strict-route: false`、`dns-mode: disabled`、`auto-redirect: false` 及空 `dns-hijack`；不要依赖默认值自动管理系统 DNS。这里不启动 TUN，不执行 nft 内核测试。预检失败不能进入切换。
 
 ### 2.3 手动切换
 

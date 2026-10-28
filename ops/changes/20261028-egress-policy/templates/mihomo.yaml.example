@@ -16,8 +16,9 @@ tun:
   auto-route: true
   auto-redirect: false
   auto-detect-interface: true
-  strict-route: true
+  strict-route: false
   mtu: 1500
+  dns-mode: disabled
   dns-hijack: []
   iproute2-table-index: 2022
   iproute2-rule-index: 9000

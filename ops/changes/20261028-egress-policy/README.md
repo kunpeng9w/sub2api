@@ -21,3 +21,6 @@
 整机范围限于使用系统 DNS 或本机 Mihomo 的受管客户端。自带 DoH、固定 IP 或套其他远端代理的客户端必须先纳管。数据库、Redis、对象存储等独立系统渠道保留自身配置；账号的模型、鉴权、探测、上游媒体和批处理请求执行绑定策略。代理商是否固定公网 IP 仍由供应商保证。
 
 候选文件与线上安装文件分开维护；Git 更新、源码提交及 CI 都不代表完成部署。当前历史运维材料保持原样。
+
+设计核对依据（2026-10-28）：[Mihomo DNS](https://wiki.metacubex.one/config/dns/)、[Mihomo TUN](https://wiki.metacubex.one/config/inbound/tun/)、[dnsmasq 手册](https://thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html)。候选使用显式 `route-address`、`dns-mode: disabled`、关闭 `strict-route`/`auto-redirect` 和空 DNS 劫持列表。文档语义核对不代表安装中内核已经验证这些设置。
+只读查询到安装中 Mihomo 为 `v1.19.33`；同时核对该版本的 [TUN 配置字段](https://github.com/MetaCubeX/mihomo/blob/v1.19.33/listener/config/tun.go) 和 [TUN 选项传递](https://github.com/MetaCubeX/mihomo/blob/v1.19.33/listener/sing_tun/server.go)，确认候选使用的字段在对应源码中存在。查询版本没有重启代理，也没有在本机加载候选配置。
