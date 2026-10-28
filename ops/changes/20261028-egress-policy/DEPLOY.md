@@ -25,11 +25,11 @@ mkdir -m 700 "$PRIVATE_DIR"
 
 如果私有目录已存在，使用新的带时间后缀目录，不能覆盖上一次备份。不要把配置、认证信息或备份存入 Git 仓库。
 
-本次已下载的独立 CI 包位于 `/home/pk/workspace/sub2api-egress-delivery/6d6b4a40baec99f672f3a10829b7ebf11d5a5e33/`，只是交付文件，没有安装或执行。核对报告里的 SHA256 后，在上述 root shell 中复制到私有交付目录：
+本次已下载的独立 CI 包位于 `/home/pk/workspace/sub2api-egress-delivery/291e9421212a7031ec7f777556c6f70e3d6a7dee/`，只是交付文件，没有安装或执行。核对报告里的 SHA256 后，在上述 root shell 中复制到私有交付目录：
 
 ```bash
 install -d -o root -g root -m 700 "$DELIVERY_DIR"
-cp /home/pk/workspace/sub2api-egress-delivery/6d6b4a40baec99f672f3a10829b7ebf11d5a5e33/{sub2api-linux-amd64.tar.gz,SHA256SUMS,build-info.txt,template-tests.log} "$DELIVERY_DIR/"
+cp /home/pk/workspace/sub2api-egress-delivery/291e9421212a7031ec7f777556c6f70e3d6a7dee/{sub2api-linux-amd64.tar.gz,SHA256SUMS,build-info.txt,template-tests.log} "$DELIVERY_DIR/"
 ```
 
 预期：仅复制候选包和构建清单。路径不存在、提交不符或校验不符就停止，不能改用在线程序冒充交付包。Actions 构建产物保留 7 天；本地副本保留至操作者自行清理。
@@ -132,12 +132,13 @@ curl -fsS --max-time 3 http://127.0.0.1:8080/health
 
 ## 2. 第二阶段：独立 DNS、定向 TUN 与定向保护
 
-影响范围：维护窗口内暂停 Sub2API 和其他受管官方 Claude 客户端，切换 Mihomo、DNS 入口和保护。失败返回 [第二阶段回滚](ROLLBACK.md#第二阶段回滚)，恢复完整旧网络组合。
+影响范围：维护窗口内暂停 Sub2API、其他受管官方 Claude 客户端，以及持有旧全量 Fake-IP/DNS 缓存或 TUN 长连接的其他客户端，切换 Mihomo、DNS 入口和保护。旧全量 TUN 退出会中断既有连接，普通客户端也可能需要重新解析并重连；不能承诺无中断迁移。失败返回 [第二阶段回滚](ROLLBACK.md#第二阶段回滚)，恢复完整旧网络组合。
 
 ### 2.1 前置检查与新鲜备份
 
 - 先确认第一阶段正常运行；后台所有官方 Claude 账号没有独立代理绑定。第三方 Claude 渠道可以保留自己的代理，不能自动清空任何账号绑定。
-- 查明服务器上的其他官方 Claude 客户端，维护期间由你手动暂停；迁移后重启这些客户端以清理真实 IP 和旧长连接缓存。
+- 查明服务器上的其他官方 Claude 客户端，以及仍缓存旧全量 Fake-IP 或持有 TUN 长连接的普通客户端。维护期间由你手动暂停，迁移后清除其 DNS/连接缓存并恢复。不能确定客户端和缓存范围时停止网络迁移，保留第一阶段；不能只处理 Claude 客户端而忽略普通客户端的旧 Fake-IP。
+- 核对系统和各服务是否显式设置 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY` 或本机 Mihomo 代理。普通客户端切换后应使用正常系统出站，不能继续把普通请求交给末尾拒绝的本机代理；官方客户端可使用系统 DNS 或本机 Mihomo。相关设置需要逐项私下备份、确认，不能批量清除 Sub2API 账号的代理绑定。无法确认时停留在第一阶段。
 - 系统客户端必须使用 `/etc/resolv.conf` 的 DNS 路径。本机 `hosts:` 当前为 `files dns myhostname`；若环境已变为优先使用 `nss-resolve`，先停止迁移并调整设计，不能直接套用本文。
 - `/etc/hosts` 不能包含官方域名的真实 IP 覆盖；自带 DoH、固定 IP 和其他远程代理的客户端应先纳管。
 - 确认 `198.18.0.0/16` 和路由表 `2022` 除现有 Mihomo 外没有其他用途，策略规则优先级 `2000` 未被占用，`127.0.0.1:53` 未被其他程序占用；新 DNS 服务和文件不得覆盖已有同名自定义服务。
@@ -199,7 +200,7 @@ python3 "$POLICY_DIR/templates/egress_guard.py" render > "$PRIVATE_DIR/phase2/gu
 
 ### 2.3 手动切换
 
-先暂停前面识别的其他官方 Claude 客户端，然后执行：
+先暂停前面识别的其他官方 Claude 客户端及持有旧 Fake-IP/TUN 连接的普通客户端，然后执行：
 
 ```bash
 systemctl stop sub2api
@@ -250,6 +251,6 @@ ip route get 198.18.1.1
 ip route get 1.1.1.1
 ```
 
-预期：官方域名返回 `198.18.0.0/16` 内地址，普通域名返回真实地址；Fake-IP 路由经 `mihomo`，普通目标经正常网卡，保护状态一致。查看既有应用与 Mihomo 日志，确认没有启动错误、配置冲突或反复重启；重启之前暂停的受管客户端，避免复用旧真实 IP 连接。
+预期：官方域名返回 `198.18.0.0/16` 内地址，普通域名返回真实地址；Fake-IP 路由经 `mihomo`，普通目标经正常网卡，保护状态一致。查看既有应用与 Mihomo 日志，确认没有启动错误、配置冲突或反复重启；清除并恢复之前暂停的客户端，避免复用旧真实 IP、普通域名的旧 Fake-IP 和长连接缓存。
 
 不要停代理、杀进程、制造断网或发送真实模型请求来测试故障行为。若上述正常核验失败，停止恢复流量并执行第二阶段回滚。若核验通过，在本目录记录操作者、实际版本、时间及只读结果；生产稳定性继续以正常业务观察为准，不能把模拟通过记录成在线故障验收通过。
