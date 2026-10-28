@@ -856,9 +856,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	if buildHdrErr != nil {
 		return fmt.Errorf("build ws headers: %w", buildHdrErr)
 	}
-	proxyURL := ""
-	if account.ProxyID != nil && account.Proxy != nil {
-		proxyURL = account.Proxy.URL()
+	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
+	if egressErr != nil {
+		return egressErr
 	}
 
 	dialer := s.getOpenAIWSPassthroughDialer()

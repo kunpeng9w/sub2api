@@ -539,6 +539,11 @@ func (s *AccountTestService) fetchModelsDevMetadata(
 }
 
 func (s *AccountTestService) fetchModelsDevRegistry(ctx context.Context, account *Account) (map[string]modelsDevProvider, error) {
+	accountEgressURL, accountEgressErr := upstreamModelsProxyURL(account)
+	if accountEgressErr != nil {
+		return nil, accountEgressErr
+	}
+
 	now := time.Now()
 	s.modelMetadataRegistryMu.Lock()
 	if len(s.modelMetadataRegistry) > 0 && now.Sub(s.modelMetadataRegistryAt) < modelsDevRegistryTTL {
@@ -553,7 +558,7 @@ func (s *AccountTestService) fetchModelsDevRegistry(ctx context.Context, account
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := s.doUpstreamModelsRequest(req, upstreamModelsProxyURL(account), account)
+	resp, err := s.doUpstreamModelsRequest(req, accountEgressURL, account)
 	if err != nil {
 		return nil, err
 	}
@@ -781,7 +786,12 @@ func (s *AccountTestService) fetchUpstreamModelList(ctx context.Context, account
 
 // readUpstreamModelsResponse 发送模型列表请求并读取受限大小的响应体；非 2xx 返回带状态码的同步错误。
 func (s *AccountTestService) readUpstreamModelsResponse(req *http.Request, account *Account) ([]byte, error) {
-	resp, err := s.doUpstreamModelsRequest(req, upstreamModelsProxyURL(account), account)
+	accountEgressURL, accountEgressErr := upstreamModelsProxyURL(account)
+	if accountEgressErr != nil {
+		return nil, accountEgressErr
+	}
+
+	resp, err := s.doUpstreamModelsRequest(req, accountEgressURL, account)
 	if err != nil {
 		return nil, newUpstreamModelSyncUpstreamError("Failed to request upstream model list", err)
 	}
@@ -1267,6 +1277,11 @@ func (s *AccountTestService) buildGeminiUpstreamModelsRequest(ctx context.Contex
 }
 
 func (s *AccountTestService) fetchAntigravityOAuthUpstreamModels(ctx context.Context, account *Account) ([]string, []byte, error) {
+	accountEgressURL, accountEgressErr := upstreamModelsProxyURL(account)
+	if accountEgressErr != nil {
+		return nil, nil, accountEgressErr
+	}
+
 	if s.antigravityGatewayService == nil || s.antigravityGatewayService.GetTokenProvider() == nil {
 		return nil, nil, newUpstreamModelSyncConfigError("Antigravity token provider is not configured", nil)
 	}
@@ -1280,7 +1295,7 @@ func (s *AccountTestService) fetchAntigravityOAuthUpstreamModels(ctx context.Con
 		return nil, nil, newUpstreamModelSyncConfigError("No Antigravity access token is available", nil)
 	}
 
-	client, err := antigravity.NewClient(upstreamModelsProxyURL(account))
+	client, err := antigravity.NewClient(accountEgressURL)
 	if err != nil {
 		return nil, nil, newUpstreamModelSyncConfigError("Failed to configure Antigravity client", err)
 	}
@@ -1316,11 +1331,8 @@ func (s *AccountTestService) doUpstreamModelsRequest(req *http.Request, proxyURL
 	return s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
 }
 
-func upstreamModelsProxyURL(account *Account) string {
-	if account != nil && account.ProxyID != nil && account.Proxy != nil {
-		return account.Proxy.URL()
-	}
-	return ""
+func upstreamModelsProxyURL(account *Account) (string, error) {
+	return ResolveAccountProxyURL(account)
 }
 
 func buildV1ModelsURL(base string) string {

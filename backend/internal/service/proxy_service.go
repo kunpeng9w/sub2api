@@ -196,5 +196,5 @@ func (s *ProxyService) GetURL(ctx context.Context, id int64) (string, error) {
 		return "", fmt.Errorf("get proxy: %w", err)
 	}
 
-	return proxy.URL(), nil
+	return validatedBoundProxyURL(&id, proxy)
 }

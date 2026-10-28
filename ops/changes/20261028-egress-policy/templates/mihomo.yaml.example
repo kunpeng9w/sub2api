@@ -1,0 +1,60 @@
+mixed-port: 7890
+allow-lan: false
+bind-address: 127.0.0.1
+mode: rule
+log-level: info
+ipv6: false
+interface-name: eth0
+external-controller: ''
+profile:
+  store-selected: false
+  store-fake-ip: true
+tun:
+  enable: true
+  device: mihomo
+  stack: mixed
+  auto-route: true
+  auto-redirect: false
+  auto-detect-interface: true
+  strict-route: true
+  mtu: 1500
+  dns-hijack: []
+  iproute2-table-index: 2022
+  iproute2-rule-index: 9000
+  route-address:
+  - 198.18.0.0/16
+dns:
+  enable: true
+  listen: 127.0.0.1:1053
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-hosts: false
+  use-system-hosts: false
+  fake-ip-filter-mode: rule
+  fake-ip-filter:
+  - DOMAIN-SUFFIX,anthropic.com,fake-ip
+  - DOMAIN-SUFFIX,claude.ai,fake-ip
+  - DOMAIN-SUFFIX,claude.com,fake-ip
+  - MATCH,real-ip
+  default-nameserver:
+  - 100.100.2.136
+  - 100.100.2.138
+  proxy-server-nameserver:
+  - 100.100.2.136#eth0
+  - 100.100.2.138#eth0
+  nameserver:
+  - https://1.1.1.1/dns-query#US-Proxy
+  - https://8.8.8.8/dns-query#US-Proxy
+proxies:
+- name: US-Proxy
+  type: http
+  server: ${PROXY_SERVER}
+  port: 8022
+  username: ${PROXY_USERNAME}
+  password: ${PROXY_PASSWORD}
+rules:
+- DOMAIN-SUFFIX,anthropic.com,US-Proxy
+- DOMAIN-SUFFIX,claude.ai,US-Proxy
+- DOMAIN-SUFFIX,claude.com,US-Proxy
+- MATCH,REJECT

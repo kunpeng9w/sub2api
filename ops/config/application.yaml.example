@@ -35,6 +35,10 @@ run_mode: simple
 totp:
   encryption_key: ${TOTP_ENCRYPTION_KEY}
 gateway:
+  # Opt-in only after the independent network migration; application upgrades keep this off.
+  claude_egress:
+    enabled: false
+    proxy_url: "http://127.0.0.1:7890"
   max_body_size: 16777216
   max_idle_conns: 16
   max_idle_conns_per_host: 4

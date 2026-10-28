@@ -1,0 +1,5 @@
+# Merge this section into a private copy of the existing config.
+gateway:
+  claude_egress:
+    enabled: false
+    proxy_url: http://127.0.0.1:7890

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
 )
@@ -70,6 +71,7 @@ type claudeResetTokens interface {
 }
 
 type ClaudeResetCreditService struct {
+	cfg      *config.Config
 	accounts claudeResetAccounts
 	tokens   claudeResetTokens
 	proxies  ProxyRepository
@@ -114,14 +116,11 @@ func (s *ClaudeResetCreditService) account(ctx context.Context, id int64) (*Acco
 	if !profile {
 		return nil, "", "", infraerrors.BadRequest("CLAUDE_RESET_PROFILE_SCOPE_REQUIRED", "user:profile scope required")
 	}
-	proxy := ""
-	if a.ProxyID != nil {
-		p, e := s.proxies.GetByID(ctx, *a.ProxyID)
-		if e != nil || p == nil {
-			return nil, "", "", infraerrors.ServiceUnavailable("CLAUDE_RESET_PROXY_UNAVAILABLE", "account proxy unavailable")
-		}
-		proxy = p.URL()
+	proxy, egressErr := ResolveAccountProxyFromRepository(ctx, s.proxies, a, s.cfg)
+	if egressErr != nil {
+		return nil, "", "", egressErr
 	}
+
 	token, err := s.tokens.GetAccessToken(ctx, a)
 	if err != nil || strings.TrimSpace(token) == "" {
 		return nil, "", "", infraerrors.ServiceUnavailable("CLAUDE_RESET_TOKEN_UNAVAILABLE", "OAuth token unavailable")

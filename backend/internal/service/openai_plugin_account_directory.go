@@ -156,11 +156,16 @@ func (s *OpenAIGatewayService) ResolvePluginOutboundIdentity(ctx context.Context
 	}
 	ensureCodexIdentityHeaders(headers)
 	enforceCodexIdentityHeaders(headers)
+	accountEgressURL, accountEgressErr := resolveAccountProxyURL(account)
+	if accountEgressErr != nil {
+		return nil, accountEgressErr
+	}
+
 	return &PluginOutboundIdentity{
 		AccountID:   account.ID,
 		Platform:    account.Platform,
 		AccountType: account.Type,
-		ProxyURL:    resolveAccountProxyURL(account),
+		ProxyURL:    accountEgressURL,
 		Token:       token,
 		Headers:     headers,
 	}, nil

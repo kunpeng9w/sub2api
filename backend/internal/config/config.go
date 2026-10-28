@@ -979,6 +979,7 @@ const (
 
 // GatewayConfig API网关相关配置
 type GatewayConfig struct {
+	ClaudeEgress ClaudeEgressConfig `mapstructure:"claude_egress"`
 	// MinOutputTokens is the minimum max_output_tokens used when
 	// converting Chat Completions or Anthropic requests to Responses.
 	MinOutputTokens int `mapstructure:"min_output_tokens"`
@@ -2038,6 +2039,8 @@ func configureConfigSource(setConfigFile, addConfigPath func(string)) {
 
 func setDefaults() {
 	viper.SetDefault("run_mode", RunModeStandard)
+	viper.SetDefault("gateway.claude_egress.enabled", false)
+	viper.SetDefault("gateway.claude_egress.proxy_url", "http://127.0.0.1:7890")
 	viper.SetDefault("gateway.min_output_tokens", 128)
 	viper.SetDefault("simple_mode.auto_create_default_groups", true)
 	viper.SetDefault("simple_mode_key_rate_limit_enabled", false)
@@ -2711,6 +2714,11 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	if c.Gateway.ClaudeEgress.Enabled {
+		if _, err := c.Gateway.ClaudeEgress.ValidatedProxyURL(); err != nil {
+			return err
+		}
+	}
 	if c.Gateway.MinOutputTokens < 16 {
 		return fmt.Errorf("gateway.min_output_tokens must be at least 16")
 	}

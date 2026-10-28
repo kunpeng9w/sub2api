@@ -205,7 +205,12 @@ func writeEmulatedWebSearch(
 }
 
 func doWebSearch(ctx context.Context, account *Account, query string) (*websearch.SearchResponse, string, error) {
-	proxyURL := resolveAccountProxyURL(account)
+	accountEgressURL, accountEgressErr := resolveAccountProxyURL(account)
+	if accountEgressErr != nil {
+		return nil, "", accountEgressErr
+	}
+
+	proxyURL := accountEgressURL
 	mgr := getWebSearchManager()
 	if mgr == nil {
 		return nil, "", fmt.Errorf("web search emulation: manager not initialized")
@@ -220,11 +225,8 @@ func doWebSearch(ctx context.Context, account *Account, query string) (*websearc
 	return resp, providerName, nil
 }
 
-func resolveAccountProxyURL(account *Account) string {
-	if account.ProxyID != nil && account.Proxy != nil {
-		return account.Proxy.URL()
-	}
-	return ""
+func resolveAccountProxyURL(account *Account) (string, error) {
+	return ResolveAccountProxyURL(account)
 }
 
 // --- SSE streaming response ---

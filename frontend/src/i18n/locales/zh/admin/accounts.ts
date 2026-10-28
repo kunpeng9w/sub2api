@@ -1,5 +1,7 @@
 export default {
     accounts: {
+      managedClaudeEgress: '官方 Claude 账号由服务器统一管理出口',
+      clearConflictingProxy: '清除原代理绑定',
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',

@@ -847,7 +847,8 @@ type openAIWSPoolMetrics struct {
 }
 
 type openAIWSConnPool struct {
-	cfg *config.Config
+	egressAccounts AccountRepository
+	cfg            *config.Config
 	// 通过接口解耦底层 WS 客户端实现，默认使用 coder/websocket。
 	clientDialer openAIWSClientDialer
 
@@ -1107,6 +1108,16 @@ type openAIWSAcquireQueueWait struct {
 }
 
 func (p *openAIWSConnPool) Acquire(ctx context.Context, req openAIWSAcquireRequest) (*openAIWSConnLease, error) {
+	if p == nil {
+		return nil, errors.New("ws pool missing")
+	}
+	route, routeErr := p.resolveEgress(ctx, req.Account)
+	if routeErr != nil {
+		return nil, routeErr
+	}
+	if req.ProxyURL != route {
+		return nil, ErrAccountProxyUnavailable
+	}
 	if p != nil {
 		p.metrics.acquireTotal.Add(1)
 	}
@@ -2115,6 +2126,13 @@ func (p *openAIWSConnPool) UnpinConn(accountID int64, connID string) {
 }
 
 func (p *openAIWSConnPool) dialConn(ctx context.Context, req openAIWSAcquireRequest) (*openAIWSConn, error) {
+	if p == nil {
+		return nil, errors.New("ws pool missing")
+	}
+	route, routeErr := p.resolveEgress(ctx, req.Account)
+	if routeErr != nil || route != req.ProxyURL {
+		return nil, ErrAccountProxyUnavailable
+	}
 	if p == nil || p.clientDialer == nil {
 		return nil, errors.New("openai ws client dialer is nil")
 	}
@@ -2456,4 +2474,18 @@ func closeOpenAIWSConns(conns []*openAIWSConn) {
 
 func stringsTrim(value string) string {
 	return strings.TrimSpace(value)
+}
+
+func (p *openAIWSConnPool) resolveEgress(ctx context.Context, selected *Account) (string, error) {
+	if selected == nil {
+		return "", ErrAccountProxyUnavailable
+	}
+	if p.egressAccounts == nil {
+		return ResolveAccountProxyURL(selected, p.cfg)
+	}
+	current, err := p.egressAccounts.GetByID(ctx, selected.ID)
+	if err != nil || current == nil || !grokCredentialProxyIDsEqual(current.ProxyID, selected.ProxyID) {
+		return "", ErrAccountProxyUnavailable
+	}
+	return ResolveAccountProxyURL(current, p.cfg)
 }

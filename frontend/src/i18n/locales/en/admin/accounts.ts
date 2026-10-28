@@ -1,5 +1,7 @@
 export default {
     accounts: {
+      managedClaudeEgress: 'Official Claude accounts use the server-managed egress',
+      clearConflictingProxy: 'Clear the existing proxy binding',
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',

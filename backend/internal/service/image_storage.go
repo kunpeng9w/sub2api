@@ -61,7 +61,7 @@ func NewImageResultUploader(storage ImageStorage, prefix string, maxDownloadByte
 
 // defaultImageDownloadHTTPClient 是进程内共享的图片下载客户端，复用连接池。
 var defaultImageDownloadHTTPClient = sync.OnceValue(func() *http.Client {
-	return newImageDownloadHTTPClient(http.ProxyFromEnvironment)
+	return newImageDownloadHTTPClient(accountEgressProxy)
 })
 
 // newImageDownloadHTTPClient 返回只允许下载公网目的地的客户端。

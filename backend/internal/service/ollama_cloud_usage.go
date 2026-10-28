@@ -887,12 +887,9 @@ func (s *OllamaCloudUsageService) refreshLoadedAccount(ctx context.Context, acco
 	if s.httpUpstream == nil {
 		return nil, ErrOllamaCloudUsageUnavailable
 	}
-	proxyURL := ""
-	if account.ProxyID != nil {
-		if account.Proxy == nil || account.Proxy.ID != *account.ProxyID {
-			return nil, ErrOllamaCloudUsageIdentityChanged
-		}
-		proxyURL = account.Proxy.URL()
+	proxyURL, egressErr := ResolveAccountProxyURL(account)
+	if egressErr != nil {
+		return nil, egressErr
 	}
 	requestCtx, cancel := context.WithTimeout(WithHTTPUpstreamRedirectsDisabled(ctx), ollamaCloudUsageRequestTimeout)
 	defer cancel()

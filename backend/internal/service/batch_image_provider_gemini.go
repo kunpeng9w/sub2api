@@ -17,7 +17,6 @@ import (
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
 )
 
 const defaultGeminiBatchRequeueAfter = 30 * time.Second
@@ -88,6 +87,12 @@ func (p *GeminiAPIBatchImageProvider) SupportsAccount(account *Account) bool {
 }
 
 func (p *GeminiAPIBatchImageProvider) Submit(ctx context.Context, job *BatchImageJob, account *Account, input BatchImageInput) (*BatchProviderJob, error) {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return nil, egressErr
+	}
+	ctx = egressCtx
+
 	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
 		return nil, ErrBatchImageProviderUnsupportedAccount
 	}
@@ -136,6 +141,12 @@ func (p *GeminiAPIBatchImageProvider) Submit(ctx context.Context, job *BatchImag
 }
 
 func (p *GeminiAPIBatchImageProvider) Get(ctx context.Context, job *BatchImageJob, account *Account) (*BatchProviderStatus, error) {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return nil, egressErr
+	}
+	ctx = egressCtx
+
 	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
 		return nil, ErrBatchImageProviderUnsupportedAccount
 	}
@@ -174,6 +185,12 @@ func (p *GeminiAPIBatchImageProvider) Get(ctx context.Context, job *BatchImageJo
 }
 
 func (p *GeminiAPIBatchImageProvider) Cancel(ctx context.Context, job *BatchImageJob, account *Account) error {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return egressErr
+	}
+	ctx = egressCtx
+
 	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
 		return ErrBatchImageProviderUnsupportedAccount
 	}
@@ -189,6 +206,12 @@ func (p *GeminiAPIBatchImageProvider) Cancel(ctx context.Context, job *BatchImag
 }
 
 func (p *GeminiAPIBatchImageProvider) OpenResult(ctx context.Context, job *BatchImageJob, account *Account) (io.ReadCloser, string, error) {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return nil, "", egressErr
+	}
+	ctx = egressCtx
+
 	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
 		return nil, "", ErrBatchImageProviderUnsupportedAccount
 	}
@@ -205,6 +228,12 @@ func (p *GeminiAPIBatchImageProvider) OpenResult(ctx context.Context, job *Batch
 }
 
 func (p *GeminiAPIBatchImageProvider) Cleanup(ctx context.Context, job *BatchImageJob, account *Account, target CleanupTarget) error {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return egressErr
+	}
+	ctx = egressCtx
+
 	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
 		return ErrBatchImageProviderUnsupportedAccount
 	}
@@ -470,13 +499,7 @@ func NewGeminiBatchHTTPClient(baseURL string, client *http.Client) *GeminiBatchH
 // 不设整体 Timeout：大文件上传与结果流式下载耗时不可预估，
 // 但拨号、TLS、等待响应头必须有界，否则挂死的连接会无限占用提交路径。
 func batchImageDefaultHTTPClient() *http.Client {
-	client, err := httpclient.GetClient(httpclient.Options{
-		ResponseHeaderTimeout: 60 * time.Second,
-	})
-	if err != nil {
-		return http.DefaultClient
-	}
-	return client
+	return &http.Client{Transport: accountEgressBatchTransport{}}
 }
 
 func (c *GeminiBatchHTTPClient) UploadJSONL(ctx context.Context, apiKey string, displayName string, r io.Reader) (*GeminiUploadedFile, error) {

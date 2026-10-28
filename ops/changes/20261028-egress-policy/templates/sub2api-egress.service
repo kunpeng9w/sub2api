@@ -1,0 +1,13 @@
+[Unit]
+Description=Persistent Claude-only egress guard
+Before=mihomo.service sub2api.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/egress_guard.py restore
+RemainAfterExit=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

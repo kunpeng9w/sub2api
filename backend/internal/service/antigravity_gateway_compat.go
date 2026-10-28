@@ -207,6 +207,11 @@ func (s *AntigravityGatewayService) prepareAntigravityCompatCall(
 	account *Account,
 	request antigravityCompatRequest,
 ) (*antigravityCompatUpstreamCall, error) {
+	accountEgressURL, accountEgressErr := antigravityCompatProxyURL(account)
+	if accountEgressErr != nil {
+		return nil, accountEgressErr
+	}
+
 	var claudeRequest antigravity.ClaudeRequest
 	if json.Unmarshal(request.claudeBody, &claudeRequest) != nil {
 		return nil, s.writeAntigravityCompatError(c, http.StatusBadRequest, "invalid_request_error", "Invalid request body")
@@ -255,7 +260,7 @@ func (s *AntigravityGatewayService) prepareAntigravityCompatCall(
 		request:      request,
 		billingModel: mappedModel,
 		prefix:       logPrefix(getSessionID(c), account.Name),
-		proxyURL:     antigravityCompatProxyURL(account),
+		proxyURL:     accountEgressURL,
 		accessToken:  accessToken,
 		geminiBody:   geminiBody,
 	}, nil
@@ -362,11 +367,8 @@ func enableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
 	return json.Marshal(request)
 }
 
-func antigravityCompatProxyURL(account *Account) string {
-	if account.ProxyID == nil || account.Proxy == nil {
-		return ""
-	}
-	return account.Proxy.URL()
+func antigravityCompatProxyURL(account *Account) (string, error) {
+	return ResolveAccountProxyURL(account)
 }
 
 func (s *AntigravityGatewayService) handleAntigravityCompatTransportError(c *gin.Context, err error) error {

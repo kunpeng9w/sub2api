@@ -22,6 +22,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/antigravity"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claudedomain"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
@@ -45,6 +46,11 @@ func NewOAuthHandler(oauthService *service.OAuthService) *OAuthHandler {
 	return &OAuthHandler{
 		oauthService: oauthService,
 	}
+}
+
+func (h *AccountHandler) GetEgressPolicy(c *gin.Context) {
+	enabled := h.cfg != nil && h.cfg.Gateway.ClaudeEgress.Enabled
+	response.Success(c, gin.H{"claude_egress_enabled": enabled, "strict_proxy_binding": true, "official_domains": claudedomain.Domains()})
 }
 
 // AccountHandler handles admin account management

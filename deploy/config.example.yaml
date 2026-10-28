@@ -217,6 +217,10 @@ security:
 # 网关配置
 # =============================================================================
 gateway:
+  # Opt-in only after the independent network migration; application upgrades keep this off.
+  claude_egress:
+    enabled: false
+    proxy_url: "http://127.0.0.1:7890"
   # Minimum max_output_tokens when converting Chat Completions or Anthropic requests to Responses (minimum 16, default 128)
   # Chat Completions 或 Anthropic 请求转换为 Responses 时的最小 max_output_tokens（最小 16，默认 128）
   min_output_tokens: 128

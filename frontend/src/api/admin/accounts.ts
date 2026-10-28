@@ -41,6 +41,11 @@ import type {
  * @param filters - Optional filters
  * @returns Paginated list of accounts
  */
+export async function getEgressPolicy(): Promise<{ claude_egress_enabled: boolean; strict_proxy_binding: boolean; official_domains: string[] }> {
+  const { data } = await apiClient.get('/admin/accounts/egress-policy')
+  return data
+}
+
 export async function list(
   page: number = 1,
   pageSize: number = 20,
@@ -1132,6 +1137,7 @@ export async function refreshOpenCodeGoUsage(id: number): Promise<OpenCodeGoUsag
 }
 
 export const accountsAPI = {
+  getEgressPolicy,
   list,
   listWithEtag,
   getUpstreamBillingRatesWithEtag,

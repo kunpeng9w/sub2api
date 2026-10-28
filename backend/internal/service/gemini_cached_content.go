@@ -1076,9 +1076,9 @@ func (s *GeminiCachedContentService) doUpstream(ctx context.Context, account *Ac
 	default:
 		return nil, geminiCachedContentNotSent(fmt.Errorf("account type %s does not support explicit context caching", account.Type))
 	}
-	proxyURL := ""
-	if account.ProxyID != nil && account.Proxy != nil {
-		proxyURL = account.Proxy.URL()
+	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
+	if egressErr != nil {
+		return nil, egressErr
 	}
 	resp, err := s.compat.httpUpstream.Do(req, proxyURL, account.ID, account.Concurrency)
 	if err != nil {

@@ -175,6 +175,12 @@ func (p *VertexBatchImageProvider) SupportsAccount(account *Account) bool {
 }
 
 func (p *VertexBatchImageProvider) Submit(ctx context.Context, job *BatchImageJob, account *Account, input BatchImageInput) (*BatchProviderJob, error) {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return nil, egressErr
+	}
+	ctx = egressCtx
+
 	if err := p.validateAccount(account); err != nil {
 		return nil, err
 	}
@@ -242,6 +248,12 @@ func (p *VertexBatchImageProvider) Submit(ctx context.Context, job *BatchImageJo
 }
 
 func (p *VertexBatchImageProvider) Get(ctx context.Context, job *BatchImageJob, account *Account) (*BatchProviderStatus, error) {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return nil, egressErr
+	}
+	ctx = egressCtx
+
 	if err := p.validateAccount(account); err != nil {
 		return nil, err
 	}
@@ -273,6 +285,12 @@ func (p *VertexBatchImageProvider) Get(ctx context.Context, job *BatchImageJob, 
 }
 
 func (p *VertexBatchImageProvider) Cancel(ctx context.Context, job *BatchImageJob, account *Account) error {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return egressErr
+	}
+	ctx = egressCtx
+
 	if err := p.validateAccount(account); err != nil {
 		return err
 	}
@@ -288,6 +306,12 @@ func (p *VertexBatchImageProvider) Cancel(ctx context.Context, job *BatchImageJo
 }
 
 func (p *VertexBatchImageProvider) OpenResult(ctx context.Context, job *BatchImageJob, account *Account) (io.ReadCloser, string, error) {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return nil, "", egressErr
+	}
+	ctx = egressCtx
+
 	if err := p.validateAccount(account); err != nil {
 		return nil, "", err
 	}
@@ -319,6 +343,12 @@ func (p *VertexBatchImageProvider) OpenResult(ctx context.Context, job *BatchIma
 }
 
 func (p *VertexBatchImageProvider) Cleanup(ctx context.Context, job *BatchImageJob, account *Account, target CleanupTarget) error {
+	egressCtx, egressErr := WithAccountEgress(ctx, account)
+	if egressErr != nil {
+		return egressErr
+	}
+	ctx = egressCtx
+
 	if err := p.validateAccount(account); err != nil {
 		return err
 	}

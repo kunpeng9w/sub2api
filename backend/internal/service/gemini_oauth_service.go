@@ -113,12 +113,9 @@ func (s *GeminiOAuthService) GenerateAuthURL(ctx context.Context, proxyID *int64
 		return nil, fmt.Errorf("failed to generate session ID: %w", err)
 	}
 
-	var proxyURL string
-	if proxyID != nil {
-		proxy, err := s.proxyRepo.GetByID(ctx, *proxyID)
-		if err == nil && proxy != nil {
-			proxyURL = proxy.URL()
-		}
+	proxyURL, egressErr := ResolveProxyBinding(ctx, s.proxyRepo, proxyID)
+	if egressErr != nil {
+		return nil, egressErr
 	}
 
 	// OAuth client selection:
@@ -140,6 +137,7 @@ func (s *GeminiOAuthService) GenerateAuthURL(ctx context.Context, proxyID *int64
 		State:        state,
 		CodeVerifier: codeVerifier,
 		ProxyURL:     proxyURL,
+		ProxyID:      cloneGrokProxyID(proxyID),
 		RedirectURI:  redirectURI,
 		ProjectID:    strings.TrimSpace(projectID),
 		TierID:       canonicalGeminiTierIDForOAuthType(oauthType, tierID),
@@ -410,9 +408,9 @@ func (s *GeminiOAuthService) RefreshAccountGoogleOneTier(
 	}
 
 	// 获取 proxy URL
-	var proxyURL string
-	if account.ProxyID != nil && account.Proxy != nil {
-		proxyURL = account.Proxy.URL()
+	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
+	if egressErr != nil {
+		return "", nil, nil, egressErr
 	}
 
 	// 调用 Drive API
@@ -456,14 +454,10 @@ func (s *GeminiOAuthService) ExchangeCode(ctx context.Context, input *GeminiExch
 		return nil, fmt.Errorf("invalid state")
 	}
 
-	proxyURL := session.ProxyURL
-	if input.ProxyID != nil {
-		proxy, err := s.proxyRepo.GetByID(ctx, *input.ProxyID)
-		if err == nil && proxy != nil {
-			proxyURL = proxy.URL()
-		}
+	proxyURL, egressErr := resolveOAuthSessionProxy(ctx, s.proxyRepo, session.ProxyID, input.ProxyID, session.ProxyURL)
+	if egressErr != nil {
+		return nil, egressErr
 	}
-	logger.LegacyPrintf("service.gemini_oauth", "[GeminiOAuth] ProxyURL: %s", proxyURL)
 
 	redirectURI := session.RedirectURI
 
@@ -746,12 +740,9 @@ func (s *GeminiOAuthService) RefreshAccountToken(ctx context.Context, account *A
 		oauthType = "code_assist"
 	}
 
-	var proxyURL string
-	if account.ProxyID != nil {
-		proxy, err := s.proxyRepo.GetByID(ctx, *account.ProxyID)
-		if err == nil && proxy != nil {
-			proxyURL = proxy.URL()
-		}
+	proxyURL, egressErr := ResolveAccountProxyFromRepository(ctx, s.proxyRepo, account, s.cfg)
+	if egressErr != nil {
+		return nil, egressErr
 	}
 
 	tokenInfo, err := s.RefreshToken(ctx, oauthType, refreshToken, proxyURL)

@@ -403,9 +403,9 @@ func (s *AntigravityGatewayService) TestConnectionWithPrompt(ctx context.Context
 	}
 
 	// 代理 URL
-	proxyURL := ""
-	if account.ProxyID != nil && account.Proxy != nil {
-		proxyURL = account.Proxy.URL()
+	proxyURL, egressErr := ResolveAccountProxyURL(account)
+	if egressErr != nil {
+		return nil, egressErr
 	}
 
 	// 复用 antigravityRetryLoop：完整的重试 / credits overages / 智能重试

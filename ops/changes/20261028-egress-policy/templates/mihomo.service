@@ -1,0 +1,24 @@
+[Unit]
+Description=Mihomo official Claude domain egress
+Wants=network-online.target
+After=network-online.target sub2api-egress.service
+Requires=sub2api-egress.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=root
+UMask=0077
+RuntimeDirectory=mihomo
+WorkingDirectory=/var/lib/mihomo
+ExecStartPre=/usr/local/bin/mihomo -t -d /var/lib/mihomo -f /etc/mihomo/config.yaml
+ExecStartPre=/usr/local/libexec/egress_guard.py verify
+ExecStart=/usr/local/bin/mihomo -d /var/lib/mihomo -f /etc/mihomo/config.yaml
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

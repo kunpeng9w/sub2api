@@ -56,6 +56,9 @@ func (s *adminServiceImpl) GetProxiesByIDs(ctx context.Context, ids []int64) ([]
 }
 
 func (s *adminServiceImpl) CreateProxy(ctx context.Context, input *CreateProxyInput) (*Proxy, error) {
+	if (input.FallbackMode != "" && input.FallbackMode != FallbackModeNone) || input.BackupProxyID != nil {
+		return nil, infraerrors.BadRequest("PROXY_FALLBACK_DISABLED", "proxy bindings cannot automatically fall back to direct or another proxy")
+	}
 	if !isJSONTimeInRange(input.ExpiresAt) {
 		return nil, infraerrors.BadRequest("PROXY_EXPIRY_INVALID", "proxy expiry year must be between 0 and 9999")
 	}
@@ -94,6 +97,9 @@ func (s *adminServiceImpl) CreateProxy(ctx context.Context, input *CreateProxyIn
 }
 
 func (s *adminServiceImpl) UpdateProxy(ctx context.Context, id int64, input *UpdateProxyInput) (*Proxy, error) {
+	if (input.FallbackMode != "" && input.FallbackMode != FallbackModeNone) || input.BackupProxyID != nil {
+		return nil, infraerrors.BadRequest("PROXY_FALLBACK_DISABLED", "proxy bindings cannot automatically fall back to direct or another proxy")
+	}
 	if !isJSONTimeInRange(input.ExpiresAt) {
 		return nil, infraerrors.BadRequest("PROXY_EXPIRY_INVALID", "proxy expiry year must be between 0 and 9999")
 	}
@@ -107,11 +113,11 @@ func (s *adminServiceImpl) UpdateProxy(ctx context.Context, id int64, input *Upd
 	}
 
 	// Merge only supplied fields, then validate the resulting fallback configuration.
-	mode := proxy.FallbackMode
+	mode := FallbackModeNone
 	if input.FallbackMode != "" {
 		mode = input.FallbackMode
 	}
-	backupID := proxy.BackupProxyID
+	var backupID *int64
 	if input.BackupProxyID != nil || input.ClearBackupID {
 		backupID = input.BackupProxyID
 	}

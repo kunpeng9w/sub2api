@@ -160,6 +160,11 @@ func vertexServiceAccountCacheKey(account *Account, key *vertexServiceAccountKey
 // getVertexServiceAccountAccessToken obtains an access token for a Vertex service account,
 // using the shared cache and distributed lock to avoid redundant exchanges.
 func getVertexServiceAccountAccessToken(ctx context.Context, cache GeminiTokenCache, account *Account) (string, error) {
+	accountEgressURL, accountEgressErr := vertexServiceAccountProxyURL(account)
+	if accountEgressErr != nil {
+		return "", accountEgressErr
+	}
+
 	key, err := parseVertexServiceAccountKey(account)
 	if err != nil {
 		return "", err
@@ -188,7 +193,7 @@ func getVertexServiceAccountAccessToken(ctx context.Context, cache GeminiTokenCa
 		}
 	}
 
-	accessToken, ttl, err := exchangeVertexServiceAccountToken(ctx, key, vertexServiceAccountProxyURL(account))
+	accessToken, ttl, err := exchangeVertexServiceAccountToken(ctx, key, accountEgressURL)
 	if err != nil {
 		return "", err
 	}
@@ -198,11 +203,8 @@ func getVertexServiceAccountAccessToken(ctx context.Context, cache GeminiTokenCa
 	return accessToken, nil
 }
 
-func vertexServiceAccountProxyURL(account *Account) string {
-	if account == nil || account.ProxyID == nil || account.Proxy == nil {
-		return ""
-	}
-	return account.Proxy.URL()
+func vertexServiceAccountProxyURL(account *Account) (string, error) {
+	return ResolveAccountProxyURL(account)
 }
 
 func newVertexServiceAccountHTTPClient(proxyURL string) (*http.Client, error) {

@@ -4,6 +4,10 @@
 
 `backend/`、`frontend/`、`deploy/` 等目录沿用官方结构；服务器额外配置、脚本、审计及验证材料集中在本目录。官方文档仍以官方行为为准，本页说明本机实际差异。
 
+## 待部署的代理策略候选
+
+2026-10-28 新增[严格绑定与 Claude 定向分流交付](changes/20261028-egress-policy/README.md)，包含修正记录、模拟测试、配置候选和两阶段手动部署/回滚教程。**未部署**；现有运行状态不因源码或 CI 改变，验证结果以该目录报告为准。
+
 ## 当前部署与源码对应关系
 
 服务器 `aly` 的运行目录仍为 `/home/pk/workspace/sub2api`，systemd 启动 `bin/sub2api`。它是基于 v0.2.18 的既有定制构建：普通 OpenAI Codex 配置模板的首选和兜底模型为 `gpt-6.1-sol`，生成 `supports_websockets = true`，旧线上构建不生成 `model_catalog_url`；本次源码已在 `base_url` 下一行恢复远程模式的 `model_catalog_url = "<base_url>/models"`，待用户手动部署。模型目录的原有选择逻辑、WebSocket 专用页签和后端 API 保持原样。

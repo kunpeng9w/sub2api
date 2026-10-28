@@ -1771,7 +1771,7 @@
           <label class="input-label mb-0">{{ t('admin.accounts.proxy') }}</label>
           <ProxyAdBanner />
         </div>
-        <ProxySelector v-model="form.proxy_id" :proxies="proxies" />
+        <AccountProxyField v-model="form.proxy_id" :proxies="proxies" :platform="account?.platform" :account-type="account?.type" :base-url="editBaseUrl" :custom-base-url="customBaseUrlEnabled ? customBaseUrl : ''" />
       </div>
 
       <UpstreamRequestIdHeaderField
@@ -3256,7 +3256,7 @@ import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import UpstreamRequestIdHeaderField from '@/components/account/UpstreamRequestIdHeaderField.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
-import ProxySelector from '@/components/common/ProxySelector.vue'
+import AccountProxyField from '@/components/account/AccountProxyField.vue'
 import ProxyAdBanner from '@/components/common/ProxyAdBanner.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'

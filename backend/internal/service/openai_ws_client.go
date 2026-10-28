@@ -132,6 +132,7 @@ func (d *coderOpenAIWSClientDialer) Dial(
 			return true
 		},
 	}
+	opts.HTTPClient = &http.Client{Transport: &http.Transport{Proxy: nil}}
 	if proxy := strings.TrimSpace(proxyURL); proxy != "" {
 		proxyClient, err := d.proxyHTTPClient(proxy)
 		if err != nil {

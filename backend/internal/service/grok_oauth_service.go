@@ -449,7 +449,7 @@ func (s *GrokOAuthService) proxyURL(ctx context.Context, proxyID *int64) (string
 	if proxy == nil {
 		return "", infraerrors.New(http.StatusBadRequest, "GROK_OAUTH_PROXY_NOT_FOUND", "configured proxy was not found")
 	}
-	return proxy.URL(), nil
+	return validatedBoundProxyURL(proxyID, proxy)
 }
 
 func applyGrokTokenClaims(info *GrokTokenInfo, token string, includeTier bool) {

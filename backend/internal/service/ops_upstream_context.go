@@ -533,8 +533,11 @@ func opsUpstreamProxyAttribution(account *Account) (*int64, string) {
 	if account == nil {
 		return nil, opsProxyNameUnknown
 	}
-	if account.ProxyID == nil || account.Proxy == nil {
+	if account.ProxyID == nil {
 		return nil, opsProxyNameDirect
+	}
+	if account.Proxy == nil || account.Proxy.ID != *account.ProxyID {
+		return nil, opsProxyNameUnknown
 	}
 	if account.Proxy.ID <= 0 {
 		return nil, opsProxyNameUnknown

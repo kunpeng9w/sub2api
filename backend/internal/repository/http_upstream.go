@@ -27,6 +27,7 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claudedomain"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyurl"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyutil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/servertiming"
@@ -162,9 +163,12 @@ type openAIHTTP2FallbackState struct {
 // 7. 代理变更时清空旧连接池，避免复用错误代理
 // 8. 账号并发数与连接池上限对应（账号隔离策略下）
 type httpUpstreamService struct {
-	cfg     *config.Config                  // 全局配置
-	mu      sync.RWMutex                    // 保护 clients map 的读写锁
-	clients map[string]*upstreamClientEntry // 客户端缓存池，key 由隔离策略决定
+	egressModes    sync.Map
+	egressAccounts service.AccountRepository
+	egressProxies  service.ProxyRepository
+	cfg            *config.Config                  // 全局配置
+	mu             sync.RWMutex                    // 保护 clients map 的读写锁
+	clients        map[string]*upstreamClientEntry // 客户端缓存池，key 由隔离策略决定
 	// OpenAI 走 HTTP/HTTPS 代理时的 H2->H1 回退状态（key=标准化 proxyKey）
 	openAIHTTP2Fallbacks sync.Map
 }
@@ -201,6 +205,15 @@ func NewHTTPUpstream(cfg *config.Config) service.HTTPUpstream {
 //   - 调用方必须关闭 resp.Body，否则会导致 inFlight 计数泄漏
 //   - inFlight > 0 的客户端不会被淘汰，确保活跃请求不被中断
 func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
+	if req == nil || req.URL == nil {
+		return nil, fmt.Errorf("upstream request URL missing")
+	}
+	route, routeErr := s.resolveEgressForRequest(req, proxyURL, accountID)
+	if routeErr != nil {
+		return nil, routeErr
+	}
+	proxyURL = route
+	service.RecordAccountEgress(req.Context(), route)
 	applyGrokCLIProxyHeaders(req)
 	if err := s.validateRequestHost(req); err != nil {
 		return nil, err
@@ -244,6 +257,15 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 // profile 为 nil 时不启用 TLS 指纹，行为与 Do 方法相同。
 // profile 非 nil 时使用指定的 Profile 进行 TLS 指纹伪装。
 func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+	if req == nil || req.URL == nil {
+		return nil, fmt.Errorf("upstream request URL missing")
+	}
+	route, routeErr := s.resolveEgressForRequest(req, proxyURL, accountID)
+	if routeErr != nil {
+		return nil, routeErr
+	}
+	proxyURL = route
+	service.RecordAccountEgress(req.Context(), route)
 	if profile == nil {
 		return s.Do(req, proxyURL, accountID, accountConcurrency)
 	}
@@ -264,7 +286,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	}
 	proxyInfo := "direct"
 	if proxyURL != "" {
-		proxyInfo = proxyURL
+		proxyInfo = "configured"
 	}
 	slog.Debug("tls_fingerprint_enabled", "account_id", accountID, "target", targetHost, "proxy", proxyInfo, "profile", profile.Name)
 
@@ -1608,4 +1630,61 @@ func (d *decompressedBody) Close() error {
 		_ = rc.Close()
 	}
 	return d.closer.Close()
+}
+
+// ProvideHTTPUpstream adds a final, current-binding check in production. Narrow
+// unit tests can still inject a transport through NewHTTPUpstream.
+func ProvideHTTPUpstream(cfg *config.Config, accounts service.AccountRepository, proxies service.ProxyRepository) service.HTTPUpstream {
+	s := NewHTTPUpstream(cfg).(*httpUpstreamService)
+	s.egressAccounts = accounts
+	s.egressProxies = proxies
+	return s
+}
+
+func (s *httpUpstreamService) resolveEgressForRequest(req *http.Request, selected string, accountID int64) (string, error) {
+	var proxyID *int64
+	if accountID > 0 && s.egressAccounts != nil {
+		account, err := s.egressAccounts.GetByID(req.Context(), accountID)
+		if err != nil || account == nil {
+			return "", service.ErrAccountProxyUnavailable
+		}
+		proxyID = account.ProxyID
+		expected, err := service.ResolveAccountProxyFromRepository(req.Context(), s.egressProxies, account, s.cfg)
+		if err != nil {
+			return "", err
+		}
+		actual, _, err := proxyurl.Parse(selected)
+		if err != nil {
+			return "", service.ErrAccountProxyUnavailable
+		}
+		if expected != actual {
+			// Official Claude is selected by policy, including legacy callers that
+			// intentionally have no account-level proxy. Other mismatches block.
+			if actual != "" || s.cfg == nil || !s.cfg.Gateway.ClaudeEgress.Enabled || !service.IsOfficialClaudeAccount(account) {
+				return "", service.ErrAccountProxyUnavailable
+			}
+		}
+		selected = expected
+	}
+	route, err := service.ProxyRouteForTarget(s.cfg, req.URL.String(), selected)
+	if err != nil {
+		return "", err
+	}
+	kind := "normal"
+	if route != "" {
+		kind = "account_proxy"
+	}
+	if s.cfg != nil && s.cfg.Gateway.ClaudeEgress.Enabled && claudedomain.ContainsURL(req.URL.String()) {
+		kind = "claude_mihomo"
+	}
+	identity := int64(0)
+	if proxyID != nil {
+		identity = *proxyID
+	}
+	mode := fmt.Sprintf("%s:%d", kind, identity)
+	previous, loaded := s.egressModes.Swap(accountID, mode)
+	if !loaded || previous != mode {
+		slog.Info("upstream_egress_selected", "account_id", accountID, "route_kind", kind, "proxy_id", proxyID)
+	}
+	return route, nil
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/oauth"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyurl"
@@ -24,6 +25,18 @@ func NewClaudeOAuthClient() service.ClaudeOAuthClient {
 		tokenURL:      oauth.TokenURL,
 		clientFactory: createReqClient,
 	}
+}
+
+func ProvideClaudeOAuthClient(cfg *config.Config) service.ClaudeOAuthClient {
+	client := NewClaudeOAuthClient().(*claudeOAuthService)
+	client.clientFactory = func(selected string) (*req.Client, error) {
+		route, err := service.ProxyRouteForTarget(cfg, oauth.TokenURL, selected)
+		if err != nil {
+			return nil, err
+		}
+		return createReqClient(route)
+	}
+	return client
 }
 
 type claudeOAuthService struct {

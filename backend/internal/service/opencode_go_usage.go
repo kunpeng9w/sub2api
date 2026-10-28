@@ -745,12 +745,9 @@ func (s *OpenCodeGoUsageService) refreshLoadedAccount(ctx context.Context, accou
 	if s.httpUpstream == nil {
 		return nil, ErrOpenCodeGoUsageUnavailable
 	}
-	proxyURL := ""
-	if account.ProxyID != nil {
-		if account.Proxy == nil || account.Proxy.ID != *account.ProxyID {
-			return nil, ErrOpenCodeGoUsageIdentityChanged
-		}
-		proxyURL = account.Proxy.URL()
+	proxyURL, egressErr := ResolveAccountProxyURL(account)
+	if egressErr != nil {
+		return nil, egressErr
 	}
 	requestCtx, cancel := context.WithTimeout(WithHTTPUpstreamRedirectsDisabled(ctx), opencodeGoUsageRequestTimeout)
 	defer cancel()

@@ -17,6 +17,11 @@ import (
 // API keys use the standard endpoint; OAuth reuses the authenticated, cached
 // Codex source. Account mappings and group policy are applied after this cache.
 func (s *OpenAIGatewayService) FetchOpenAIModelsList(ctx context.Context, account *Account) (*OpenAIModelsResponse, error) {
+	accountEgressURL, accountEgressErr := upstreamModelsProxyURL(account)
+	if accountEgressErr != nil {
+		return nil, accountEgressErr
+	}
+
 	if s == nil || account == nil {
 		return nil, infraerrors.New(http.StatusInternalServerError, "OPENAI_MODELS_ACCOUNT_REQUIRED", "OpenAI account is required")
 	}
@@ -45,7 +50,7 @@ func (s *OpenAIGatewayService) FetchOpenAIModelsList(ctx context.Context, accoun
 	}
 	request := openAIModelsRequest{
 		url: req.URL.String(), headers: req.Header,
-		proxyURL: upstreamModelsProxyURL(account), accountID: account.ID,
+		proxyURL: accountEgressURL, accountID: account.ID,
 		credentialAccountID: credentialAccount.ID, credentialAccount: credentialAccount,
 		accountConcurrency: account.Concurrency, useAPIKeyUpstream: true,
 		standardModelsList: true,

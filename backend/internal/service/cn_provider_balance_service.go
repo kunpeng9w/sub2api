@@ -123,6 +123,11 @@ func (s *CNProviderBalanceService) QueryBalanceForAccount(ctx context.Context, a
 }
 
 func (s *CNProviderBalanceService) queryBalanceForAccount(ctx context.Context, account *Account) (*CNProviderBalanceResult, error) {
+	accountEgressURL, accountEgressErr := s.resolveProxyURL(ctx, account)
+	if accountEgressErr != nil {
+		return nil, accountEgressErr
+	}
+
 	if account.IsCommandCode() {
 		return s.queryCommandCodeBalance(ctx, account)
 	}
@@ -147,7 +152,7 @@ func (s *CNProviderBalanceService) queryBalanceForAccount(ctx context.Context, a
 		return nil, infraerrors.New(http.StatusForbidden, "CN_BALANCE_URL_REJECTED", err.Error())
 	}
 	targetURL = validatedURL
-	proxyURL := s.resolveProxyURL(ctx, account)
+	proxyURL := accountEgressURL
 	callCtx, cancel := context.WithTimeout(ctx, cnBalanceUpstreamTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(callCtx, http.MethodGet, targetURL, nil)
@@ -296,20 +301,8 @@ func validatePayGAccount(account *Account) error {
 	return nil
 }
 
-func (s *CNProviderBalanceService) resolveProxyURL(ctx context.Context, account *Account) string {
-	if account == nil || account.ProxyID == nil {
-		return ""
-	}
-	if account.Proxy != nil {
-		return account.Proxy.URL()
-	}
-	if s != nil && s.proxyRepo != nil {
-		if proxy, err := s.proxyRepo.GetByID(ctx, *account.ProxyID); err == nil && proxy != nil {
-			account.Proxy = proxy
-			return proxy.URL()
-		}
-	}
-	return ""
+func (s *CNProviderBalanceService) resolveProxyURL(ctx context.Context, account *Account) (string, error) {
+	return ResolveAccountProxyFromRepository(ctx, s.proxyRepo, account)
 }
 
 // cnBalanceURL 解析账号的余额端点。
