@@ -83,7 +83,7 @@ func (s *ProxyExpirySuite) TestSweep_EnqueuesChangedAccountIDsWithoutFullRebuild
 
 	var payloadRaw []byte
 	err = scanSingleRow(s.ctx, s.tx, `
-		SELECT jsonb_build_object('account_ids', jsonb_agg(DISTINCT account_id ORDER BY account_id))
+		SELECT jsonb_build_object('account_ids', jsonb_agg(DISTINCT ids.account_id ORDER BY ids.account_id))
         FROM scheduler_outbox, jsonb_array_elements(payload->'account_ids') AS ids(account_id)
         WHERE event_type=$1`, []any{service.SchedulerOutboxEventAccountBulkChanged}, &payloadRaw)
 	s.Require().NoError(err)

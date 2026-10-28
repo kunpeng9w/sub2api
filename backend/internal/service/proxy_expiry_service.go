@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// ProxyExpiryService 周期扫描到期代理并把绑定账号改投备用/直连。
+// ProxyExpiryService marks expired proxies and invalidates bound account snapshots without rebinding.
 type ProxyExpiryService struct {
 	proxyRepo ProxyRepository
 	interval  time.Duration
@@ -58,6 +58,6 @@ func (s *ProxyExpiryService) runOnce() {
 		return
 	}
 	if changed > 0 {
-		log.Printf("[ProxyExpiry] re-routed %d accounts off expired proxies", changed)
+		log.Printf("[ProxyExpiry] invalidated %d bound account snapshots; proxy bindings retained", changed)
 	}
 }

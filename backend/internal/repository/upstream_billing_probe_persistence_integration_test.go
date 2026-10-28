@@ -414,21 +414,17 @@ func TestProxyIdentityUpdateInvalidatesProbeAndRejectsInFlightSnapshot(t *testin
 			)
 			require.NoError(t, rows.Scan(&outboxCount, &payloadJSON))
 			require.NoError(t, rows.Close())
-			if tt.wantInvalidation {
-				require.Equal(t, 1, outboxCount)
-				var payload struct {
-					AccountIDs []int64 `json:"account_ids"`
-				}
-				require.NoError(t, json.Unmarshal([]byte(payloadJSON), &payload))
-				require.Equal(t, []int64{account.ID}, payload.AccountIDs)
-			} else {
-				require.Zero(t, outboxCount, "no snapshot change means no PR2 cache invalidation event")
+			require.Equal(t, 1, outboxCount, "proxy identity changes invalidate every bound scheduler account, including accounts without probe snapshots")
+			var payload struct {
+				AccountIDs []int64 `json:"account_ids"`
 			}
+			require.NoError(t, json.Unmarshal([]byte(payloadJSON), &payload))
+			require.Equal(t, []int64{account.ID}, payload.AccountIDs)
 		})
 	}
 }
 
-func TestSweepExpiredProxyWithoutFallbackInvalidatesOnlyExistingProbeSnapshot(t *testing.T) {
+func TestSweepExpiredProxyInvalidatesEveryBoundAccountAndOnlyExistingProbeSnapshots(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	proxyRepo := newProxyRepositoryWithSQL(tx.Client(), tx)
@@ -471,7 +467,7 @@ func TestSweepExpiredProxyWithoutFallbackInvalidatesOnlyExistingProbeSnapshot(t 
 
 	changed, err := proxyRepo.SweepExpiredProxies(ctx, time.Now())
 	require.NoError(t, err)
-	require.Zero(t, changed, "probe invalidation must not inflate the rerouted account count")
+	require.EqualValues(t, 3, changed, "count represents invalidated accounts; no account binding moves")
 
 	got, err := accountRepo.GetByID(ctx, withSnapshot.ID)
 	require.NoError(t, err)
@@ -483,10 +479,10 @@ func TestSweepExpiredProxyWithoutFallbackInvalidatesOnlyExistingProbeSnapshot(t 
 	}
 
 	payload := latestBulkAccountOutboxPayload(t, ctx, tx)
-	require.Equal(t, []int64{withSnapshot.ID}, payload)
+	require.Equal(t, []int64{withSnapshot.ID, withoutSnapshot.ID, withJSONNull.ID}, payload)
 }
 
-func TestSweepExpiredProxyFallbackRerouteDeletesProbeSnapshot(t *testing.T) {
+func TestSweepExpiredProxyLegacyFallbackKeepsBindingAndDeletesProbeSnapshot(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	proxyRepo := newProxyRepositoryWithSQL(tx.Client(), tx)
@@ -521,7 +517,7 @@ func TestSweepExpiredProxyFallbackRerouteDeletesProbeSnapshot(t *testing.T) {
 
 	got, err := accountRepo.GetByID(ctx, account.ID)
 	require.NoError(t, err)
-	require.Nil(t, got.ProxyID)
+	require.Equal(t, &proxy.ID, got.ProxyID)
 	require.NotContains(t, got.Extra, service.UpstreamBillingProbeExtraKey)
 	require.Equal(t, []int64{account.ID}, latestBulkAccountOutboxPayload(t, ctx, tx))
 }
