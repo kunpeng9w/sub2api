@@ -1403,7 +1403,7 @@ func (s *OpenAIGatewayService) describeGrokComposerImage(
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return "", nil, egressErr
+		return "", OpenAIUsage{}, egressErr
 	}
 
 	resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)

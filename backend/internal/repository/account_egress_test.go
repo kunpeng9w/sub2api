@@ -176,3 +176,78 @@ func TestStrictEgressDeleteSerializesAndRejectsBoundProxy(t *testing.T) {
 	require.ErrorIs(t, r.Delete(t.Context(), 71), service.ErrProxyInUse)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+// Simulate the scheduler selecting another account after one upstream failure.
+// Both attempts share one transport service, but each retains its own route.
+func TestStrictEgressCrossAccountRetryKeepsEachBindingAndInvalidatesChangedRoute(t *testing.T) {
+	var direct, first, second atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { direct.Add(1); w.WriteHeader(200) }))
+	defer upstream.Close()
+	failedProxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { first.Add(1); w.WriteHeader(http.StatusBadGateway) }))
+	defer failedProxy.Close()
+	goodProxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { second.Add(1); w.WriteHeader(http.StatusOK) }))
+	defer goodProxy.Close()
+	p1, p2 := strictEgressBoundProxy(t, failedProxy.URL), strictEgressBoundProxy(t, goodProxy.URL)
+	p2.ID = 72
+	a1 := &service.Account{ID: 4, ProxyID: &p1.ID, Proxy: p1}
+	a2 := &service.Account{ID: 5, ProxyID: &p2.ID, Proxy: p2}
+	accounts, proxies := &strictEgressAccounts{}, &strictEgressProxies{}
+	client := ProvideHTTPUpstream(nil, accounts, proxies)
+	for _, attempt := range []struct {
+		account *service.Account
+		proxy   *service.Proxy
+		status  int
+	}{
+		{a1, p1, http.StatusBadGateway}, {a2, p2, http.StatusOK}, {a2, p2, http.StatusOK},
+	} {
+		accounts.value, proxies.value = attempt.account, attempt.proxy
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, upstream.URL, nil)
+		require.NoError(t, err)
+		response, err := client.Do(req, attempt.proxy.URL(), attempt.account.ID, 1)
+		require.NoError(t, err)
+		require.Equal(t, attempt.status, response.StatusCode)
+		_, err = io.Copy(io.Discard, response.Body)
+		require.NoError(t, err)
+		require.NoError(t, response.Body.Close())
+	}
+	// An explicit admin endpoint change is valid for new requests. The old
+	// route cannot keep using the cached connection, including internal retries.
+	changed := *p2
+	changed.Port = p1.Port
+	proxies.value = &changed
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, upstream.URL, nil)
+	require.NoError(t, err)
+	_, err = client.Do(req, p2.URL(), a2.ID, 1)
+	require.Error(t, err)
+	response, err := client.Do(req, changed.URL(), a2.ID, 1)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadGateway, response.StatusCode)
+	require.NoError(t, response.Body.Close())
+	require.Equal(t, int64(2), first.Load())
+	require.Equal(t, int64(2), second.Load())
+	require.Zero(t, direct.Load())
+	require.Equal(t, int64(71), *a1.ProxyID)
+	require.Equal(t, int64(72), *a2.ProxyID)
+}
+
+func TestStrictEgressProxyTimeoutNeverDialsDirect(t *testing.T) {
+	var direct, bound atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { direct.Add(1); w.WriteHeader(200) }))
+	defer upstream.Close()
+	release := make(chan struct{})
+	proxy := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { bound.Add(1); <-release }))
+	defer proxy.Close()
+	defer close(release)
+	p := strictEgressBoundProxy(t, proxy.URL)
+	a := &service.Account{ID: 4, ProxyID: &p.ID, Proxy: p}
+	client := ProvideHTTPUpstream(nil, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
+	ctx, cancel := context.WithTimeout(t.Context(), 150*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, upstream.URL, nil)
+	require.NoError(t, err)
+	_, err = client.Do(req, proxy.URL, a.ID, 1)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, int64(1), bound.Load())
+	require.Zero(t, direct.Load())
+	require.Equal(t, int64(71), *a.ProxyID)
+}

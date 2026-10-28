@@ -28,6 +28,7 @@ class FakeKernel:
         self.route = False
         self.policy_rule = False
         self.fail = None
+        self.rule_conflict = False
         self.table = {"nftables": [{"table": {"family": "inet", "name": guard_module.TABLE}}, {"rule": {"expr": [{"reject": None}]}}]}
 
     def __call__(self, args, *, input=None, optional=False):
@@ -37,8 +38,10 @@ class FakeKernel:
             self.route = True
             return ""
         if args[:3] == ["/usr/sbin/ip", "-j", "rule"]:
+            if self.rule_conflict: return json.dumps([{"priority": 2000, "dst": "203.0.113.0/24", "table": 254}])
             return json.dumps([{"priority": 2000, "dst": "198.18.0.0/16", "table": 2022}] if self.policy_rule else [])
         if args[:3] == ["/usr/sbin/ip", "rule", "add"]:
+            if self.fail == "policy-rule": raise guard_module.GuardError("simulated policy-rule failure")
             self.policy_rule = True
             return ""
         if args[:3] == ["/usr/sbin/nft", "-f", "-"]:
@@ -83,7 +86,7 @@ class PolicySimulationTests(unittest.TestCase):
             self.assertEqual(guard.read()["phase"], "confirmed")
 
     def test_route_and_rule_failures_never_unlock_or_stop_other_services(self):
-        for failure in ["route", "nft"]:
+        for failure in ["route", "policy-rule", "nft"]:
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
                 fake = FakeKernel(); fake.fail = failure
                 guard = self.new_guard(directory, fake)
@@ -95,9 +98,18 @@ class PolicySimulationTests(unittest.TestCase):
     def test_restore_after_simulated_reboot_recreates_guard(self):
         with tempfile.TemporaryDirectory() as directory:
             fake = FakeKernel(); guard = self.new_guard(directory, fake)
-            guard.arm(migrate=True); fake.route = False
+            guard.arm(migrate=True); fake.route = False; fake.policy_rule = False
             with self.assertRaises(guard_module.GuardError): guard.verify()
             self.assertTrue(guard.arm(guard.read()["phase"])["consistent"])
+
+    def test_policy_rule_collision_preserves_lock_and_never_replaces_foreign_rule(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fake = FakeKernel(); fake.rule_conflict = True
+            guard = self.new_guard(directory, fake)
+            with self.assertRaises(guard_module.GuardError): guard.arm(migrate=True)
+            self.assertEqual(guard.read()["phase"], "confirmed")
+            self.assertFalse(any(args[:3] == ["/usr/sbin/ip", "rule", "add"] for args, _ in fake.events))
+            self.assertFalse(any(args[0] == "/usr/sbin/nft" for args, _ in fake.events))
 
     def test_fingerprint_change_is_detected(self):
         with tempfile.TemporaryDirectory() as directory:
