@@ -501,9 +501,11 @@ func (s *GrokQuotaService) prepareProbe(ctx context.Context, accountID int64) (*
 	if err != nil {
 		return nil, "", "", err
 	}
+	accountCopy := *account
+	account = &accountCopy
 	accountEgressURL, accountEgressErr := s.resolveProxyURL(ctx, account)
 	if accountEgressErr != nil {
-		return nil, "", "", accountEgressErr
+		return nil, "", "", infraerrors.Newf(http.StatusBadGateway, "GROK_QUOTA_TOKEN_UNAVAILABLE", "account egress unavailable: %v", accountEgressErr)
 	}
 
 	proxyURL := accountEgressURL
@@ -523,7 +525,20 @@ func (s *GrokQuotaService) prepareProbe(ctx context.Context, accountID int64) (*
 }
 
 func (s *GrokQuotaService) resolveProxyURL(ctx context.Context, account *Account) (string, error) {
-	return ResolveAccountProxyFromRepository(ctx, s.proxyRepo, account)
+	if account == nil {
+		return "", ErrAccountProxyUnavailable
+	}
+	if account.ProxyID != nil {
+		if s.proxyRepo == nil {
+			return "", ErrAccountProxyUnavailable
+		}
+		proxy, err := s.proxyRepo.GetByID(ctx, *account.ProxyID)
+		if err != nil {
+			return "", ErrAccountProxyUnavailable
+		}
+		account.Proxy = proxy
+	}
+	return ResolveAccountProxyURL(account)
 }
 
 func (s *GrokQuotaService) loadGrokOAuthAccount(ctx context.Context, accountID int64) (*Account, error) {

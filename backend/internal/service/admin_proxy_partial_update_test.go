@@ -20,8 +20,8 @@ func TestAdminProxyPartialUpdatePreservesOmittedSettings(t *testing.T) {
 		got, err := svc.UpdateProxy(context.Background(), 9, input)
 		require.NoError(t, err)
 		require.Equal(t, original.ExpiresAt, got.ExpiresAt)
-		require.Equal(t, original.FallbackMode, got.FallbackMode)
-		require.Equal(t, original.BackupProxyID, got.BackupProxyID)
+		require.Equal(t, FallbackModeNone, got.FallbackMode)
+		require.Nil(t, got.BackupProxyID)
 		require.Equal(t, original.ExpiryWarnDays, got.ExpiryWarnDays)
 		require.Equal(t, 1, repo.updateCalls)
 	}
@@ -43,12 +43,12 @@ func TestAdminProxyPartialUpdateClearsAndSetsSettings(t *testing.T) {
 	require.Zero(t, got.ExpiryWarnDays)
 	days := 3
 	got, err = svc.UpdateProxy(context.Background(), 9, &UpdateProxyInput{
-		ExpiresAt: &expiry, FallbackMode: FallbackModeProxy, BackupProxyID: &backup, ExpiryWarnDays: &days,
+		ExpiresAt: &expiry, FallbackMode: FallbackModeNone, ExpiryWarnDays: &days,
 	})
 	require.NoError(t, err)
 	require.Equal(t, &expiry, got.ExpiresAt)
-	require.Equal(t, &backup, got.BackupProxyID)
-	require.Equal(t, FallbackModeProxy, got.FallbackMode)
+	require.Nil(t, got.BackupProxyID)
+	require.Equal(t, FallbackModeNone, got.FallbackMode)
 	require.Equal(t, days, got.ExpiryWarnDays)
 }
 
@@ -61,8 +61,8 @@ func TestAdminProxyPartialUpdateValidatesMergedFallback(t *testing.T) {
 		input     UpdateProxyInput
 		wantError bool
 	}{
-		{name: "reuse existing backup", input: UpdateProxyInput{FallbackMode: FallbackModeProxy}},
-		{name: "clear required backup", input: UpdateProxyInput{ClearBackupID: true}, wantError: true},
+		{name: "reject legacy backup mode", input: UpdateProxyInput{FallbackMode: FallbackModeProxy}, wantError: true},
+		{name: "clear obsolete backup", input: UpdateProxyInput{ClearBackupID: true}},
 		{name: "self backup", input: UpdateProxyInput{BackupProxyID: &self}, wantError: true},
 		{name: "negative warning", input: UpdateProxyInput{ExpiryWarnDays: &negative}, wantError: true},
 	} {

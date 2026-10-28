@@ -889,7 +889,7 @@ func (s *OllamaCloudUsageService) refreshLoadedAccount(ctx context.Context, acco
 	}
 	proxyURL, egressErr := ResolveAccountProxyURL(account)
 	if egressErr != nil {
-		return nil, egressErr
+		return nil, fmt.Errorf("%w: %w", ErrOllamaCloudUsageIdentityChanged, egressErr)
 	}
 	requestCtx, cancel := context.WithTimeout(WithHTTPUpstreamRedirectsDisabled(ctx), ollamaCloudUsageRequestTimeout)
 	defer cancel()

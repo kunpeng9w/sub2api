@@ -33,6 +33,7 @@ func TestProxyUpdateInvalidatesBoundProbeSnapshotsAndEnqueuesOutboxAtomically(t 
 	mock.ExpectQuery(`(?s)UPDATE accounts.*- 'upstream_billing_probe'.*- 'ollama_cloud_usage_snapshot'.*type = 'apikey'.*extra \? 'upstream_billing_probe'.*platform IN \('openai', 'anthropic', 'kimi', 'zhipu', 'deepseek', 'minimax'\).*extra \? 'ollama_cloud_usage_snapshot'.*RETURNING id`).
 		WithArgs(int64(9)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(17)).AddRow(int64(18)))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM accounts WHERE proxy_id=$1 AND deleted_at IS NULL")).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(17)))
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO scheduler_outbox (event_type, account_id, group_id, payload)")).
 		WithArgs(service.SchedulerOutboxEventAccountBulkChanged, nil, nil, accountIDsPayloadMatcher{want: []int64{17, 18}}).
 		WillReturnResult(sqlmock.NewResult(1, 1))
@@ -73,6 +74,7 @@ func TestProxyUpdateRollsBackWhenProbeInvalidationOutboxFails(t *testing.T) {
 	mock.ExpectQuery(`(?s)UPDATE accounts.*- 'upstream_billing_probe'.*- 'ollama_cloud_usage_snapshot'.*type = 'apikey'.*extra \? 'upstream_billing_probe'.*platform IN \('openai', 'anthropic', 'kimi', 'zhipu', 'deepseek', 'minimax'\).*extra \? 'ollama_cloud_usage_snapshot'.*RETURNING id`).
 		WithArgs(int64(9)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(17)))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM accounts WHERE proxy_id=$1 AND deleted_at IS NULL")).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(17)))
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO scheduler_outbox (event_type, account_id, group_id, payload)")).
 		WillReturnError(errors.New("outbox failed"))
 	mock.ExpectRollback()

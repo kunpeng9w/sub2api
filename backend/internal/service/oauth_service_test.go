@@ -178,6 +178,7 @@ func TestOAuthService_GenerateAuthURL_WithProxy(t *testing.T) {
 				Protocol: "http",
 				Host:     "proxy.example.com",
 				Port:     8080,
+				Status:   StatusActive,
 			}, nil
 		},
 	}
@@ -532,18 +533,20 @@ func TestOAuthService_RefreshAccountToken_WithProxy(t *testing.T) {
 	proxyRepo := &mockProxyRepoForOAuth{
 		getByIDFunc: func(ctx context.Context, id int64) (*Proxy, error) {
 			return &Proxy{
+				ID:       id,
 				Protocol: "socks5",
 				Host:     "socks.example.com",
 				Port:     1080,
 				Username: "user",
 				Password: "pass",
+				Status:   StatusActive,
 			}, nil
 		},
 	}
 
 	client := &mockClaudeOAuthClient{
 		refreshTokenFunc: func(ctx context.Context, refreshToken, proxyURL string) (*oauth.TokenResponse, error) {
-			if proxyURL != "socks5://user:pass@socks.example.com:1080" {
+			if proxyURL != "socks5h://user:pass@socks.example.com:1080" {
 				t.Errorf("proxyURL 不匹配: got=%q", proxyURL)
 			}
 			return &oauth.TokenResponse{

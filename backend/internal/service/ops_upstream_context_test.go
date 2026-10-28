@@ -109,10 +109,9 @@ func TestOpsUpstreamProxyFieldAccessors(t *testing.T) {
 		wantName string
 	}{
 		{
-			name:     "actual proxy object is authoritative",
+			name:     "mismatched proxy object is not an accepted route",
 			account:  &Account{ProxyID: &boundID, Proxy: &Proxy{ID: backupID, Name: "backup-uk"}},
-			wantID:   &backupID,
-			wantName: "backup-uk",
+			wantName: opsProxyNameUnknown,
 		},
 		{
 			name:     "proxy object without binding id is not a configured route",
@@ -136,9 +135,9 @@ func TestOpsUpstreamProxyFieldAccessors(t *testing.T) {
 			wantName: opsProxyNameDirect,
 		},
 		{
-			name:     "configured proxy was not hydrated and transport is direct",
+			name:     "configured proxy was not hydrated and transport is blocked",
 			account:  &Account{ProxyID: &backupID},
-			wantName: opsProxyNameDirect,
+			wantName: opsProxyNameUnknown,
 		},
 		{
 			name:     "missing attempt account",

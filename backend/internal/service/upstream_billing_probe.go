@@ -648,7 +648,10 @@ func (s *UpstreamBillingProbeService) probeLoadedAccount(ctx context.Context, ac
 	}
 	proxyURL, egressErr := ResolveAccountProxyURL(account)
 	if egressErr != nil {
-		return nil, egressErr
+		if account.ProxyID != nil && account.Proxy != nil && account.Proxy.ID != *account.ProxyID {
+			return nil, ErrUpstreamBillingProbeIdentityChanged
+		}
+		return s.persistProbeFailure(ctx, account, intervalMinutes, now, 0, "proxy_unavailable", 0)
 	}
 	probeURL := buildOpenAIEndpointURL(normalizedBaseURL, "/v1/sub2api/billing")
 	probeCtx, cancel := context.WithTimeout(ctx, upstreamBillingProbeRequestTimeout)
