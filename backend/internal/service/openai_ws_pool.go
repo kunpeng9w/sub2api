@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyurl"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -1111,13 +1112,11 @@ func (p *openAIWSConnPool) Acquire(ctx context.Context, req openAIWSAcquireReque
 	if p == nil {
 		return nil, errors.New("ws pool missing")
 	}
-	route, routeErr := p.resolveEgress(ctx, req.Account)
+	route, routeErr := p.resolveRequestEgress(ctx, req)
 	if routeErr != nil {
 		return nil, routeErr
 	}
-	if req.ProxyURL != route {
-		return nil, ErrAccountProxyUnavailable
-	}
+	req.ProxyURL = route
 	if p != nil {
 		p.metrics.acquireTotal.Add(1)
 	}
@@ -2129,10 +2128,11 @@ func (p *openAIWSConnPool) dialConn(ctx context.Context, req openAIWSAcquireRequ
 	if p == nil {
 		return nil, errors.New("ws pool missing")
 	}
-	route, routeErr := p.resolveEgress(ctx, req.Account)
-	if routeErr != nil || route != req.ProxyURL {
-		return nil, ErrAccountProxyUnavailable
+	route, routeErr := p.resolveRequestEgress(ctx, req)
+	if routeErr != nil {
+		return nil, routeErr
 	}
+	req.ProxyURL = route
 	if p == nil || p.clientDialer == nil {
 		return nil, errors.New("openai ws client dialer is nil")
 	}
@@ -2488,4 +2488,18 @@ func (p *openAIWSConnPool) resolveEgress(ctx context.Context, selected *Account)
 		return "", ErrAccountProxyUnavailable
 	}
 	return ResolveAccountProxyURL(current, p.cfg)
+}
+
+// Compare canonical routes, so the mandatory socks5 -> socks5h DNS policy does
+// not reject an otherwise unchanged SOCKS binding supplied by a legacy caller.
+func (p *openAIWSConnPool) resolveRequestEgress(ctx context.Context, req openAIWSAcquireRequest) (string, error) {
+	expected, err := p.resolveEgress(ctx, req.Account)
+	if err != nil {
+		return "", err
+	}
+	selected, _, err := proxyurl.Parse(req.ProxyURL)
+	if err != nil || selected != expected {
+		return "", ErrAccountProxyUnavailable
+	}
+	return expected, nil
 }

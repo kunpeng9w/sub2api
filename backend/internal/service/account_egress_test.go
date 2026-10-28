@@ -139,10 +139,14 @@ func TestStrictEgressExpiryKeepsEveryLegacyBinding(t *testing.T) {
 	}
 }
 
-type strictEgressWSDialer struct{ calls int }
+type strictEgressWSDialer struct {
+	calls  int
+	routes []string
+}
 
-func (d *strictEgressWSDialer) Dial(context.Context, string, http.Header, string) (openAIWSClientConn, int, http.Header, error) {
+func (d *strictEgressWSDialer) Dial(_ context.Context, _ string, _ http.Header, route string) (openAIWSClientConn, int, http.Header, error) {
 	d.calls++
+	d.routes = append(d.routes, route)
 	return nil, 0, nil, errors.New("simulated proxy handshake failure")
 }
 
@@ -203,5 +207,32 @@ func TestStrictEgressProxyFallbackAPIsRejectAlternateRoutes(t *testing.T) {
 		require.Error(t, err)
 		_, err = svc.UpdateProxy(t.Context(), 1, &UpdateProxyInput{FallbackMode: mode})
 		require.Error(t, err)
+	}
+}
+
+func TestStrictEgressWebSocketPreservesValidSOCKSBindingAcrossAcquireAndDial(t *testing.T) {
+	for _, method := range []string{"acquire", "dial"} {
+		t.Run(method, func(t *testing.T) {
+			dialer := &strictEgressWSDialer{}
+			pool := newOpenAIWSConnPool(&config.Config{})
+			defer pool.Close()
+			pool.setClientDialerForTest(dialer)
+			a := strictEgressAccount()
+			a.Proxy.Protocol = "socks5"
+			req := openAIWSAcquireRequest{Account: a, ProxyURL: a.Proxy.URL(), WSURL: "wss://upstream.invalid/ws"}
+			var err error
+			if method == "acquire" {
+				_, err = pool.Acquire(t.Context(), req)
+			} else {
+				_, err = pool.dialConn(t.Context(), req)
+			}
+			require.Error(t, err)
+			require.NotErrorIs(t, err, ErrAccountProxyUnavailable)
+			require.NotEmpty(t, dialer.routes)
+			for _, route := range dialer.routes {
+				require.Equal(t, "socks5h://proxy.invalid:8080", route)
+			}
+			require.Equal(t, int64(71), *a.ProxyID)
+		})
 	}
 }
