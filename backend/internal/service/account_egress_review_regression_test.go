@@ -72,6 +72,9 @@ func TestStrictEgressPluginChecksCurrentBindingBeforeDispatch(t *testing.T) {
 				case "endpoint":
 					current.Proxy.Port++
 				case "credentials":
+					// Passwords are only sent when the proxy has a username.
+					selected.Proxy.Username, current.Proxy.Username = "proxy-user", "proxy-user"
+					selected.Proxy.Password = "old-password"
 					current.Proxy.Password = "changed-password"
 				}
 				manager := &PluginManager{}
