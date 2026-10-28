@@ -1,0 +1,1134 @@
+{
+  "source_commit": "807ebfa0139229dc6569b95ec4863e5815c30fac",
+  "branch": "codex/strict-egress-policy",
+  "recorded_at": "2026-10-28T23:08:28.165273+08:00",
+  "focused_regressions": {
+    "run_id": 40707717462,
+    "conclusion": "success",
+    "go_top_level_tests_passed": [
+      "TestClaudeEgressRequiresExplicitLoopbackProxy",
+      "TestOfficialClaudeDomainBoundaries",
+      "TestStrictEgressBrokenBindingsNeverBecomeDirect",
+      "TestStrictEgressUnboundAndThirdPartyRemainNormal",
+      "TestClaudeEgressOfficialPolicyAndConflict",
+      "TestStrictEgressRefreshLookupFailureSendsNoRequest",
+      "TestStrictEgressOAuthSessionCannotChangeProxy",
+      "TestStrictEgressExpiryKeepsEveryLegacyBinding",
+      "TestStrictEgressWebSocketNeverDialsOnMissingBinding",
+      "TestStrictEgressWebSocketHandshakeFailureDoesNotRetryDirect",
+      "TestStrictEgressDetachedMediaRetainsFinalAccountRoute",
+      "TestStrictEgressBatchContextRejectsBrokenBinding",
+      "TestStrictEgressProxyFallbackAPIsRejectAlternateRoutes",
+      "TestStrictEgressWebSocketPreservesValidSOCKSBindingAcrossAcquireAndDial",
+      "TestStrictEgressPolicyConflictsRetainCauseAndAllowNextAccount",
+      "TestStrictEgressWebSocketPoolNeverReusesAnotherExit",
+      "TestStrictEgressWebSocketForcedPreferredExitMismatchIsRejected",
+      "TestStrictEgressWebSocketRechecksBindingBeforeReturningLease",
+      "TestStrictEgressHTTPAndSSEFailureNeverUsesDirectOrBackup",
+      "TestStrictEgressTransportChecksLatestBindingBeforeAnyDial",
+      "TestClaudeEgressTransportSelectsOnlyManagedIngress",
+      "TestStrictEgressExpiryInvalidatesButNeverReassigns",
+      "TestStrictEgressDeleteSerializesAndRejectsBoundProxy",
+      "TestStrictEgressCrossAccountRetryKeepsEachBindingAndInvalidatesChangedRoute",
+      "TestStrictEgressProxyTimeoutNeverDialsDirect",
+      "TestClaudeEgressRedirectCannotEscapeOrChangePinnedRoute",
+      "TestStrictEgressProxyExpiryChangesRefreshAllBindingsAtomically",
+      "TestStrictEgressGeminiNativeFailureRetriesNextAccountAndReturnsErrorWhenExhausted"
+    ],
+    "python_simulations_passed": 11,
+    "frontend_tests_passed": 8,
+    "format_patch_bytes": 0
+  },
+  "full_regression": {
+    "run_id": 40707717588,
+    "attempt_1": {
+      "conclusion": "failure",
+      "failed_test": "TestInflightEstimate_AccountMappingNoDBAndBoundedMemory",
+      "file": "backend/internal/service/billing_inflight_reservation_test.go",
+      "line": 464,
+      "heap_delta_bytes": 8865424,
+      "threshold_bytes": 8388608,
+      "integration": "skipped"
+    },
+    "attempt_2": {
+      "conclusion": "success",
+      "unit_tests": "success",
+      "isolated_integration_tests": "success"
+    },
+    "other_jobs": {
+      "golangci-lint": "success",
+      "frontend": "success",
+      "shell": "success",
+      "release-helpers": "success"
+    },
+    "memory_sampling_issue": "Also observed on the previous candidate; this task did not change billing implementation or test thresholds. A rerun does not establish or fix its root cause."
+  },
+  "embedded_build": {
+    "run_id": 40707717635,
+    "conclusion": "success",
+    "operations_checks": "success",
+    "archive_sha256": "4854ecd918d721e48b54d7a9166b74f58a0a7a06c057800d946156f498021ebb",
+    "binary_sha256": "ceeccc3b7e4283133e568fac6cc3593af354bb50a995db670b8e8cad7bb998f5",
+    "download_directory": "/home/pk/workspace/sub2api-egress-delivery/807ebfa0139229dc6569b95ec4863e5815c30fac",
+    "archive_members": [
+      "sub2api"
+    ],
+    "binary_executed_locally": false
+  },
+  "security_scan": {
+    "run_id": 40707717491,
+    "backend": "failure",
+    "frontend": "success",
+    "existing_vulnerability": "GO-2026-6860",
+    "module": "golang.org/x/net",
+    "current_version": "v0.60.0",
+    "reported_fixed_version": "v0.62.0",
+    "dependency_changes": false
+  },
+  "deployment": {
+    "installed": false,
+    "online_tests": false,
+    "service_restarts": false,
+    "database_migration": false,
+    "network_rule_changes": false
+  },
+  "workflow_snapshots": {
+    "focused": {
+      "attempt": 1,
+      "conclusion": "success",
+      "headSha": "807ebfa0139229dc6569b95ec4863e5815c30fac",
+      "jobs": [
+        {
+          "completedAt": "2026-10-28T14:42:02Z",
+          "conclusion": "success",
+          "databaseId": 122884232389,
+          "name": "simulate",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:13Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:19Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:38Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-go@v6",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:19Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:38Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-python@v6",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:41Z",
+              "conclusion": "success",
+              "name": "Run python -m pip install PyYAML==6.0.3",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:41Z",
+              "conclusion": "success",
+              "name": "Format candidate source only",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:56Z",
+              "conclusion": "success",
+              "name": "Compile and run simulated account egress regressions",
+              "number": 7,
+              "startedAt": "2026-10-28T14:37:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:56Z",
+              "conclusion": "success",
+              "name": "Simulate network policy and manual deployment transitions",
+              "number": 8,
+              "startedAt": "2026-10-28T14:41:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:58Z",
+              "conclusion": "success",
+              "name": "Run actions/upload-artifact@v7",
+              "number": 9,
+              "startedAt": "2026-10-28T14:41:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:58Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-python@v6",
+              "number": 16,
+              "startedAt": "2026-10-28T14:41:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:58Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-go@v6",
+              "number": 17,
+              "startedAt": "2026-10-28T14:41:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:58Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 18,
+              "startedAt": "2026-10-28T14:41:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:58Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 19,
+              "startedAt": "2026-10-28T14:41:58Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717462/job/122884232389"
+        },
+        {
+          "completedAt": "2026-10-28T14:37:48Z",
+          "conclusion": "success",
+          "databaseId": 122884232842,
+          "name": "frontend",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:12Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:18Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:21Z",
+              "conclusion": "success",
+              "name": "Run pnpm/action-setup@v6",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:33Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@v6",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:41Z",
+              "conclusion": "success",
+              "name": "Run pnpm --dir frontend install --frozen-lockfile",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Simulated egress policy UI",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-node@v6",
+              "number": 10,
+              "startedAt": "2026-10-28T14:37:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Post Run pnpm/action-setup@v6",
+              "number": 11,
+              "startedAt": "2026-10-28T14:37:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 12,
+              "startedAt": "2026-10-28T14:37:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-28T14:37:44Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717462/job/122884232842"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717462"
+    },
+    "security": {
+      "attempt": 1,
+      "conclusion": "failure",
+      "headSha": "807ebfa0139229dc6569b95ec4863e5815c30fac",
+      "jobs": [
+        {
+          "completedAt": "2026-10-28T14:38:25Z",
+          "conclusion": "failure",
+          "databaseId": 122884230069,
+          "name": "backend-security",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:12Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:15Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:36Z",
+              "conclusion": "success",
+              "name": "Set up Go",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:15Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:36Z",
+              "conclusion": "success",
+              "name": "Verify Go version",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:38:21Z",
+              "conclusion": "failure",
+              "name": "Run govulncheck",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:38:21Z",
+              "conclusion": "skipped",
+              "name": "Post Set up Go",
+              "number": 9,
+              "startedAt": "2026-10-28T14:38:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:38:21Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 10,
+              "startedAt": "2026-10-28T14:38:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:38:21Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 11,
+              "startedAt": "2026-10-28T14:38:21Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717491/job/122884230069"
+        },
+        {
+          "completedAt": "2026-10-28T14:37:46Z",
+          "conclusion": "success",
+          "databaseId": 122884230398,
+          "name": "frontend-security",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:12Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:18Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:22Z",
+              "conclusion": "success",
+              "name": "Set up pnpm",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:33Z",
+              "conclusion": "success",
+              "name": "Set up Node.js",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:22Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:40Z",
+              "conclusion": "success",
+              "name": "Install dependencies",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:43Z",
+              "conclusion": "success",
+              "name": "Run pnpm audit",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:43Z",
+              "conclusion": "success",
+              "name": "Check audit exceptions",
+              "number": 7,
+              "startedAt": "2026-10-28T14:37:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:43Z",
+              "conclusion": "success",
+              "name": "Post Set up Node.js",
+              "number": 12,
+              "startedAt": "2026-10-28T14:37:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:43Z",
+              "conclusion": "success",
+              "name": "Post Set up pnpm",
+              "number": 13,
+              "startedAt": "2026-10-28T14:37:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 14,
+              "startedAt": "2026-10-28T14:37:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-28T14:37:44Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717491/job/122884230398"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717491"
+    },
+    "build": {
+      "attempt": 1,
+      "conclusion": "success",
+      "headSha": "807ebfa0139229dc6569b95ec4863e5815c30fac",
+      "jobs": [
+        {
+          "completedAt": "2026-10-28T14:37:39Z",
+          "conclusion": "success",
+          "databaseId": 122884234672,
+          "name": "Operations configuration and existing unit tests",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:13Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:23Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:23Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-python@v6",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:24Z",
+              "conclusion": "success",
+              "name": "Run python -m pip install PyYAML==6.0.3",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:24Z",
+              "conclusion": "success",
+              "name": "Run python ops/scripts/check-repository.py",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:28Z",
+              "conclusion": "success",
+              "name": "Existing egress control and installer tests (isolated mocks)",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:28Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-python@v6",
+              "number": 11,
+              "startedAt": "2026-10-28T14:37:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:28Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 12,
+              "startedAt": "2026-10-28T14:37:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:28Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-28T14:37:28Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717635/job/122884234672"
+        },
+        {
+          "completedAt": "2026-10-28T14:44:00Z",
+          "conclusion": "success",
+          "databaseId": 122884234970,
+          "name": "Frontend template tests and embedded Linux amd64 build",
+          "startedAt": "2026-10-28T14:37:11Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:15Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:26Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:15Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:33Z",
+              "conclusion": "success",
+              "name": "Run pnpm/action-setup@v6",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:26Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:44Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@v6",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:59Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-go@v6",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:38:05Z",
+              "conclusion": "success",
+              "name": "Run pnpm --dir frontend install --frozen-lockfile",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:38:08Z",
+              "conclusion": "success",
+              "name": "Verify the production template changes and existing catalog behavior",
+              "number": 7,
+              "startedAt": "2026-10-28T14:38:05Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:40:23Z",
+              "conclusion": "success",
+              "name": "Build frontend before the backend embeds it",
+              "number": 8,
+              "startedAt": "2026-10-28T14:38:08Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:48Z",
+              "conclusion": "success",
+              "name": "Build the matching source with actual provenance",
+              "number": 9,
+              "startedAt": "2026-10-28T14:40:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:53Z",
+              "conclusion": "success",
+              "name": "Package the embedded Linux amd64 program",
+              "number": 10,
+              "startedAt": "2026-10-28T14:43:48Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:56Z",
+              "conclusion": "success",
+              "name": "Run actions/upload-artifact@v7",
+              "number": 11,
+              "startedAt": "2026-10-28T14:43:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:56Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-go@v6",
+              "number": 19,
+              "startedAt": "2026-10-28T14:43:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:56Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-node@v6",
+              "number": 20,
+              "startedAt": "2026-10-28T14:43:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:56Z",
+              "conclusion": "success",
+              "name": "Post Run pnpm/action-setup@v6",
+              "number": 21,
+              "startedAt": "2026-10-28T14:43:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:57Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 22,
+              "startedAt": "2026-10-28T14:43:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:43:57Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 23,
+              "startedAt": "2026-10-28T14:43:57Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717635/job/122884234970"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717635"
+    },
+    "regression": {
+      "attempt": 2,
+      "conclusion": "success",
+      "headSha": "807ebfa0139229dc6569b95ec4863e5815c30fac",
+      "jobs": [
+        {
+          "completedAt": "2026-10-28T15:07:12Z",
+          "conclusion": "success",
+          "databaseId": 122892562481,
+          "name": "test",
+          "startedAt": "2026-10-28T14:51:20Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:51:22Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:51:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:51:27Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:51:22Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:51:36Z",
+              "conclusion": "success",
+              "name": "Check Docker Compose simple mode environment",
+              "number": 3,
+              "startedAt": "2026-10-28T14:51:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:51:53Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-go@v6",
+              "number": 4,
+              "startedAt": "2026-10-28T14:51:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:51:53Z",
+              "conclusion": "success",
+              "name": "Verify Go version",
+              "number": 5,
+              "startedAt": "2026-10-28T14:51:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T15:01:34Z",
+              "conclusion": "success",
+              "name": "Unit tests",
+              "number": 6,
+              "startedAt": "2026-10-28T14:51:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T15:07:07Z",
+              "conclusion": "success",
+              "name": "Integration tests",
+              "number": 7,
+              "startedAt": "2026-10-28T15:01:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T15:07:07Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-go@v6",
+              "number": 13,
+              "startedAt": "2026-10-28T15:07:07Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T15:07:07Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 14,
+              "startedAt": "2026-10-28T15:07:07Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T15:07:08Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-28T15:07:07Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717588/job/122892562481"
+        },
+        {
+          "completedAt": "2026-10-28T14:37:22Z",
+          "conclusion": "success",
+          "databaseId": 122892565036,
+          "name": "release-helpers",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:11Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:10Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:17Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:17Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-python@v6",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:18Z",
+              "conclusion": "success",
+              "name": "Run python -m pip install -r .github/release-tools/requirements-release.txt",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:20Z",
+              "conclusion": "success",
+              "name": "Run python -m unittest discover -s .github/release-tools -p 'test_release_matrix.py'",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:20Z",
+              "conclusion": "success",
+              "name": "Run bash -n .github/release-tools/release-images.sh",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:20Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:20Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-python@v6",
+              "number": 11,
+              "startedAt": "2026-10-28T14:37:20Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:20Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 12,
+              "startedAt": "2026-10-28T14:37:20Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:20Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-28T14:37:20Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717588/job/122892565036"
+        },
+        {
+          "completedAt": "2026-10-28T14:40:04Z",
+          "conclusion": "success",
+          "databaseId": 122892566230,
+          "name": "frontend",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:12Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:18Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:22Z",
+              "conclusion": "success",
+              "name": "Setup pnpm",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:32Z",
+              "conclusion": "success",
+              "name": "Setup Node.js",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:22Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:42Z",
+              "conclusion": "success",
+              "name": "Install frontend dependencies",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:32Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:40:00Z",
+              "conclusion": "success",
+              "name": "Frontend typecheck and critical vitest",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:40:00Z",
+              "conclusion": "success",
+              "name": "Post Setup Node.js",
+              "number": 10,
+              "startedAt": "2026-10-28T14:40:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:40:00Z",
+              "conclusion": "success",
+              "name": "Post Setup pnpm",
+              "number": 11,
+              "startedAt": "2026-10-28T14:40:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:40:01Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 12,
+              "startedAt": "2026-10-28T14:40:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:40:01Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-28T14:40:01Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717588/job/122892566230"
+        },
+        {
+          "completedAt": "2026-10-28T14:37:21Z",
+          "conclusion": "success",
+          "databaseId": 122892642775,
+          "name": "shell",
+          "startedAt": "2026-10-28T14:37:10Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:10Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:13Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:10Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:18Z",
+              "conclusion": "success",
+              "name": "Check deployment scripts",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:18Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 6,
+              "startedAt": "2026-10-28T14:37:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:19Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 7,
+              "startedAt": "2026-10-28T14:37:18Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717588/job/122892642775"
+        },
+        {
+          "completedAt": "2026-10-28T14:42:03Z",
+          "conclusion": "success",
+          "databaseId": 122892663159,
+          "name": "golangci-lint",
+          "startedAt": "2026-10-28T14:37:11Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-28T14:37:13Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-28T14:37:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:16Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v6",
+              "number": 2,
+              "startedAt": "2026-10-28T14:37:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:38Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-go@v6",
+              "number": 3,
+              "startedAt": "2026-10-28T14:37:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:37:39Z",
+              "conclusion": "success",
+              "name": "Verify Go version",
+              "number": 4,
+              "startedAt": "2026-10-28T14:37:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:59Z",
+              "conclusion": "success",
+              "name": "golangci-lint",
+              "number": 5,
+              "startedAt": "2026-10-28T14:37:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:59Z",
+              "conclusion": "success",
+              "name": "Post golangci-lint",
+              "number": 8,
+              "startedAt": "2026-10-28T14:41:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:41:59Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-go@v6",
+              "number": 9,
+              "startedAt": "2026-10-28T14:41:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:42:00Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v6",
+              "number": 10,
+              "startedAt": "2026-10-28T14:41:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-28T14:42:00Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 11,
+              "startedAt": "2026-10-28T14:42:00Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717588/job/122892663159"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40707717588"
+    }
+  }
+}
