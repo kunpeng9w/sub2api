@@ -85,6 +85,7 @@ type openAIWSAcquireRequest struct {
 }
 
 type openAIWSHandshakeCompatibilityKey struct {
+	proxyURL            string
 	betaFeatures        string
 	codexInstallationID string
 	sessionIDHyphen     string
@@ -1135,6 +1136,11 @@ func (p *openAIWSConnPool) Acquire(ctx context.Context, req openAIWSAcquireReque
 		p.metrics.acquireQueueWaitMs.Add(queueWait.total.Milliseconds())
 	}
 	if lease != nil && lease.conn != nil {
+		// Binding/endpoint/expiry may have changed while this request waited.
+		if _, err := p.resolveRequestEgress(ctx, req); err != nil {
+			lease.Release()
+			return nil, err
+		}
 		now := time.Now()
 		lease.idleBefore = lease.conn.idleDuration(now)
 		lease.ageBefore = lease.conn.age(now)
@@ -1155,7 +1161,7 @@ func (p *openAIWSConnPool) acquire(ctx context.Context, req openAIWSAcquireReque
 
 retryAcquire:
 	accountID := req.Account.ID
-	compatibility := normalizeOpenAIWSHandshakeCompatibility(req.Account, req.Headers)
+	compatibility := normalizeOpenAIWSAcquireCompatibility(req)
 	routingAffinity := normalizeOpenAIWSRoutingAffinity(req.Headers)
 	effectiveMaxConns := p.effectiveMaxConnsByAccount(req.Account)
 	if effectiveMaxConns <= 0 {
@@ -2170,7 +2176,7 @@ func (p *openAIWSConnPool) dialConn(ctx context.Context, req openAIWSAcquireRequ
 	accountID := req.Account.ID
 	evict := func() { p.evictConn(accountID, id) }
 	pooledConn.onPeerClosed.Store(&evict)
-	pooledConn.handshakeCompatibility = normalizeOpenAIWSHandshakeCompatibility(req.Account, req.Headers)
+	pooledConn.handshakeCompatibility = normalizeOpenAIWSAcquireCompatibility(req)
 	pooledConn.routingAffinity = normalizeOpenAIWSRoutingAffinity(req.Headers)
 	return pooledConn, nil
 }
@@ -2379,6 +2385,14 @@ func normalizeOpenAIWSBetaFeatures(headers http.Header) string {
 	return strings.Join(normalized, ",")
 }
 
+// ProxyURL has already been canonicalized by Acquire/dialConn. Including it
+// in compatibility covers preferred, least-busy, queued and prewarmed leases.
+func normalizeOpenAIWSAcquireCompatibility(req openAIWSAcquireRequest) openAIWSHandshakeCompatibilityKey {
+	key := normalizeOpenAIWSHandshakeCompatibility(req.Account, req.Headers)
+	key.proxyURL = req.ProxyURL
+	return key
+}
+
 func normalizeOpenAIWSHandshakeCompatibility(account *Account, headers http.Header) openAIWSHandshakeCompatibilityKey {
 	key := openAIWSHandshakeCompatibilityKey{
 		betaFeatures: normalizeOpenAIWSBetaFeatures(headers),
@@ -2478,14 +2492,14 @@ func stringsTrim(value string) string {
 
 func (p *openAIWSConnPool) resolveEgress(ctx context.Context, selected *Account) (string, error) {
 	if selected == nil {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	if p.egressAccounts == nil {
 		return ResolveAccountProxyURL(selected, p.cfg)
 	}
 	current, err := p.egressAccounts.GetByID(ctx, selected.ID)
 	if err != nil || current == nil || !grokCredentialProxyIDsEqual(current.ProxyID, selected.ProxyID) {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	return ResolveAccountProxyURL(current, p.cfg)
 }
@@ -2499,7 +2513,7 @@ func (p *openAIWSConnPool) resolveRequestEgress(ctx context.Context, req openAIW
 	}
 	selected, _, err := proxyurl.Parse(req.ProxyURL)
 	if err != nil || selected != expected {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	return expected, nil
 }

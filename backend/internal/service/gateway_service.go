@@ -708,9 +708,17 @@ type UpstreamFailoverError struct {
 	NextAccountAction        NextAccountAction
 	ClientStatusCode         int
 	ClientMessage            string
+	Cause                    error // Original local failure, preserved for errors.Is/errors.As.
+}
+
+func (e *UpstreamFailoverError) Unwrap() error {
+	return e.Cause
 }
 
 func (e *UpstreamFailoverError) Error() string {
+	if e != nil && e.Cause != nil {
+		return e.Cause.Error()
+	}
 	if e != nil && e.Stage == GatewayFailureStageAccountAuth {
 		return fmt.Sprintf("credential failure: %s (failover)", e.Reason)
 	}

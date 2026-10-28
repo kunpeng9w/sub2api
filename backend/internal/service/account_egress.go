@@ -16,11 +16,23 @@ import (
 
 var ErrAccountProxyUnavailable = errors.New("account proxy unavailable; egress is blocked")
 
+// Local egress failures must take the same retry-next-account path as transport
+// failures, while the selected account remains blocked and its binding retained.
+func accountEgressUnavailable(cause error) *UpstreamFailoverError {
+	return &UpstreamFailoverError{
+		StatusCode:        http.StatusServiceUnavailable,
+		ResponseBody:      []byte(`{"error":{"type":"upstream_error","message":"Account egress is unavailable"}}`),
+		Reason:            GatewayFailureReason("account_egress_unavailable"),
+		NextAccountAction: NextAccountRetry,
+		Cause:             cause,
+	}
+}
+
 // ResolveAccountProxyURL never treats a broken binding as an unbound account.
 // Callers must propagate the error before creating any upstream client.
 func ResolveAccountProxyURL(account *Account, configs ...*config.Config) (string, error) {
 	if account == nil {
-		return "", fmt.Errorf("%w: account missing", ErrAccountProxyUnavailable)
+		return "", accountEgressUnavailable(fmt.Errorf("%w: account missing", ErrAccountProxyUnavailable))
 	}
 	var cfg *config.Config
 	if len(configs) > 0 {
@@ -28,9 +40,13 @@ func ResolveAccountProxyURL(account *Account, configs ...*config.Config) (string
 	}
 	if cfg != nil && cfg.Gateway.ClaudeEgress.Enabled && IsOfficialClaudeAccount(account) {
 		if account.ProxyID != nil {
-			return "", infraerrors.BadRequest("CLAUDE_PROXY_CONFLICT", "official Claude accounts use the managed Mihomo egress; remove the account proxy binding")
+			return "", accountEgressUnavailable(infraerrors.BadRequest("CLAUDE_PROXY_CONFLICT", "official Claude accounts use the managed Mihomo egress; remove the account proxy binding"))
 		}
-		return cfg.Gateway.ClaudeEgress.ValidatedProxyURL()
+		route, err := cfg.Gateway.ClaudeEgress.ValidatedProxyURL()
+		if err != nil {
+			return "", accountEgressUnavailable(err)
+		}
+		return route, nil
 	}
 	if account.ProxyID == nil {
 		return "", nil
@@ -43,14 +59,14 @@ func validatedBoundProxyURL(id *int64, proxy *Proxy) (string, error) {
 		return "", nil
 	}
 	if *id <= 0 || proxy == nil || proxy.ID != *id || !proxy.IsActive() || proxy.IsExpired(time.Now()) {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	if strings.TrimSpace(proxy.Host) == "" || proxy.Port < 1 || proxy.Port > 65535 {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	value, _, err := proxyurl.Parse(proxy.URL())
 	if err != nil || value == "" {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	return value, nil
 }
@@ -62,18 +78,18 @@ func ResolveProxyBinding(ctx context.Context, repo ProxyRepository, id *int64) (
 		return "", nil
 	}
 	if repo == nil {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	proxy, err := repo.GetByID(ctx, *id)
 	if err != nil {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	return validatedBoundProxyURL(id, proxy)
 }
 
 func ResolveAccountProxyFromRepository(ctx context.Context, repo ProxyRepository, account *Account, configs ...*config.Config) (string, error) {
 	if account == nil {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	if account.ProxyID == nil {
 		return ResolveAccountProxyURL(account, configs...)
@@ -81,11 +97,11 @@ func ResolveAccountProxyFromRepository(ctx context.Context, repo ProxyRepository
 	// Validate the binding even when a caller supplied a stale hydrated Proxy.
 	copy := *account
 	if repo == nil {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	proxy, err := repo.GetByID(ctx, *account.ProxyID)
 	if err != nil {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	copy.Proxy = proxy
 	return ResolveAccountProxyURL(&copy, configs...)
@@ -119,14 +135,14 @@ func (s *OAuthService) resolveClaudeProxy(ctx context.Context, id *int64) (strin
 // a new authorization session; a failed lookup cannot reuse a stale URL.
 func resolveOAuthSessionProxy(ctx context.Context, repo ProxyRepository, sessionID, inputID *int64, snapshot string, configs ...*config.Config) (string, error) {
 	if inputID != nil && (sessionID == nil || *inputID != *sessionID) {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	route, err := ResolveProxyBinding(ctx, repo, sessionID)
 	if len(configs) > 0 && configs[0] != nil && configs[0].Gateway.ClaudeEgress.Enabled {
 		route, err = ResolveAccountProxyFromRepository(ctx, repo, &Account{Platform: PlatformAnthropic, ProxyID: sessionID}, configs[0])
 	}
 	if err != nil || route != snapshot {
-		return "", ErrAccountProxyUnavailable
+		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	return route, nil
 }
@@ -142,7 +158,7 @@ func ProxyRouteForTarget(cfg *config.Config, target, selectedProxy string) (stri
 		return "", err
 	}
 	if selectedProxy != "" && selectedProxy != managed {
-		return "", infraerrors.New(http.StatusServiceUnavailable, "CLAUDE_PROXY_CONFLICT", "official Claude target conflicts with the selected account proxy")
+		return "", accountEgressUnavailable(infraerrors.New(http.StatusServiceUnavailable, "CLAUDE_PROXY_CONFLICT", "official Claude target conflicts with the selected account proxy"))
 	}
 	return managed, nil
 }

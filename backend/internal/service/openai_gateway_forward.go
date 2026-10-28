@@ -1056,6 +1056,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		// Get proxy URL
 		proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 		if egressErr != nil {
+			if headerGuard != nil {
+				headerGuard.close()
+			}
 			return nil, egressErr
 		}
 

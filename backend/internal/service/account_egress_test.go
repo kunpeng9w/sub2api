@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/stretchr/testify/require"
 )
@@ -52,6 +53,11 @@ func TestStrictEgressBrokenBindingsNeverBecomeDirect(t *testing.T) {
 			}
 			route, err := ResolveAccountProxyURL(a)
 			require.ErrorIs(t, err, ErrAccountProxyUnavailable)
+			var failover *UpstreamFailoverError
+			require.ErrorAs(t, err, &failover)
+			require.True(t, failover.ShouldRetryNextAccount())
+			require.False(t, failover.RetryableOnSameAccount)
+			require.Equal(t, http.StatusServiceUnavailable, failover.StatusCode)
 			require.Empty(t, route)
 			require.NotNil(t, a.ProxyID)
 		})
@@ -235,4 +241,141 @@ func TestStrictEgressWebSocketPreservesValidSOCKSBindingAcrossAcquireAndDial(t *
 			require.Equal(t, int64(71), *a.ProxyID)
 		})
 	}
+}
+
+func TestStrictEgressPolicyConflictsRetainCauseAndAllowNextAccount(t *testing.T) {
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
+	a := strictEgressAccount()
+	a.Platform = PlatformAnthropic
+	_, err := ResolveAccountProxyURL(a, cfg)
+	var failover *UpstreamFailoverError
+	require.ErrorAs(t, err, &failover)
+	require.True(t, failover.ShouldRetryNextAccount())
+	var original *infraerrors.ApplicationError
+	require.ErrorAs(t, err, &original)
+	require.Equal(t, int32(http.StatusBadRequest), original.Code)
+	// Admin validation remains a configuration error, rather than an inference retry.
+	err = ValidateAccountEgressSettings(a, cfg)
+	require.ErrorAs(t, err, &original)
+	require.False(t, errors.As(err, &failover))
+}
+
+type strictEgressSuccessfulWSDialer struct {
+	routes []string
+}
+
+func (d *strictEgressSuccessfulWSDialer) Dial(_ context.Context, _ string, _ http.Header, route string) (openAIWSClientConn, int, http.Header, error) {
+	d.routes = append(d.routes, route)
+	return &openAIWSFakeConn{}, 0, nil, nil
+}
+
+func TestStrictEgressWebSocketPoolNeverReusesAnotherExit(t *testing.T) {
+	for _, scenario := range []string{"bind", "rebind", "endpoint", "credentials", "unbind", "same SOCKS route"} {
+		t.Run(scenario, func(t *testing.T) {
+			cfg := &config.Config{}
+			cfg.Gateway.OpenAIWS.MaxConnsPerAccount = 1
+			pool := newOpenAIWSConnPool(cfg)
+			t.Cleanup(pool.Close)
+			dialer := &strictEgressSuccessfulWSDialer{}
+			pool.setClientDialerForTest(dialer)
+			before, after := strictEgressAccount(), strictEgressAccount()
+			switch scenario {
+			case "bind":
+				before.ProxyID, before.Proxy = nil, nil
+			case "rebind":
+				id := int64(72)
+				after.ProxyID, after.Proxy.ID = &id, id
+				after.Proxy.Host = "second.invalid"
+			case "endpoint":
+				after.Proxy.Port++
+			case "credentials":
+				after.Proxy.Username, after.Proxy.Password = "new-user", "new-password"
+			case "unbind":
+				after.ProxyID, after.Proxy = nil, nil
+			case "same SOCKS route":
+				before.Proxy.Protocol, after.Proxy.Protocol = "socks5", "socks5h"
+			}
+			request := func(account *Account) openAIWSAcquireRequest {
+				route := ""
+				if account.Proxy != nil {
+					route = account.Proxy.URL()
+				}
+				return openAIWSAcquireRequest{Account: account, ProxyURL: route, WSURL: "wss://upstream.invalid/ws"}
+			}
+			first, err := pool.Acquire(t.Context(), request(before))
+			require.NoError(t, err)
+			oldConn := first.conn
+			first.Release()
+			// Even an advisory preference must not select a connection through the old exit.
+			next := request(after)
+			next.PreferredConnID = first.ConnID()
+			second, err := pool.Acquire(t.Context(), next)
+			require.NoError(t, err)
+			t.Cleanup(second.Release)
+			if scenario == "same SOCKS route" {
+				require.True(t, second.Reused())
+				require.Equal(t, first.ConnID(), second.ConnID())
+				require.Equal(t, []string{"socks5h://proxy.invalid:8080"}, dialer.routes)
+			} else {
+				require.False(t, second.Reused())
+				require.NotEqual(t, first.ConnID(), second.ConnID())
+				require.True(t, oldConn.isClosed())
+				expected, err := ResolveAccountProxyURL(after)
+				require.NoError(t, err)
+				require.Len(t, dialer.routes, 2)
+				require.Equal(t, expected, dialer.routes[1])
+			}
+		})
+	}
+}
+
+func TestStrictEgressWebSocketForcedPreferredExitMismatchIsRejected(t *testing.T) {
+	pool := newOpenAIWSConnPool(&config.Config{})
+	t.Cleanup(pool.Close)
+	dialer := &strictEgressSuccessfulWSDialer{}
+	pool.setClientDialerForTest(dialer)
+	a := strictEgressAccount()
+	request := openAIWSAcquireRequest{Account: a, ProxyURL: a.Proxy.URL(), WSURL: "wss://upstream.invalid/ws"}
+	first, err := pool.Acquire(t.Context(), request)
+	require.NoError(t, err)
+	first.Release()
+	a.Proxy.Port++
+	request.ProxyURL = a.Proxy.URL()
+	request.PreferredConnID, request.ForcePreferredConn = first.ConnID(), true
+	_, err = pool.Acquire(t.Context(), request)
+	require.ErrorIs(t, err, errOpenAIWSPreferredConnUnavailable)
+	require.Len(t, dialer.routes, 1)
+}
+
+type strictEgressChangingWSAccounts struct {
+	AccountRepository
+	before, after *Account
+	reads         int
+}
+
+func (r *strictEgressChangingWSAccounts) GetByID(context.Context, int64) (*Account, error) {
+	r.reads++
+	if r.reads <= 2 {
+		return r.before, nil
+	}
+	return r.after, nil
+}
+
+func TestStrictEgressWebSocketRechecksBindingBeforeReturningLease(t *testing.T) {
+	before, after := strictEgressAccount(), strictEgressAccount()
+	after.Proxy.Port++
+	pool := newOpenAIWSConnPool(&config.Config{})
+	t.Cleanup(pool.Close)
+	pool.egressAccounts = &strictEgressChangingWSAccounts{before: before, after: after}
+	dialer := &strictEgressSuccessfulWSDialer{}
+	pool.setClientDialerForTest(dialer)
+	lease, err := pool.Acquire(t.Context(), openAIWSAcquireRequest{Account: before, ProxyURL: before.Proxy.URL(), WSURL: "wss://upstream.invalid/ws"})
+	require.ErrorIs(t, err, ErrAccountProxyUnavailable)
+	require.Nil(t, lease)
+	require.Len(t, dialer.routes, 1)
+	// A rejected lease must release its token so the updated request can proceed.
+	lease, err = pool.Acquire(t.Context(), openAIWSAcquireRequest{Account: after, ProxyURL: after.Proxy.URL(), WSURL: "wss://upstream.invalid/ws"})
+	require.NoError(t, err)
+	t.Cleanup(lease.Release)
+	require.False(t, lease.Reused())
 }

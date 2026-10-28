@@ -143,7 +143,7 @@ func proxyProbeIdentityFromService(proxyIn *service.Proxy) proxyProbeIdentity {
 }
 
 func updateProxyAndInvalidateProbeSnapshots(ctx context.Context, client *dbent.Client, proxyIn *service.Proxy) (*dbent.Proxy, error) {
-	currentIdentity, err := lockProxyProbeIdentity(ctx, client, proxyIn.ID)
+	currentIdentity, currentExpiry, err := lockProxyProbeIdentity(ctx, client, proxyIn.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -183,12 +183,20 @@ func updateProxyAndInvalidateProbeSnapshots(ctx context.Context, client *dbent.C
 	if err != nil {
 		return nil, err
 	}
-	if currentIdentity == proxyProbeIdentityFromService(proxyIn) {
+	identityChanged := currentIdentity != proxyProbeIdentityFromService(proxyIn)
+	expiryChanged := currentExpiry.Valid != (proxyIn.ExpiresAt != nil) ||
+		(currentExpiry.Valid && proxyIn.ExpiresAt != nil && !currentExpiry.Time.Equal(*proxyIn.ExpiresAt))
+	if !identityChanged && !expiryChanged {
 		return updated, nil
 	}
-	accountIDs, err := invalidateProxyProbeSnapshots(ctx, client, proxyIn.ID)
-	if err != nil {
-		return nil, err
+	// Expiry affects scheduling even when the upstream probe identity is intact.
+	// Keep billing snapshots on renewal, but refresh every bound account atomically.
+	var accountIDs []int64
+	if identityChanged {
+		accountIDs, err = invalidateProxyProbeSnapshots(ctx, client, proxyIn.ID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	boundIDs, err := proxyBoundAccountIDs(ctx, client, proxyIn.ID)
 	if err != nil {
@@ -202,28 +210,29 @@ func updateProxyAndInvalidateProbeSnapshots(ctx context.Context, client *dbent.C
 	return updated, nil
 }
 
-func lockProxyProbeIdentity(ctx context.Context, client *dbent.Client, proxyID int64) (proxyProbeIdentity, error) {
+func lockProxyProbeIdentity(ctx context.Context, client *dbent.Client, proxyID int64) (proxyProbeIdentity, sql.NullTime, error) {
 	rows, err := client.QueryContext(ctx, `
-		SELECT protocol, host, port, COALESCE(username, ''), COALESCE(password, ''), status
+		SELECT protocol, host, port, COALESCE(username, ''), COALESCE(password, ''), status, expires_at
 		FROM proxies
 		WHERE id = $1 AND deleted_at IS NULL
 		FOR NO KEY UPDATE
 	`, proxyID)
 	if err != nil {
-		return proxyProbeIdentity{}, err
+		return proxyProbeIdentity{}, sql.NullTime{}, err
 	}
 	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
-			return proxyProbeIdentity{}, err
+			return proxyProbeIdentity{}, sql.NullTime{}, err
 		}
-		return proxyProbeIdentity{}, service.ErrProxyNotFound
+		return proxyProbeIdentity{}, sql.NullTime{}, service.ErrProxyNotFound
 	}
 	var identity proxyProbeIdentity
-	if err := rows.Scan(&identity.protocol, &identity.host, &identity.port, &identity.username, &identity.password, &identity.status); err != nil {
-		return proxyProbeIdentity{}, err
+	var expiresAt sql.NullTime
+	if err := rows.Scan(&identity.protocol, &identity.host, &identity.port, &identity.username, &identity.password, &identity.status, &expiresAt); err != nil {
+		return proxyProbeIdentity{}, sql.NullTime{}, err
 	}
-	return identity, rows.Err()
+	return identity, expiresAt, rows.Err()
 }
 
 func invalidateProxyProbeSnapshots(ctx context.Context, exec sqlExecutor, proxyID int64) ([]int64, error) {
