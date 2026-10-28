@@ -1,6 +1,6 @@
 # 验证报告
 
-状态：**策略模拟、静态检查与完整构建通过；最终全量回归重跑中；未部署；未做在线验证**。
+状态：**策略模拟、静态检查、完整构建通过；全量回归第 2 次运行通过；未部署；未做在线验证**。
 
 候选修改在独立 GitHub runner 完成策略模拟、类型检查和嵌入式构建。生产服务器只做源码审查、轻量格式/语法解析、构建包摘要核验和线上状态只读观察，未运行 Go 测试、前端构建或网络内核测试。
 
@@ -32,6 +32,8 @@
 
 补充只读观察：`2026-10-28T12:08:23Z`，上述六个服务仍 active，Sub2API/Mihomo PID 仍分别为 `250215` / `143062`；在线程序和安装中保护脚本的 SHA256 均与基线相同。安装中保护脚本 SHA256 为 `ce07d13b1b50d1975bc95f506ed8305da8ab8637b3c054b1f8b86b216a25ae1b`。没有运行候选程序或安装候选配置。
 
+最终只读核对：`2026-10-28T13:04:59.499200+00:00`，六个服务仍 active，前述 Sub2API/Mihomo PID 及在线程序、保护脚本摘要均未变化。完整 CI 元数据、顶层模拟用例名称、首次内存采样失败及只读状态见 [CI-EVIDENCE.json](CI-EVIDENCE.json)。
+
 ## CI 发现与修正
 
 - 首次编译发现 Grok 图片辅助请求返回值类型错误，已在 `a99a92631` 修正。该提交新增模拟与完整构建通过。
@@ -52,8 +54,9 @@
 
 - [严格出站模拟](https://github.com/kunpeng9w/sub2api/actions/runs/40688237428)：22 个 Go 顶层用例、11 项网络/教程模拟、8 项界面用例通过。格式差异 `format.patch` 为 0 字节。包含 SOCKS5→SOCKS5H 的获取/建连、HTTP 重定向、超时、跨账号选择与路由变更。
 - [运维检查与完整嵌入式构建](https://github.com/kunpeng9w/sub2api/actions/runs/40688237325)：通过，产物来自上述应用提交；未发布 Release。
-- [全量回归](https://github.com/kunpeng9w/sub2api/actions/runs/40688237317)：第 1 次运行在原有 `TestInflightEstimate_AccountMappingNoDBAndBoundedMemory` 的进程级堆采样断言失败（8,899,960 字节，阈值 8,388,608）。没有调整阈值、排除用例或修改计费实现；第 2 次运行的全量单元测试已通过，隔离集成结果仍待填写。不得以重跑掩盖首轮失败，也未将该采样问题归因为已修复。
+- [全量回归](https://github.com/kunpeng9w/sub2api/actions/runs/40688237317)：第 1 次运行在原有 `TestInflightEstimate_AccountMappingNoDBAndBoundedMemory` 的进程级堆采样断言失败（8,899,960 字节，阈值 8,388,608）。没有调整阈值、排除用例或修改计费实现；第 2 次运行的全量单元、隔离集成、lint、前端与脚本检查均通过。首轮采样失败的原因未独立定位，不能称为已修复。不得以重跑掩盖首轮失败，也未将该采样问题归因为已修复。
 - [前一修正提交的全量回归](https://github.com/kunpeng9w/sub2api/actions/runs/40687766649)：单元、隔离集成、lint、前端和脚本检查均通过。该提交还不含最终 WebSocket SOCKS 规范化修正，不能替代最终提交的回归结果。
+- [最终手动教程与网络模拟](https://github.com/kunpeng9w/sub2api/actions/runs/40692771229)：11 项通过，含所有 Bash 部署/回滚代码块的 `bash -n` 纯语法检查；没有执行代码块中的任何系统修改命令。
 - 原有安全扫描仍报告前述依赖漏洞，本报告不宣称全部仓库检查绿色。
 
 已下载构建包位于 `/home/pk/workspace/sub2api-egress-delivery/291e9421212a7031ec7f777556c6f70e3d6a7dee/`，未执行包内程序，也未解包到在线目录。
