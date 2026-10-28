@@ -25,6 +25,15 @@ mkdir -m 700 "$PRIVATE_DIR"
 
 如果私有目录已存在，使用新的带时间后缀目录，不能覆盖上一次备份。不要把配置、认证信息或备份存入 Git 仓库。
 
+本次已下载的独立 CI 包位于 `/home/pk/workspace/sub2api-egress-delivery/6d6b4a40baec99f672f3a10829b7ebf11d5a5e33/`，只是交付文件，没有安装或执行。核对报告里的 SHA256 后，在上述 root shell 中复制到私有交付目录：
+
+```bash
+install -d -o root -g root -m 700 "$DELIVERY_DIR"
+cp /home/pk/workspace/sub2api-egress-delivery/6d6b4a40baec99f672f3a10829b7ebf11d5a5e33/{sub2api-linux-amd64.tar.gz,SHA256SUMS,build-info.txt,template-tests.log} "$DELIVERY_DIR/"
+```
+
+预期：仅复制候选包和构建清单。路径不存在、提交不符或校验不符就停止，不能改用在线程序冒充交付包。Actions 构建产物保留 7 天；本地副本保留至操作者自行清理。
+
 只读记录基线：
 
 ```bash
