@@ -29,13 +29,12 @@ const enabled = ref(false)
 const domains = ref<string[]>([])
 const managed = computed(() => {
   if (!enabled.value || props.platform !== 'anthropic' || ['bedrock', 'service_account'].includes(props.accountType || '')) return false
-  return [props.baseUrl, props.customBaseUrl].every(raw => {
-    if (!raw?.trim()) return true
-    try {
-      const host = new URL(raw.trim()).hostname.toLowerCase().replace(/\.$/, '')
-      return domains.value.some(domain => host === domain || host.endsWith(`.${domain}`))
-    } catch { return false }
-  })
+  const raw = props.customBaseUrl?.trim() || props.baseUrl?.trim()
+  if (!raw) return true
+  try {
+    const host = new URL(raw).hostname.toLowerCase().replace(/\.$/, '')
+    return domains.value.some(domain => host === domain || host.endsWith(`.${domain}`))
+  } catch { return false }
 })
 onMounted(async () => {
   try {

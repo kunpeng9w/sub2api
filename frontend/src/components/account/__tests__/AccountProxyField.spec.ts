@@ -37,6 +37,13 @@ describe('account egress policy', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="proxy-selector"]').exists()).toBe(true)
   })
+  it('uses the active custom relay before a retained base URL, matching backend routing', async () => {
+    const official = render({ baseUrl: 'https://third-party.invalid', customBaseUrl: 'https://api.anthropic.com' })
+    const thirdParty = render({ baseUrl: 'https://api.anthropic.com', customBaseUrl: 'https://relay.invalid' })
+    await flushPromises()
+    expect(official.find('[data-testid="managed-claude-egress"]').exists()).toBe(true)
+    expect(thirdParty.find('[data-testid="proxy-selector"]').exists()).toBe(true)
+  })
   it('preserves phase-one UI when managed egress is disabled', async () => {
     getEgressPolicy.mockResolvedValue({ claude_egress_enabled: false, official_domains: [] })
     const wrapper = render()

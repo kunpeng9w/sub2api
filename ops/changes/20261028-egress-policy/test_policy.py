@@ -63,6 +63,15 @@ class PolicySimulationTests(unittest.TestCase):
         for name, content in generator.render().items():
             self.assertEqual((HERE / "templates" / name).read_text(), content, name)
 
+    def test_manual_bash_blocks_are_syntax_only_validated(self):
+        import re
+        import subprocess
+        for name in ["DEPLOY.md", "ROLLBACK.md"]:
+            for index, block in enumerate(re.findall(r"```bash\n(.*?)```", (HERE / name).read_text(), re.S)):
+                # -n only parses: no install, systemd, routing or network call runs.
+                result = subprocess.run(["bash", "-n"], input=block, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, f"{name} block {index}: {result.stderr}")
+
     def test_only_fake_prefix_enters_tun_and_no_dns_dependency(self):
         import yaml
         c = yaml.safe_load(generator.render()["mihomo.yaml.example"])
