@@ -81,6 +81,8 @@ func (s *OpenAIGatewayService) ForwardResponsesInputTokens(
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
+		setOpsUpstreamError(c, 0, sanitizeUpstreamErrorMessage(egressErr.Error()), "")
+		writeOpenAIResponsesInputTokensError(c, http.StatusServiceUnavailable, "upstream_error", "Account egress is unavailable")
 		return egressErr
 	}
 	resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)
@@ -321,6 +323,8 @@ func (s *OpenAIGatewayService) ForwardCountTokensAsAnthropic(
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
+		setOpsUpstreamError(c, 0, sanitizeUpstreamErrorMessage(egressErr.Error()), "")
+		writeAnthropicCountTokensError(c, http.StatusServiceUnavailable, "upstream_error", "Account egress is unavailable")
 		return egressErr
 	}
 	resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)

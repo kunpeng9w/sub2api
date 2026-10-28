@@ -161,6 +161,8 @@ func (s *GatewayService) ForwardCountTokens(ctx context.Context, c *gin.Context,
 	// 获取代理URL（自定义 base URL 模式下，proxy 通过 buildCustomRelayURL 作为查询参数传递）
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
+		setOpsUpstreamError(c, 0, sanitizeUpstreamErrorMessage(egressErr.Error()), "")
+		s.countTokensError(c, http.StatusServiceUnavailable, "upstream_error", "Account egress is unavailable")
 		return egressErr
 	}
 
@@ -288,6 +290,8 @@ func (s *GatewayService) forwardCountTokensAnthropicAPIKeyPassthrough(ctx contex
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
+		setOpsUpstreamError(c, 0, sanitizeUpstreamErrorMessage(egressErr.Error()), "")
+		s.countTokensError(c, http.StatusServiceUnavailable, "upstream_error", "Account egress is unavailable")
 		return egressErr
 	}
 

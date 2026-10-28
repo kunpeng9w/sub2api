@@ -600,7 +600,7 @@ func (s *AccountTestService) testClaudeAccountConnection(c *gin.Context, account
 	// Get proxy URL
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
@@ -672,7 +672,7 @@ func (s *AccountTestService) testClaudeVertexServiceAccountConnection(c *gin.Con
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
@@ -758,7 +758,7 @@ func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx co
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, nil)
@@ -948,7 +948,7 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	// Get proxy URL
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.doOpenAIAccountTestUpstream(req, proxyURL, account, true)
@@ -1245,7 +1245,7 @@ func (s *AccountTestService) observeGrokTestResponse(ctx context.Context, accoun
 func (s *AccountTestService) testGrokResponsesConnection(c *gin.Context, ctx context.Context, account *Account, authToken, testModelID string) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	apiURL, err := buildGrokResponsesURL(account, s.cfg, s.settingService)
@@ -1289,7 +1289,7 @@ func (s *AccountTestService) testGrokResponsesConnection(c *gin.Context, ctx con
 func (s *AccountTestService) testGrokImageGeneration(c *gin.Context, ctx context.Context, account *Account, authToken, modelID, prompt, imageDataURL string) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	// With a source image, prefer /images/edits; otherwise /images/generations.
@@ -1423,7 +1423,7 @@ func (s *AccountTestService) testGrokImageGeneration(c *gin.Context, ctx context
 func (s *AccountTestService) testGrokVideoGeneration(c *gin.Context, ctx context.Context, account *Account, authToken, modelID, prompt string, opts AccountTestOptions) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	apiURL, err := buildGrokMediaURL(account, s.cfg, GrokMediaEndpointVideosGenerations, "")
@@ -1535,7 +1535,7 @@ func (s *AccountTestService) testGrokVideoGeneration(c *gin.Context, ctx context
 func (s *AccountTestService) emitGrokVideoResult(c *gin.Context, ctx context.Context, account *Account, authToken, requestID string, statusBody []byte) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	videoURL := firstNonEmpty(
@@ -1596,7 +1596,7 @@ func (s *AccountTestService) emitGrokVideoResult(c *gin.Context, ctx context.Con
 func (s *AccountTestService) testGrokWebSearch(c *gin.Context, ctx context.Context, account *Account, authToken, query string) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	query = strings.TrimSpace(query)
@@ -1693,7 +1693,7 @@ User query:
 func (s *AccountTestService) testGrokTTS(c *gin.Context, ctx context.Context, account *Account, authToken, text string) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	text = strings.TrimSpace(text)
@@ -1764,7 +1764,7 @@ func (s *AccountTestService) testGrokTTS(c *gin.Context, ctx context.Context, ac
 func (s *AccountTestService) testGrokSTT(c *gin.Context, ctx context.Context, account *Account, authToken, audioDataURL string) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	apiURL, err := buildGrokVoiceURL(account, s.cfg, "stt")
@@ -1851,7 +1851,7 @@ func (s *AccountTestService) testGrokSTT(c *gin.Context, ctx context.Context, ac
 func (s *AccountTestService) testGrokRealtime(c *gin.Context, ctx context.Context, account *Account, authToken, modelID string) error {
 	accountEgressURL, accountEgressErr := s.grokTestProxyURL(account)
 	if accountEgressErr != nil {
-		return accountEgressErr
+		return s.sendAccountEgressError(c, accountEgressErr)
 	}
 
 	model := strings.TrimSpace(modelID)
@@ -2193,7 +2193,7 @@ func (s *AccountTestService) testOpenAIChatCompletionsConnection(
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
@@ -2326,7 +2326,7 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.doOpenAIAccountTestUpstream(req, proxyURL, account, true)
@@ -2474,7 +2474,7 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 	// Get proxy and execute request
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
@@ -3104,7 +3104,7 @@ func (s *AccountTestService) testOpenAIImageAPIKey(c *gin.Context, ctx context.C
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
@@ -3240,7 +3240,7 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 	resp, err := s.doOpenAIAccountTestUpstream(req, proxyURL, account, false)
 	if err != nil {
@@ -3319,6 +3319,13 @@ func (s *AccountTestService) sendEvent(c *gin.Context, event TestEvent) {
 		return
 	}
 	c.Writer.Flush()
+}
+
+// sendAccountEgressError terminates account tests with a visible SSE error
+// while retaining the cause for background tests and other callers.
+func (s *AccountTestService) sendAccountEgressError(c *gin.Context, err error) error {
+	_ = s.sendErrorAndEnd(c, sanitizeUpstreamErrorMessage(err.Error()))
+	return err
 }
 
 // sendErrorAndEnd sends an error event and ends the stream

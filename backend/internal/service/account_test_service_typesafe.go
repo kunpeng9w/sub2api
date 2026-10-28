@@ -67,7 +67,7 @@ func (s *AccountTestService) testTypeSafeAccountConnection(c *gin.Context, accou
 	}
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return s.sendAccountEgressError(c, egressErr)
 	}
 	resp, err := s.httpUpstream.Do(req, proxyURL, account.ID, account.Concurrency)
 	if err != nil {
