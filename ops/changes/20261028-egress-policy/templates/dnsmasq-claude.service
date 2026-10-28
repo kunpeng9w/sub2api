@@ -2,6 +2,7 @@
 Description=Independent system DNS with official Claude domain forwarding
 Wants=network-online.target
 After=network-online.target
+Before=sub2api.service
 
 [Service]
 Type=simple

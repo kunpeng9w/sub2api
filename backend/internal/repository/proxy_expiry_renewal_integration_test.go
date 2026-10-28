@@ -27,7 +27,8 @@ func (s *ProxyExpirySuite) TestSweep_SkipsChangedSnapshot() {
 			target, change := service.ResolveProxyFallbackTarget(*snapshot, map[int64]service.Proxy{
 				backup: {ID: backup, Status: service.StatusActive, ExpiresAt: &future},
 			}, now)
-			s.Require().True(change)
+			s.Require().False(change)
+			s.Require().Nil(target)
 			updated := *snapshot
 			switch edit {
 			case "renew":

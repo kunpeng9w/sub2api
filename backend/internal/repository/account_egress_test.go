@@ -130,7 +130,8 @@ func TestStrictEgressTransportChecksLatestBindingBeforeAnyDial(t *testing.T) {
 func TestClaudeEgressTransportSelectsOnlyManagedIngress(t *testing.T) {
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
 	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth}
-	client := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{}).(*httpUpstreamService)
+	client, ok := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{}).(*httpUpstreamService)
+	require.True(t, ok)
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://api.anthropic.com/v1/messages", nil)
 	require.NoError(t, err)
 	route, err := client.resolveEgressForRequest(req, "", a.ID)
@@ -148,7 +149,7 @@ func TestClaudeEgressTransportSelectsOnlyManagedIngress(t *testing.T) {
 func TestStrictEgressExpiryInvalidatesButNeverReassigns(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	mock.ExpectExec("UPDATE proxies SET status").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery("(?s)UPDATE accounts.*SET extra").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(4))
 	mock.ExpectQuery("SELECT id FROM accounts WHERE proxy_id").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(4))
@@ -166,7 +167,7 @@ func TestStrictEgressExpiryInvalidatesButNeverReassigns(t *testing.T) {
 func TestStrictEgressDeleteSerializesAndRejectsBoundProxy(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	client := dbent.NewClient(dbent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	r := &proxyRepository{client: client}
 	mock.ExpectBegin()
@@ -250,4 +251,20 @@ func TestStrictEgressProxyTimeoutNeverDialsDirect(t *testing.T) {
 	require.Equal(t, int64(1), bound.Load())
 	require.Zero(t, direct.Load())
 	require.Equal(t, int64(71), *a.ProxyID)
+}
+
+func TestClaudeEgressRedirectCannotEscapeOrChangePinnedRoute(t *testing.T) {
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
+	upstream, ok := NewHTTPUpstream(cfg).(*httpUpstreamService)
+	require.True(t, ok)
+	original, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://normal.invalid", nil)
+	require.NoError(t, err)
+	redirected, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.anthropic.com/v1/messages", nil)
+	require.NoError(t, err)
+	for _, route := range []string{"", "http://account.invalid:8080"} {
+		client := upstream.httpClientForUpstreamRequest(&http.Client{}, original, route)
+		require.Error(t, client.CheckRedirect(redirected, []*http.Request{original}))
+	}
+	client := upstream.httpClientForUpstreamRequest(&http.Client{}, original, cfg.Gateway.ClaudeEgress.ProxyURL)
+	require.NoError(t, client.CheckRedirect(redirected, []*http.Request{original}))
 }

@@ -28,7 +28,7 @@ func NewClaudeOAuthClient() service.ClaudeOAuthClient {
 }
 
 func ProvideClaudeOAuthClient(cfg *config.Config) service.ClaudeOAuthClient {
-	client := NewClaudeOAuthClient().(*claudeOAuthService)
+	client := &claudeOAuthService{baseURL: "https://claude.ai", tokenURL: oauth.TokenURL}
 	client.clientFactory = func(selected string) (*req.Client, error) {
 		route, err := service.ProxyRouteForTarget(cfg, oauth.TokenURL, selected)
 		if err != nil {

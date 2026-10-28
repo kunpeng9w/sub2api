@@ -39,9 +39,11 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           set -o pipefail
-          go test -tags unit -p 1 -count=1 ./internal/config ./internal/pkg/claudedomain ./internal/service ./internal/repository ./internal/handler/admin ./internal/server/routes -run 'TestStrictEgress|TestClaudeEgress|TestOfficialClaudeDomain' -timeout 10m 2>&1 | tee "$RUNNER_TEMP/egress-go-tests.log"
+          go test -v -tags unit -p 1 -count=1 ./internal/config ./internal/pkg/claudedomain ./internal/service ./internal/repository ./internal/handler/admin ./internal/server/routes -run 'TestStrictEgress|TestClaudeEgress|TestOfficialClaudeDomain' -timeout 10m 2>&1 | tee "$RUNNER_TEMP/egress-go-tests.log"
       - name: Simulate network policy and manual deployment transitions
-        run: python -m unittest discover -s ops/changes/20261028-egress-policy -p 'test_*.py' -v
+        run: |
+          set -o pipefail
+          python -m unittest discover -s ops/changes/20261028-egress-policy -p 'test_*.py' -v 2>&1 | tee "$RUNNER_TEMP/egress-policy-tests.log"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -49,6 +51,7 @@ jobs:
           path: |
             ${{ runner.temp }}/format.patch
             ${{ runner.temp }}/egress-go-tests.log
+            ${{ runner.temp }}/egress-policy-tests.log
           if-no-files-found: warn
 
   frontend:

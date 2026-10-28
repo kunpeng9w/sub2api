@@ -286,10 +286,20 @@ func enqueueProxyProbeAccountChanges(ctx context.Context, exec sqlExecutor, acco
 func (r *proxyRepository) Delete(ctx context.Context, id int64) error {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
+		if err == dbent.ErrTxStarted {
+			// The enclosing transaction owns both the lock and the commit.
+			return deleteLockedProxy(ctx, r.client, id)
+		}
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	client := tx.Client()
+	if err := deleteLockedProxy(ctx, tx.Client(), id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func deleteLockedProxy(ctx context.Context, client *dbent.Client, id int64) error {
 	var lockedID int64
 	if err := scanSingleRow(ctx, client, `SELECT id FROM proxies WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, []any{id}, &lockedID); err != nil {
 		return err
@@ -301,10 +311,8 @@ func (r *proxyRepository) Delete(ctx context.Context, id int64) error {
 	if count > 0 {
 		return service.ErrProxyInUse
 	}
-	if _, err := client.Proxy.Delete().Where(proxy.IDEQ(id)).Exec(ctx); err != nil {
-		return err
-	}
-	return tx.Commit()
+	_, err := client.Proxy.Delete().Where(proxy.IDEQ(id)).Exec(ctx)
+	return err
 }
 
 func (r *proxyRepository) List(ctx context.Context, params pagination.PaginationParams) ([]service.Proxy, *pagination.PaginationResult, error) {

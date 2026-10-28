@@ -52,7 +52,7 @@ func (s *ProxyExpirySuite) accountProxyID(id int64) *int64 {
 	return pid
 }
 
-func (s *ProxyExpirySuite) TestSweep_DirectMode() {
+func (s *ProxyExpirySuite) TestSweep_LegacyDirectModePreservesBinding() {
 	past := time.Now().Add(-time.Hour)
 	pid := s.mkProxy("p-direct", service.FallbackModeDirect, &past, nil)
 	aid := s.mkAccountWithProxy(pid)
@@ -63,12 +63,11 @@ func (s *ProxyExpirySuite) TestSweep_DirectMode() {
 
 	got, _ := s.repo.GetByID(s.ctx, pid)
 	s.Require().Equal(service.StatusExpired, got.Status)
-	s.Require().Nil(s.accountProxyID(aid))
+	s.Require().Equal(&pid, s.accountProxyID(aid))
 	var origin *int64
 	err = scanSingleRow(s.ctx, s.tx, `SELECT proxy_fallback_origin_id FROM accounts WHERE id=$1`, []any{aid}, &origin)
 	s.Require().NoError(err)
-	s.Require().NotNil(origin)
-	s.Require().Equal(pid, *origin)
+	s.Require().Nil(origin)
 }
 
 func (s *ProxyExpirySuite) TestSweep_EnqueuesChangedAccountIDsWithoutFullRebuild() {
@@ -84,11 +83,9 @@ func (s *ProxyExpirySuite) TestSweep_EnqueuesChangedAccountIDsWithoutFullRebuild
 
 	var payloadRaw []byte
 	err = scanSingleRow(s.ctx, s.tx, `
-		SELECT payload
-		FROM scheduler_outbox
-		WHERE event_type=$1
-		ORDER BY id DESC
-		LIMIT 1`, []any{service.SchedulerOutboxEventAccountBulkChanged}, &payloadRaw)
+		SELECT jsonb_build_object('account_ids', jsonb_agg(DISTINCT account_id ORDER BY account_id))
+        FROM scheduler_outbox, jsonb_array_elements(payload->'account_ids') AS ids(account_id)
+        WHERE event_type=$1`, []any{service.SchedulerOutboxEventAccountBulkChanged}, &payloadRaw)
 	s.Require().NoError(err)
 
 	var payload struct {
@@ -106,7 +103,7 @@ func (s *ProxyExpirySuite) TestSweep_EnqueuesChangedAccountIDsWithoutFullRebuild
 	s.Require().Zero(fullRebuildCount)
 }
 
-func (s *ProxyExpirySuite) TestSweep_ProxyMode_Healthy() {
+func (s *ProxyExpirySuite) TestSweep_LegacyBackupModePreservesBinding() {
 	future := time.Now().Add(24 * time.Hour)
 	past := time.Now().Add(-time.Hour)
 	backup := s.mkProxy("p-backup", service.FallbackModeNone, &future, nil)
@@ -115,12 +112,11 @@ func (s *ProxyExpirySuite) TestSweep_ProxyMode_Healthy() {
 
 	_, err := s.repo.SweepExpiredProxies(s.ctx, time.Now())
 	s.Require().NoError(err)
-	s.Require().Equal(backup, *s.accountProxyID(aid))
+	s.Require().Equal(pid, *s.accountProxyID(aid))
 	var origin *int64
 	err = scanSingleRow(s.ctx, s.tx, `SELECT proxy_fallback_origin_id FROM accounts WHERE id=$1`, []any{aid}, &origin)
 	s.Require().NoError(err)
-	s.Require().NotNil(origin)
-	s.Require().Equal(pid, *origin)
+	s.Require().Nil(origin)
 }
 
 func (s *ProxyExpirySuite) TestSweep_NoneMode_KeepsAccount() {

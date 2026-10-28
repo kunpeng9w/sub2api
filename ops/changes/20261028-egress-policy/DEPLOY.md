@@ -6,13 +6,14 @@
 
 ## 0. 准备与停止条件
 
-执行位置：服务器 `aly`。先以 `pk` 查看候选源码和构建记录；涉及安装的步骤在一个独立 root shell 中手动执行，并保留第二个 SSH 会话。
+执行位置：服务器 `aly`。先以 `pk` 查看候选源码和构建记录；涉及安装的步骤在一个独立 root Bash shell 中手动执行，并保留第二个 SSH 会话。启用下方失败停止设置；任何命令失败后都停止当前阶段，按对应回滚入口恢复，不能跳过失败命令继续粘贴后续步骤。
 
 前置条件：`TEST-REPORT.md` 已填写最终通过的 CI 提交与链接；构建包来自该提交的 `Source and operations verification`，包含 `SHA256SUMS`、`build-info.txt` 和 Linux amd64 嵌入式程序。尚未通过 CI 时，停止，不安装。
 
 在 root shell 中设置本次会话变量。`DELIVERY_DIR` 必须指向你已下载、解包清单可核实的构建交付目录：
 
 ```bash
+set -Eeuo pipefail
 APP_DIR=/home/pk/workspace/sub2api
 POLICY_DIR="$APP_DIR/ops/changes/20261028-egress-policy"
 DELIVERY_DIR=/root/sub2api-egress-delivery
@@ -76,7 +77,7 @@ python3 "$POLICY_DIR/prepare_private_config.py" \
 mkdir -m 700 "$PRIVATE_DIR/phase1"
 cp -a "$APP_DIR/bin/sub2api" "$PRIVATE_DIR/phase1/sub2api"
 cp -a "$APP_DIR/data/config.yaml" "$PRIVATE_DIR/phase1/config.yaml"
-sha256sum "$PRIVATE_DIR/phase1/sub2api" > "$PRIVATE_DIR/phase1/program.sha256"
+sha256sum "$PRIVATE_DIR/phase1/sub2api" "$PRIVATE_DIR/phase1/config.yaml" > "$PRIVATE_DIR/phase1/files.sha256"
 cd /tmp
 sudo -u postgres pg_dump -Fc "$DATABASE_NAME" > "$PRIVATE_DIR/phase1/database.dump"
 ```
@@ -99,6 +100,7 @@ sudo -u postgres psql -X -d "$DATABASE_NAME" -c \
   "COPY (SELECT id, proxy_id FROM accounts ORDER BY id) TO STDOUT WITH CSV HEADER" \
   > "$PRIVATE_DIR/phase1/account-bindings-after.csv"
 cmp "$PRIVATE_DIR/phase1/account-bindings-before.csv" "$PRIVATE_DIR/phase1/account-bindings-after.csv"
+sha256sum "$PRIVATE_DIR/phase1/"*.csv "$PRIVATE_DIR/phase1/database.dump" > "$PRIVATE_DIR/phase1/database-files.sha256"
 ```
 
 预期：只将旧回退策略改为 `none`、清空备用代理字段，账号绑定前后完全一致。本次没有新增数据库结构迁移。SQL 或比较失败时停止，按第一阶段回滚恢复应用；不能忽略失败继续安装。
@@ -152,7 +154,11 @@ python3 "$POLICY_DIR/prepare_private_config.py" \
 mkdir -m 700 "$PRIVATE_DIR/phase2"
 cp -a /etc/resolv.conf "$PRIVATE_DIR/phase2/resolv.conf"
 cp -a "$APP_DIR/data/config.yaml" "$PRIVATE_DIR/phase2/config.yaml"
-systemctl is-enabled mihomo sub2api-egress mihomo-trial-rollback.timer > "$PRIVATE_DIR/phase2/service-enablement.txt"
+if systemctl is-enabled mihomo sub2api-egress mihomo-trial-rollback.timer > "$PRIVATE_DIR/phase2/service-enablement.txt"; then
+  printf 'all recorded units enabled\n'
+else
+  cat "$PRIVATE_DIR/phase2/service-enablement.txt"
+fi
 ip rule show > "$PRIVATE_DIR/phase2/ip-rule.txt"
 ip route show table all > "$PRIVATE_DIR/phase2/ip-route.txt"
 tar --acls --xattrs -cpf "$PRIVATE_DIR/phase2/installed.tar" \
@@ -167,9 +173,10 @@ tar --acls --xattrs -cpf "$PRIVATE_DIR/phase2/installed.tar" \
   /usr/local/libexec/mihomo_control.py \
   /usr/local/sbin/mihomo-ctl \
   /var/lib/sub2api-egress
+sha256sum "$PRIVATE_DIR/phase2/installed.tar" "$PRIVATE_DIR/phase2/config.yaml" > "$PRIVATE_DIR/phase2/files.sha256"
 ```
 
-预期：备份保存了原 DNS 符号链接本身和安装文件、v1 状态及控制脚本。`systemctl is-enabled` 对禁用的 timer 返回非零是正常状态记录；必须确认 timer 没有待执行试运行。`tar` 中任一必需路径不存在，应先核对实际安装位置，不能用忽略错误选项继续。
+预期：备份保存了原 DNS 符号链接本身和安装文件、v1 状态及控制脚本，并记录了备份校验值。所有校验清单留在私有目录。`systemctl is-enabled` 对禁用的 timer 返回非零是正常状态记录；必须确认 timer 没有待执行试运行。`tar` 中任一必需路径不存在，应先核对实际安装位置，不能用忽略错误选项继续。
 
 ### 2.2 仅预检候选，不启动第二份代理
 
@@ -187,7 +194,7 @@ python3 "$POLICY_DIR/templates/egress_guard.py" render > "$PRIVATE_DIR/phase2/gu
 
 ```bash
 systemctl stop sub2api
-systemctl stop mihomo-trial-rollback.timer
+systemctl disable --now mihomo-trial-rollback.timer
 systemctl stop mihomo
 install -o root -g root -m 755 "$POLICY_DIR/templates/egress_guard.py" /usr/local/libexec/egress_guard.py
 install -o root -g root -m 755 "$POLICY_DIR/templates/mihomo_control.py" /usr/local/libexec/mihomo_control.py

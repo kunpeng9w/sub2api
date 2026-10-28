@@ -31,20 +31,16 @@ func (s *ProxyExpirySuite) TestSweep_RepeatedExpiryPreservesOriginalProxy() {
 			changed, err := s.repo.SweepExpiredProxies(s.ctx, now)
 			s.Require().NoError(err)
 			s.Require().EqualValues(1, changed)
-			s.Require().Equal(&middleID, s.accountProxyID(accountID))
+			s.Require().Equal(&originalID, s.accountProxyID(accountID))
 
 			changed, err = s.repo.SweepExpiredProxies(s.ctx, now.Add(2*time.Hour))
 			s.Require().NoError(err)
-			s.Require().EqualValues(1, changed, "accounts already in fallback must still be rerouted")
-			if direct {
-				s.Require().Nil(s.accountProxyID(accountID))
-			} else {
-				s.Require().Equal(&lastID, s.accountProxyID(accountID))
-			}
+			s.Require().Zero(changed, "expiry of an unbound legacy backup cannot move the account")
+			s.Require().Equal(&originalID, s.accountProxyID(accountID))
 			var origin *int64
 			err = scanSingleRow(s.ctx, s.tx, `SELECT proxy_fallback_origin_id FROM accounts WHERE id=$1`, []any{accountID}, &origin)
 			s.Require().NoError(err)
-			s.Require().Equal(&originalID, origin, "manual revert must retain the first original proxy")
+			s.Require().Nil(origin, "expiry must not create fallback history")
 
 			var payloadRaw []byte
 			err = scanSingleRow(s.ctx, s.tx, `SELECT payload FROM scheduler_outbox WHERE event_type=$1 ORDER BY id DESC LIMIT 1`, []any{service.SchedulerOutboxEventAccountBulkChanged}, &payloadRaw)
@@ -59,7 +55,7 @@ func (s *ProxyExpirySuite) TestSweep_RepeatedExpiryPreservesOriginalProxy() {
 			s.Require().NoError(err)
 			s.Require().Zero(changed, "repeating the scan must be idempotent")
 			accounts := newAccountRepositoryWithSQL(s.tx.Client(), s.tx, nil)
-			s.Require().NoError(accounts.RevertProxyFallback(s.ctx, accountID))
+			s.Require().ErrorIs(accounts.RevertProxyFallback(s.ctx, accountID), service.ErrAccountNotInFallback)
 			s.Require().Equal(&originalID, s.accountProxyID(accountID))
 			err = scanSingleRow(s.ctx, s.tx, `SELECT proxy_fallback_origin_id FROM accounts WHERE id=$1`, []any{accountID}, &origin)
 			s.Require().NoError(err)

@@ -230,7 +230,7 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 	}
 
 	// 执行请求
-	client := s.httpClientForUpstreamRequest(entry.client, req)
+	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
 	client = httpClientWithGrokAccessDeniedFallback(client)
 	resp, err := doUpstreamRequest(client, req)
 	if err != nil {
@@ -300,7 +300,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 		return nil, err
 	}
 
-	client := s.httpClientForUpstreamRequest(entry.client, req)
+	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
 	client = httpClientWithGrokAccessDeniedFallback(client)
 	resp, err := doUpstreamRequest(client, req)
 	if err != nil {
@@ -370,11 +370,32 @@ func (b *cancelOnCloseBody) Close() error {
 
 // httpClientForUpstreamRequest 按请求上下文的标记派生客户端：禁用重定向，或对重定向的每一跳做主机校验。
 // 派生的克隆与缓存客户端共享 Transport；未打标记时原样返回。
-func (s *httpUpstreamService) httpClientForUpstreamRequest(client *http.Client, req *http.Request) *http.Client {
+func (s *httpUpstreamService) httpClientForUpstreamRequest(client *http.Client, req *http.Request, routes ...string) *http.Client {
 	if client == nil || req == nil {
 		return client
 	}
 	ctx := req.Context()
+	if s.cfg != nil && s.cfg.Gateway.ClaudeEgress.Enabled && len(routes) > 0 && !service.HTTPUpstreamRedirectsDisabled(ctx) {
+		clone := *client
+		selected := routes[0]
+		clone.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+			if next.URL == nil {
+				return service.ErrAccountProxyUnavailable
+			}
+			wanted, err := service.ProxyRouteForTarget(s.cfg, next.URL.String(), selected)
+			if err != nil {
+				return err
+			}
+			if wanted != selected {
+				return service.ErrAccountProxyUnavailable
+			}
+			if client.CheckRedirect != nil {
+				return client.CheckRedirect(next, via)
+			}
+			return s.redirectChecker(next, via)
+		}
+		return &clone
+	}
 	switch {
 	case service.HTTPUpstreamRedirectsDisabled(ctx):
 		clone := *client
@@ -1635,9 +1656,7 @@ func (d *decompressedBody) Close() error {
 // ProvideHTTPUpstream adds a final, current-binding check in production. Narrow
 // unit tests can still inject a transport through NewHTTPUpstream.
 func ProvideHTTPUpstream(cfg *config.Config, accounts service.AccountRepository, proxies service.ProxyRepository) service.HTTPUpstream {
-	s := NewHTTPUpstream(cfg).(*httpUpstreamService)
-	s.egressAccounts = accounts
-	s.egressProxies = proxies
+	s := &httpUpstreamService{cfg: cfg, clients: make(map[string]*upstreamClientEntry), egressAccounts: accounts, egressProxies: proxies}
 	return s
 }
 

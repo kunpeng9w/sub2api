@@ -27,11 +27,7 @@ func (s *ProxyExpirySuite) TestSweep_SkipsInactiveBackup() {
 			account := s.mkAccountWithProxy(source)
 			_, err = s.repo.SweepExpiredProxies(s.ctx, now)
 			s.Require().NoError(err)
-			if chain {
-				s.Equal(&healthy, s.accountProxyID(account))
-			} else {
-				s.Equal(&source, s.accountProxyID(account))
-			}
+			s.Equal(&source, s.accountProxyID(account), "legacy backup chains must never move an account")
 			got, err := s.repo.GetByID(s.ctx, backup)
 			s.Require().NoError(err)
 			s.Equal("inactive", got.Status, "fallback traversal must not reactivate disabled proxies")
