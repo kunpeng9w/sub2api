@@ -1,0 +1,234 @@
+{
+  "recorded_at": "2026-10-29T08:32:02.635121+08:00",
+  "source_commit": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+  "deployed": false,
+  "build": {
+    "source_commit": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+    "archive": "/home/pk/workspace/sub2api-egress-delivery/1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf/sub2api-linux-amd64.tar.gz",
+    "archive_sha256": "44eabff18981cdfee866ed187954ec5c815a70c6bfd31da8e304f433799ce09e",
+    "binary_sha256": "6535d20036928c966bcd10c447d8449ae4d7c342a2baea1f2dcc72583f6706d0",
+    "build_info": "source_commit=1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf\nactions_run=https://github.com/kunpeng9w/sub2api/actions/runs/40792733142\n",
+    "installed": false,
+    "executed": false
+  },
+  "specialized_tests": {
+    "go_top_level_passes": 32,
+    "go_top_level_failures": [],
+    "python_summary": [
+      "Ran 11 tests in 0.140s",
+      "OK"
+    ],
+    "format_patch_bytes": 0,
+    "frontend_critical_tests": 587,
+    "frontend_critical_test_files": 33,
+    "runtime_security_tests": 4
+  },
+  "full_regression_packages": {
+    "Unit tests": 59,
+    "Integration tests": 53
+  },
+  "baseline": {
+    "observed_at": "2026-10-29T08:02:17.078295+08:00",
+    "services": {
+      "sub2api": {
+        "state": "active",
+        "returncode": 0
+      },
+      "mihomo": {
+        "state": "active",
+        "returncode": 0
+      },
+      "sub2api-egress": {
+        "state": "active",
+        "returncode": 0
+      },
+      "nginx": {
+        "state": "active",
+        "returncode": 0
+      },
+      "postgresql@16-main": {
+        "state": "active",
+        "returncode": 0
+      },
+      "redis-server": {
+        "state": "active",
+        "returncode": 0
+      }
+    },
+    "health": {
+      "status": "ok"
+    },
+    "processes": "MainPID=290778\nExecMainStartTimestamp=Wed 2026-10-28 15:30:06 EDT\n\nMainPID=143062\nExecMainStartTimestamp=Sat 2026-10-24 11:48:04 EDT\n",
+    "binary_build_info": [
+      "bin/sub2api: go1.27.3",
+      "dep\tgolang.org/x/net\tv0.60.0\th1:79p50tfZlm0J9YfoDsSi639qSXNGVwEzOPLCxM2FsYU=",
+      "build\tvcs.revision=cce6dcf6f5d1b42f657dcda0beb0dfe78bdb7d50",
+      "build\tvcs.time=2026-10-27T04:05:16Z",
+      "build\tvcs.modified=false"
+    ]
+  },
+  "guard": {
+    "consistent": true,
+    "phase": "confirmed",
+    "rules_present": true,
+    "tun": "mihomo",
+    "uid": 999
+  },
+  "proxy_impact": [
+    {
+      "active_accounts": 2,
+      "active_bound_accounts": 0,
+      "active_broken_bound_accounts": 0
+    },
+    {
+      "legacy_fallback_proxies": 0
+    }
+  ],
+  "workflow_runs": [
+    {
+      "databaseId": 40792733107,
+      "workflowName": "Security Scan",
+      "headSha": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733107",
+      "jobs": [
+        {
+          "databaseId": 123181649390,
+          "name": "frontend-security",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:15:03Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733107/job/123181649390"
+        },
+        {
+          "databaseId": 123181649519,
+          "name": "backend-security",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:15:08Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733107/job/123181649519"
+        }
+      ]
+    },
+    {
+      "databaseId": 40792733142,
+      "workflowName": "Source and operations verification",
+      "headSha": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733142",
+      "jobs": [
+        {
+          "databaseId": 123181649708,
+          "name": "Operations configuration and existing unit tests",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:14:42Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733142/job/123181649708"
+        },
+        {
+          "databaseId": 123181649957,
+          "name": "Frontend template tests and embedded Linux amd64 build",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:21:34Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733142/job/123181649957"
+        }
+      ]
+    },
+    {
+      "databaseId": 40792732897,
+      "workflowName": "Egress policy simulation",
+      "headSha": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792732897",
+      "jobs": [
+        {
+          "databaseId": 123181648798,
+          "name": "simulate",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:21:28Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792732897/job/123181648798"
+        },
+        {
+          "databaseId": 123181648972,
+          "name": "frontend",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:25Z",
+          "completedAt": "2026-10-29T00:15:00Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792732897/job/123181648972"
+        }
+      ]
+    },
+    {
+      "databaseId": 40792733044,
+      "workflowName": "CI",
+      "headSha": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733044",
+      "jobs": [
+        {
+          "databaseId": 123181649087,
+          "name": "frontend",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:30Z",
+          "completedAt": "2026-10-29T00:17:06Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733044/job/123181649087"
+        },
+        {
+          "databaseId": 123181649290,
+          "name": "shell",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:14:37Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733044/job/123181649290"
+        },
+        {
+          "databaseId": 123181649347,
+          "name": "test",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:29:01Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733044/job/123181649347"
+        },
+        {
+          "databaseId": 123181649440,
+          "name": "release-helpers",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:25Z",
+          "completedAt": "2026-10-29T00:14:35Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733044/job/123181649440"
+        },
+        {
+          "databaseId": 123181649476,
+          "name": "golangci-lint",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-29T00:14:26Z",
+          "completedAt": "2026-10-29T00:20:33Z",
+          "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40792733044/job/123181649476"
+        }
+      ]
+    }
+  ],
+  "security_fixes": [
+    "GO-2026-6860",
+    "GHSA-83rm-6c8r-g728"
+  ],
+  "new_audit_exceptions": false,
+  "initial_go_only_commit": "47e249a12a6a9d1b12c15e3cbaafd61d76f71168"
+}

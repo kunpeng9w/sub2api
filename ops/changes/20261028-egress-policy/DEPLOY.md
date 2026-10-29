@@ -2,6 +2,8 @@
 
 **本文只供操作者手动执行。源码交付和 CI 不执行本文命令。** 网络迁移涉及短时停服务，不能承诺零中断。模拟测试不能替代生产环境的实际稳定性观察。严格传输校验会增加账号/代理元数据读取；本次不做生产压测，第一阶段应独立观察数据库负载与正常请求延迟。
 
+当前候选为 2026-10-29 安全修复版 `1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf`，交付证据见 [安全修复交付](../20261029-security-release/README.md)。必须确认该提交的安全扫描、全量回归和构建均已通过后再执行。首先只执行第 0 节与第 1 节，第二阶段网络迁移另行安排。
+
 两阶段可以分开实施。第一阶段完成后可长期保留当前全量 TUN；不要为了完成本教程而立即进入第二阶段。
 
 ## 0. 准备与停止条件
@@ -17,7 +19,7 @@ set -Eeuo pipefail
 APP_DIR=/home/pk/workspace/sub2api
 POLICY_DIR="$APP_DIR/ops/changes/20261028-egress-policy"
 DELIVERY_DIR=/root/sub2api-egress-delivery
-PRIVATE_DIR=/root/sub2api-egress-20261028
+PRIVATE_DIR=/root/sub2api-egress-20261029
 DATABASE_NAME=sub2api
 umask 077
 mkdir -m 700 "$PRIVATE_DIR"
@@ -25,11 +27,11 @@ mkdir -m 700 "$PRIVATE_DIR"
 
 如果私有目录已存在，使用新的带时间后缀目录，不能覆盖上一次备份。不要把配置、认证信息或备份存入 Git 仓库。
 
-本次已下载的独立 CI 包位于 `/home/pk/workspace/sub2api-egress-delivery/807ebfa0139229dc6569b95ec4863e5815c30fac/`，只是交付文件，没有安装或执行。核对报告里的 SHA256 后，在上述 root shell 中复制到私有交付目录：
+本次已下载的独立 CI 包位于 `/home/pk/workspace/sub2api-egress-delivery/1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf/`，只是交付文件，没有安装或执行。核对报告里的 SHA256 后，在上述 root shell 中复制到私有交付目录：
 
 ```bash
 install -d -o root -g root -m 700 "$DELIVERY_DIR"
-cp /home/pk/workspace/sub2api-egress-delivery/807ebfa0139229dc6569b95ec4863e5815c30fac/{sub2api-linux-amd64.tar.gz,SHA256SUMS,build-info.txt,template-tests.log} "$DELIVERY_DIR/"
+cp /home/pk/workspace/sub2api-egress-delivery/1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf/{sub2api-linux-amd64.tar.gz,SHA256SUMS,build-info.txt,template-tests.log} "$DELIVERY_DIR/"
 ```
 
 预期：仅复制候选包和构建清单。路径不存在、提交不符或校验不符就停止，不能改用在线程序冒充交付包。Actions 构建产物保留 7 天；本地副本保留至操作者自行清理。
@@ -61,6 +63,7 @@ df -h "$APP_DIR" /root
 ```bash
 cd "$DELIVERY_DIR"
 sha256sum -c SHA256SUMS
+printf '%s  %s\n' '44eabff18981cdfee866ed187954ec5c815a70c6bfd31da8e304f433799ce09e' sub2api-linux-amd64.tar.gz | sha256sum -c -
 cat build-info.txt
 tar -tzf sub2api-linux-amd64.tar.gz
 tar -xzf sub2api-linux-amd64.tar.gz -C "$DELIVERY_DIR" sub2api
