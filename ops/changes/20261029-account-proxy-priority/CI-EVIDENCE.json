@@ -1,0 +1,99 @@
+{
+  "recorded_at": "2026-10-29T23:04:30.462656+08:00",
+  "application_commit": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+  "branch": "codex/account-proxy-priority",
+  "deployment_status": "not_deployed",
+  "checks": {
+    "specialized_go_top_level_tests": 37,
+    "network_simulations": 15,
+    "account_proxy_ui_tests": 11,
+    "critical_frontend_tests": 598,
+    "unit_test_packages": 59,
+    "integration_test_packages": 53,
+    "lint_issues": 0
+  },
+  "runs": [
+    {
+      "databaseId": 40894488961,
+      "workflowName": "Source and operations verification",
+      "status": "completed",
+      "conclusion": "success",
+      "headSha": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40894488961"
+    },
+    {
+      "databaseId": 40894488731,
+      "workflowName": "Security Scan",
+      "status": "completed",
+      "conclusion": "success",
+      "headSha": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40894488731"
+    },
+    {
+      "databaseId": 40894488698,
+      "workflowName": "Egress policy simulation",
+      "status": "completed",
+      "conclusion": "success",
+      "headSha": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40894488698"
+    },
+    {
+      "databaseId": 40894488782,
+      "workflowName": "CI",
+      "status": "completed",
+      "conclusion": "success",
+      "headSha": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40894488782"
+    }
+  ],
+  "artifact": {
+    "commit": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+    "delivery_dir": "/home/pk/workspace/sub2api-egress-delivery/5ed77ee58816d638350e26ff22f10918f8dff82a",
+    "archive_sha256": "218abba00e736e3d4999bd060fbc16fb01c4700d4be16193fb5cd99a67887142",
+    "binary_sha256": "89d3c99845988494d44ede994911b288263b7b7b10e302ca78bfbc0ee2943a32",
+    "archive_members": [
+      "sub2api"
+    ],
+    "vcs_modified": false
+  },
+  "readonly_network": {
+    "checked_at": "2026-10-29T22:35:23.661505+08:00",
+    "tun": {
+      "enable": true,
+      "route-address": [
+        "198.18.0.0/16"
+      ],
+      "auto-redirect": false,
+      "strict-route": false,
+      "dns-mode": "disabled",
+      "dns-hijack": []
+    },
+    "routes": {
+      "normal_public": {
+        "dev": "eth0",
+        "table": null
+      },
+      "claude_fake_ip": {
+        "dev": "mihomo",
+        "table": "2022"
+      }
+    },
+    "services": {
+      "sub2api": "active",
+      "mihomo": "active",
+      "dnsmasq-claude": "active",
+      "sub2api-egress": "active"
+    },
+    "health": {
+      "status": "ok"
+    },
+    "scope": "Read-only inspection. No configuration, service or kernel rules changed."
+  },
+  "first_attempt": {
+    "commit": "28f0f09901c61b4473bedc28dae964b74717d49c",
+    "lint_run": 40892633065,
+    "lint_failure": "Two unchecked concrete-client type assertions in added tests. Fixed by checking ok with require.True.",
+    "superseded_full_test_job": "Cancelled after final candidate was submitted; not counted as a passing full test run."
+  },
+  "validation_scope": "CI tests use mocks, loopback proxy servers and isolated database/cache containers. No production service stop, network-rule change, failure injection or real model request."
+}
