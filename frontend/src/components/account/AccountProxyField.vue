@@ -1,11 +1,10 @@
 <template>
-  <div v-if="managed" class="input-hint" data-testid="managed-claude-egress">
-    {{ t('admin.accounts.managedClaudeEgress') }}
-    <button v-if="modelValue !== null" type="button" class="ml-2 text-primary-600" @click="$emit('update:modelValue', null)">
-      {{ t('admin.accounts.clearConflictingProxy') }}
-    </button>
+  <div>
+    <ProxySelector :model-value="modelValue" :proxies="proxies" @update:model-value="$emit('update:modelValue', $event)" />
+    <div v-if="managed" class="input-hint" data-testid="claude-proxy-priority">
+      {{ t('admin.accounts.claudeProxyPriorityHint') }}
+    </div>
   </div>
-  <ProxySelector v-else :model-value="modelValue" :proxies="proxies" @update:model-value="$emit('update:modelValue', $event)" />
 </template>
 
 <script setup lang="ts">
@@ -42,7 +41,7 @@ onMounted(async () => {
     enabled.value = policy.claude_egress_enabled
     domains.value = policy.official_domains
   } catch {
-    // Server-side validation remains authoritative if capabilities cannot load.
+    // Server-side routing remains authoritative if capabilities cannot load.
     enabled.value = false
   }
 })

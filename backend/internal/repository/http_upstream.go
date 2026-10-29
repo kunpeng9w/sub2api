@@ -1677,9 +1677,9 @@ func (s *httpUpstreamService) resolveEgressForRequest(req *http.Request, selecte
 			return "", service.ErrAccountProxyUnavailable
 		}
 		if expected != actual {
-			// Official Claude is selected by policy, including legacy callers that
-			// intentionally have no account-level proxy. Other mismatches block.
-			if actual != "" || s.cfg == nil || !s.cfg.Gateway.ClaudeEgress.Enabled || !service.IsOfficialClaudeAccount(account) {
+			// Only unbound official Claude accounts may omit the managed default.
+			// A bound account must always supply its current proxy, even for Claude.
+			if actual != "" || account.ProxyID != nil || s.cfg == nil || !s.cfg.Gateway.ClaudeEgress.Enabled || !service.IsOfficialClaudeAccount(account) {
 				return "", service.ErrAccountProxyUnavailable
 			}
 		}
@@ -1693,7 +1693,7 @@ func (s *httpUpstreamService) resolveEgressForRequest(req *http.Request, selecte
 	if route != "" {
 		kind = "account_proxy"
 	}
-	if s.cfg != nil && s.cfg.Gateway.ClaudeEgress.Enabled && claudedomain.ContainsURL(req.URL.String()) {
+	if proxyID == nil && s.cfg != nil && s.cfg.Gateway.ClaudeEgress.Enabled && claudedomain.ContainsURL(req.URL.String()) {
 		kind = "claude_mihomo"
 	}
 	identity := int64(0)

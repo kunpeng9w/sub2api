@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// ClaudeEgressConfig is opt-in so an application-only upgrade preserves routing.
+// ClaudeEgressConfig is the opt-in default for official Claude accounts without
+// an explicit proxy binding. Bound accounts always retain their own proxy.
 type ClaudeEgressConfig struct {
 	Enabled  bool   `mapstructure:"enabled"`
 	ProxyURL string `mapstructure:"proxy_url"`

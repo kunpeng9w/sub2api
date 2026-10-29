@@ -2,7 +2,7 @@ name: Egress policy simulation
 
 on:
   push:
-    branches: [codex/strict-egress-policy]
+    branches: [codex/strict-egress-policy, codex/account-proxy-priority]
   workflow_dispatch:
     inputs:
       network_only:

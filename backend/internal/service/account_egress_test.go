@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/oauth"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/stretchr/testify/require"
 )
@@ -80,22 +80,37 @@ func TestStrictEgressUnboundAndThirdPartyRemainNormal(t *testing.T) {
 	require.Equal(t, "http://proxy.invalid:8080", route)
 }
 
-func TestClaudeEgressOfficialPolicyAndConflict(t *testing.T) {
+func TestClaudeEgressAccountProxyTakesPriorityOverManagedDefault(t *testing.T) {
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
 	a := &Account{Platform: PlatformAnthropic, Type: AccountTypeOAuth}
 	route, err := ResolveAccountProxyURL(a, cfg)
 	require.NoError(t, err)
 	require.Equal(t, cfg.Gateway.ClaudeEgress.ProxyURL, route)
-	id := int64(71)
-	a.ProxyID = &id
-	_, err = ResolveAccountProxyURL(a, cfg)
-	require.Error(t, err)
-	require.Error(t, ValidateAccountEgressSettings(a, cfg))
-	_, err = ProxyRouteForTarget(cfg, "https://platform.claude.com/v1/oauth/token", "http://another.invalid:8080")
-	require.Error(t, err)
+	a = strictEgressAccount()
+	a.Platform = PlatformAnthropic
+	for _, managed := range []string{"http://127.0.0.1:7890", "http://127.0.0.1:7891", "invalid-managed-proxy"} {
+		cfg.Gateway.ClaudeEgress.ProxyURL = managed
+		route, err = ResolveAccountProxyURL(a, cfg)
+		require.NoError(t, err)
+		require.Equal(t, a.Proxy.URL(), route)
+		for _, target := range []string{"https://api.anthropic.com/v1/messages", "https://platform.claude.com/v1/oauth/token", "https://claude.ai/api/organizations"} {
+			route, err = ProxyRouteForTarget(cfg, target, route)
+			require.NoError(t, err)
+			require.Equal(t, a.Proxy.URL(), route)
+		}
+	}
+	cfg.Gateway.ClaudeEgress.ProxyURL = "http://127.0.0.1:7890"
+	route, err = ProxyRouteForTarget(cfg, "https://api.anthropic.com/v1/messages", "")
+	require.NoError(t, err)
+	require.Equal(t, cfg.Gateway.ClaudeEgress.ProxyURL, route)
 	route, err = ProxyRouteForTarget(cfg, "https://api.openai.com/v1/responses", "")
 	require.NoError(t, err)
 	require.Empty(t, route)
+	for _, invalid := range []string{" ", "ftp://proxy.invalid:8080", "http://"} {
+		route, err = ProxyRouteForTarget(cfg, "https://api.anthropic.com/v1/messages", invalid)
+		require.ErrorIs(t, err, ErrAccountProxyUnavailable)
+		require.Empty(t, route)
+	}
 }
 
 type strictEgressOAuthClient struct {
@@ -119,17 +134,58 @@ func TestStrictEgressRefreshLookupFailureSendsNoRequest(t *testing.T) {
 }
 
 func TestStrictEgressOAuthSessionCannotChangeProxy(t *testing.T) {
+	for _, managed := range []bool{false, true} {
+		cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: managed, ProxyURL: "http://127.0.0.1:7890"}}}
+		a := strictEgressAccount()
+		repo := &strictEgressProxyRepo{value: a.Proxy}
+		route, err := resolveOAuthSessionProxy(t.Context(), repo, a.ProxyID, nil, a.Proxy.URL(), cfg)
+		require.NoError(t, err)
+		require.Equal(t, a.Proxy.URL(), route)
+		other := int64(72)
+		_, err = resolveOAuthSessionProxy(t.Context(), repo, a.ProxyID, &other, route, cfg)
+		require.Error(t, err)
+		// A change to the managed default cannot invalidate a bound session.
+		cfg.Gateway.ClaudeEgress.ProxyURL = "http://127.0.0.1:7891"
+		_, err = resolveOAuthSessionProxy(t.Context(), repo, a.ProxyID, nil, route, cfg)
+		require.NoError(t, err)
+		repo.value.Host = "changed.invalid"
+		_, err = resolveOAuthSessionProxy(t.Context(), repo, a.ProxyID, nil, route, cfg)
+		require.Error(t, err)
+	}
+}
+
+type strictEgressClaudeOAuthClient struct {
+	ClaudeOAuthClient
+	calls int
+	route string
+}
+
+func (c *strictEgressClaudeOAuthClient) RefreshToken(_ context.Context, _, route string) (*oauth.TokenResponse, error) {
+	c.calls++
+	c.route = route
+	return &oauth.TokenResponse{AccessToken: "simulated-access-token", ExpiresIn: 3600}, nil
+}
+
+func TestClaudeEgressRefreshUsesCurrentBindingAndNeverFallsBack(t *testing.T) {
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
 	a := strictEgressAccount()
+	a.Platform = PlatformAnthropic
 	repo := &strictEgressProxyRepo{value: a.Proxy}
-	route, err := resolveOAuthSessionProxy(t.Context(), repo, a.ProxyID, nil, a.Proxy.URL())
+	client := &strictEgressClaudeOAuthClient{}
+	svc := &OAuthService{cfg: cfg, proxyRepo: repo, oauthClient: client}
+	_, err := svc.RefreshAccountToken(t.Context(), a)
 	require.NoError(t, err)
-	require.Equal(t, a.Proxy.URL(), route)
-	other := int64(72)
-	_, err = resolveOAuthSessionProxy(t.Context(), repo, a.ProxyID, &other, a.Proxy.URL())
-	require.Error(t, err)
-	repo.value.Host = "changed.invalid"
-	_, err = resolveOAuthSessionProxy(t.Context(), repo, a.ProxyID, nil, route)
-	require.Error(t, err)
+	require.Equal(t, a.Proxy.URL(), client.route)
+	repo.err = errors.New("injected proxy lookup failure")
+	_, err = svc.RefreshAccountToken(t.Context(), a)
+	require.ErrorIs(t, err, ErrAccountProxyUnavailable)
+	require.Equal(t, 1, client.calls)
+	require.Equal(t, int64(71), *a.ProxyID)
+	// Unbound accounts continue to use the managed default for refresh as well.
+	a.ProxyID, a.Proxy = nil, nil
+	_, err = svc.RefreshAccountToken(t.Context(), a)
+	require.NoError(t, err)
+	require.Equal(t, cfg.Gateway.ClaudeEgress.ProxyURL, client.route)
 }
 
 func TestStrictEgressExpiryKeepsEveryLegacyBinding(t *testing.T) {
@@ -243,21 +299,35 @@ func TestStrictEgressWebSocketPreservesValidSOCKSBindingAcrossAcquireAndDial(t *
 	}
 }
 
-func TestStrictEgressPolicyConflictsRetainCauseAndAllowNextAccount(t *testing.T) {
+func TestClaudeEgressBrokenBindingNeverFallsBackToManagedDefault(t *testing.T) {
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
-	a := strictEgressAccount()
-	a.Platform = PlatformAnthropic
-	_, err := ResolveAccountProxyURL(a, cfg)
-	var failover *UpstreamFailoverError
-	require.ErrorAs(t, err, &failover)
-	require.True(t, failover.ShouldRetryNextAccount())
-	var original *infraerrors.ApplicationError
-	require.ErrorAs(t, err, &original)
-	require.Equal(t, int32(http.StatusBadRequest), original.Code)
-	// Admin validation remains a configuration error, rather than an inference retry.
-	err = ValidateAccountEgressSettings(a, cfg)
-	require.ErrorAs(t, err, &original)
-	require.False(t, errors.As(err, &failover))
+	for _, scenario := range []string{"missing", "disabled", "expired", "mismatched", "invalid"} {
+		t.Run(scenario, func(t *testing.T) {
+			a := strictEgressAccount()
+			a.Platform = PlatformAnthropic
+			switch scenario {
+			case "missing":
+				a.Proxy = nil
+			case "disabled":
+				a.Proxy.Status = "inactive"
+			case "expired":
+				past := time.Now().Add(-time.Minute)
+				a.Proxy.ExpiresAt = &past
+			case "mismatched":
+				a.Proxy.ID++
+			case "invalid":
+				a.Proxy.Protocol = "ftp"
+			}
+			route, err := ResolveAccountProxyURL(a, cfg)
+			require.Empty(t, route)
+			require.ErrorIs(t, err, ErrAccountProxyUnavailable)
+			var failover *UpstreamFailoverError
+			require.ErrorAs(t, err, &failover)
+			require.True(t, failover.ShouldRetryNextAccount())
+			require.False(t, failover.RetryableOnSameAccount)
+			require.Equal(t, int64(71), *a.ProxyID)
+		})
+	}
 }
 
 type strictEgressSuccessfulWSDialer struct {

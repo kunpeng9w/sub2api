@@ -10,7 +10,6 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claudedomain"
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyurl"
 )
 
@@ -29,29 +28,27 @@ func accountEgressUnavailable(cause error) *UpstreamFailoverError {
 }
 
 // ResolveAccountProxyURL never treats a broken binding as an unbound account.
-// Callers must propagate the error before creating any upstream client.
+// An explicit binding takes priority over the managed Claude default, including
+// when that binding is unavailable. Callers must propagate errors before dialing.
 func ResolveAccountProxyURL(account *Account, configs ...*config.Config) (string, error) {
 	if account == nil {
 		return "", accountEgressUnavailable(fmt.Errorf("%w: account missing", ErrAccountProxyUnavailable))
+	}
+	if account.ProxyID != nil {
+		return validatedBoundProxyURL(account.ProxyID, account.Proxy)
 	}
 	var cfg *config.Config
 	if len(configs) > 0 {
 		cfg = configs[0]
 	}
 	if cfg != nil && cfg.Gateway.ClaudeEgress.Enabled && IsOfficialClaudeAccount(account) {
-		if account.ProxyID != nil {
-			return "", accountEgressUnavailable(infraerrors.BadRequest("CLAUDE_PROXY_CONFLICT", "official Claude accounts use the managed Mihomo egress; remove the account proxy binding"))
-		}
 		route, err := cfg.Gateway.ClaudeEgress.ValidatedProxyURL()
 		if err != nil {
 			return "", accountEgressUnavailable(err)
 		}
 		return route, nil
 	}
-	if account.ProxyID == nil {
-		return "", nil
-	}
-	return validatedBoundProxyURL(account.ProxyID, account.Proxy)
+	return "", nil
 }
 
 func validatedBoundProxyURL(id *int64, proxy *Proxy) (string, error) {
@@ -120,13 +117,6 @@ func IsOfficialClaudeAccount(account *Account) bool {
 	return true
 }
 
-func ValidateAccountEgressSettings(account *Account, cfg *config.Config) error {
-	if cfg != nil && cfg.Gateway.ClaudeEgress.Enabled && IsOfficialClaudeAccount(account) && account.ProxyID != nil {
-		return infraerrors.BadRequest("CLAUDE_PROXY_CONFLICT", "official Claude accounts use the managed Mihomo egress and cannot bind another proxy")
-	}
-	return nil
-}
-
 func (s *OAuthService) resolveClaudeProxy(ctx context.Context, id *int64) (string, error) {
 	return ResolveAccountProxyFromRepository(ctx, s.proxyRepo, &Account{Platform: PlatformAnthropic, ProxyID: id}, s.cfg)
 }
@@ -137,28 +127,26 @@ func resolveOAuthSessionProxy(ctx context.Context, repo ProxyRepository, session
 	if inputID != nil && (sessionID == nil || *inputID != *sessionID) {
 		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
-	route, err := ResolveProxyBinding(ctx, repo, sessionID)
-	if len(configs) > 0 && configs[0] != nil && configs[0].Gateway.ClaudeEgress.Enabled {
-		route, err = ResolveAccountProxyFromRepository(ctx, repo, &Account{Platform: PlatformAnthropic, ProxyID: sessionID}, configs[0])
-	}
+	route, err := ResolveAccountProxyFromRepository(ctx, repo, &Account{Platform: PlatformAnthropic, ProxyID: sessionID}, configs...)
 	if err != nil || route != snapshot {
 		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
 	return route, nil
 }
 
-// ProxyRouteForTarget applies the official-domain policy at the transport boundary.
-// A conflicting account proxy is rejected rather than silently replaced.
+// ProxyRouteForTarget preserves an explicitly selected proxy for every target.
+// Only an unselected official Claude request uses the managed Mihomo default.
+// Account-aware callers must validate the current binding before calling this.
 func ProxyRouteForTarget(cfg *config.Config, target, selectedProxy string) (string, error) {
 	if cfg == nil || !cfg.Gateway.ClaudeEgress.Enabled || !claudedomain.ContainsURL(target) {
 		return selectedProxy, nil
 	}
-	managed, err := cfg.Gateway.ClaudeEgress.ValidatedProxyURL()
-	if err != nil {
-		return "", err
+	if selectedProxy != "" {
+		route, _, err := proxyurl.Parse(selectedProxy)
+		if err != nil || route == "" {
+			return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
+		}
+		return route, nil
 	}
-	if selectedProxy != "" && selectedProxy != managed {
-		return "", accountEgressUnavailable(infraerrors.New(http.StatusServiceUnavailable, "CLAUDE_PROXY_CONFLICT", "official Claude target conflicts with the selected account proxy"))
-	}
-	return managed, nil
+	return cfg.Gateway.ClaudeEgress.ValidatedProxyURL()
 }

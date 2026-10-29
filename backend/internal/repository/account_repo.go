@@ -15,7 +15,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/Wei-Shaw/sub2api/internal/config"
 	"strconv"
 	"strings"
 	"time"
@@ -43,7 +42,6 @@ import (
 //   - sql: 原生 SQL 执行器，用于复杂查询和批量操作
 //   - schedulerCache: 调度器缓存，用于在账号状态变更时同步快照
 type accountRepository struct {
-	cfg    *config.Config
 	client *dbent.Client // Ent ORM 客户端
 	sql    sqlExecutor   // 原生 SQL 执行接口
 	// schedulerCache 用于在账号状态变更时主动同步快照到缓存，
@@ -127,9 +125,6 @@ func newAccountRepositoryWithSQL(client *dbent.Client, sqlq sqlExecutor, schedul
 }
 
 func (r *accountRepository) Create(ctx context.Context, account *service.Account) error {
-	if err := service.ValidateAccountEgressSettings(account, r.cfg); err != nil {
-		return err
-	}
 	if err := createAccountRecord(ctx, r.client, account); err != nil {
 		return err
 	}
@@ -236,9 +231,6 @@ func (r *accountRepository) CreateWithAccountGroups(ctx context.Context, account
 		return err
 	}
 
-	if err := service.ValidateAccountEgressSettings(account, r.cfg); err != nil {
-		return err
-	}
 	if err := createAccountRecord(ctx, txClient, account); err != nil {
 		return err
 	}
@@ -470,9 +462,6 @@ func (r *accountRepository) updateAccount(
 	explicitRateSyncEnabled *bool,
 	explicitRateMultiplier *float64,
 ) error {
-	if err := service.ValidateAccountEgressSettings(account, r.cfg); err != nil {
-		return err
-	}
 	if account == nil {
 		return nil
 	}
@@ -3016,42 +3005,6 @@ func ollamaCloudUsageSnapshotClearRequested(extra map[string]any) bool {
 }
 
 func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates service.AccountBulkUpdate) (int64, error) {
-	if r.cfg != nil && r.cfg.Gateway.ClaudeEgress.Enabled {
-		accounts, err := r.GetByIDs(ctx, ids)
-		if err != nil {
-			return 0, err
-		}
-		for _, account := range accounts {
-			copy := *account
-			if updates.ProxyID != nil {
-				copy.ProxyID = updates.ProxyID
-				if *updates.ProxyID == 0 {
-					copy.ProxyID = nil
-				}
-			}
-			if updates.Credentials != nil {
-				copy.Credentials = make(map[string]any, len(account.Credentials)+len(updates.Credentials))
-				for k, v := range account.Credentials {
-					copy.Credentials[k] = v
-				}
-				for k, v := range updates.Credentials {
-					copy.Credentials[k] = v
-				}
-			}
-			if updates.Extra != nil {
-				copy.Extra = make(map[string]any, len(account.Extra)+len(updates.Extra))
-				for k, v := range account.Extra {
-					copy.Extra[k] = v
-				}
-				for k, v := range updates.Extra {
-					copy.Extra[k] = v
-				}
-			}
-			if err := service.ValidateAccountEgressSettings(&copy, r.cfg); err != nil {
-				return 0, err
-			}
-		}
-	}
 
 	if len(ids) == 0 {
 		return 0, nil
@@ -4131,17 +4084,4 @@ func (r *accountRepository) ListShadowsByParent(ctx context.Context, parentID in
 		out = append(out, accountEntityToService(m))
 	}
 	return out, nil
-}
-
-// ProvideAccountRepository enables deployment-specific official Claude validation.
-func ProvideAccountRepository(client *dbent.Client, db *sql.DB, cache service.SchedulerCache, cfg *config.Config) service.AccountRepository {
-	r := newAccountRepositoryWithSQL(client, db, cache)
-	r.cfg = cfg
-	return r
-}
-
-func ProvideAdminAccountRepository(client *dbent.Client, db *sql.DB, cache service.SchedulerCache, cfg *config.Config) service.AdminAccountRepository {
-	r := newAccountRepositoryWithSQL(client, db, cache)
-	r.cfg = cfg
-	return r
 }

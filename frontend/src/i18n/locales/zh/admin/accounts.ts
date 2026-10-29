@@ -1,7 +1,6 @@
 export default {
     accounts: {
-      managedClaudeEgress: '官方 Claude 账号由服务器统一管理出口',
-      clearConflictingProxy: '清除原代理绑定',
+      claudeProxyPriorityHint: '优先使用账号指定的代理；未设置时使用服务器 Mihomo 出口。账号代理不可用时停止请求，不自动切换。',
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',

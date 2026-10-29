@@ -127,7 +127,7 @@ func TestStrictEgressTransportChecksLatestBindingBeforeAnyDial(t *testing.T) {
 	require.Zero(t, calls.Load())
 }
 
-func TestClaudeEgressTransportSelectsOnlyManagedIngress(t *testing.T) {
+func TestClaudeEgressTransportSelectsManagedDefaultForUnboundAccounts(t *testing.T) {
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
 	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth}
 	client, ok := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{}).(*httpUpstreamService)
@@ -253,7 +253,7 @@ func TestStrictEgressProxyTimeoutNeverDialsDirect(t *testing.T) {
 	require.Equal(t, int64(71), *a.ProxyID)
 }
 
-func TestClaudeEgressRedirectCannotEscapeOrChangePinnedRoute(t *testing.T) {
+func TestClaudeEgressRedirectCannotChangePinnedRoute(t *testing.T) {
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
 	upstream, ok := NewHTTPUpstream(cfg).(*httpUpstreamService)
 	require.True(t, ok)
@@ -261,10 +261,152 @@ func TestClaudeEgressRedirectCannotEscapeOrChangePinnedRoute(t *testing.T) {
 	require.NoError(t, err)
 	redirected, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.anthropic.com/v1/messages", nil)
 	require.NoError(t, err)
-	for _, route := range []string{"", "http://account.invalid:8080"} {
+	// An unproxied request may not acquire a new route during a redirect.
+	client := upstream.httpClientForUpstreamRequest(&http.Client{}, original, "")
+	require.Error(t, client.CheckRedirect(redirected, []*http.Request{original}))
+	for _, route := range []string{"http://account.invalid:8080", cfg.Gateway.ClaudeEgress.ProxyURL} {
 		client := upstream.httpClientForUpstreamRequest(&http.Client{}, original, route)
-		require.Error(t, client.CheckRedirect(redirected, []*http.Request{original}))
+		require.NoError(t, client.CheckRedirect(redirected, []*http.Request{original}))
+		// Official-to-third-party redirects also retain the exact selected exit.
+		client = upstream.httpClientForUpstreamRequest(&http.Client{}, redirected, route)
+		require.NoError(t, client.CheckRedirect(original, []*http.Request{redirected}))
 	}
-	client := upstream.httpClientForUpstreamRequest(&http.Client{}, original, cfg.Gateway.ClaudeEgress.ProxyURL)
-	require.NoError(t, client.CheckRedirect(redirected, []*http.Request{original}))
+}
+
+func TestClaudeEgressBoundProxySurvivesManagedIngressLifecycle(t *testing.T) {
+	var managedCalls, boundCalls, directCalls atomic.Int64
+	newManaged := func() *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			managedCalls.Add(1)
+			w.WriteHeader(http.StatusBadGateway)
+		}))
+	}
+	managed := newManaged()
+	t.Cleanup(managed.Close)
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: managed.URL}}}
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		directCalls.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(origin.Close)
+	bound := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		boundCalls.Add(1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "data: account-proxy\n\n")
+	}))
+	t.Cleanup(bound.Close)
+	p := strictEgressBoundProxy(t, bound.URL)
+	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &p.ID, Proxy: p}
+	client := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
+	for _, state := range []string{"running", "stopped", "restarted"} {
+		switch state {
+		case "stopped":
+			managed.Close()
+		case "restarted":
+			managed = newManaged()
+			t.Cleanup(managed.Close)
+			cfg.Gateway.ClaudeEgress.ProxyURL = managed.URL
+		}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, origin.URL, nil)
+		require.NoError(t, err)
+		selected, err := service.ResolveAccountProxyURL(a, cfg)
+		require.NoError(t, err)
+		resp, err := client.Do(req, selected, a.ID, 1)
+		require.NoError(t, err, state)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Contains(t, string(body), "account-proxy")
+	}
+	// A live managed ingress must not become a fallback when the binding fails.
+	bound.Close()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, origin.URL, nil)
+	require.NoError(t, err)
+	_, err = client.Do(req, p.URL(), a.ID, 1)
+	require.Error(t, err)
+	require.Equal(t, int64(3), boundCalls.Load())
+	require.Zero(t, managedCalls.Load())
+	require.Zero(t, directCalls.Load())
+	require.Equal(t, int64(71), *a.ProxyID)
+}
+
+func TestClaudeEgressTransportRejectsMissingOrChangedBoundRoute(t *testing.T) {
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
+	p := &service.Proxy{ID: 71, Protocol: "socks5", Host: "proxy.invalid", Port: 1080, Status: service.StatusActive}
+	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &p.ID, Proxy: p}
+	proxies := &strictEgressProxies{value: p}
+	client := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, proxies).(*httpUpstreamService)
+	req := httptest.NewRequest(http.MethodGet, "https://api.anthropic.com/api/oauth/usage", nil)
+	for _, omitted := range []string{"", cfg.Gateway.ClaudeEgress.ProxyURL, "http://another.invalid:8080"} {
+		_, err := client.resolveEgressForRequest(req, omitted, a.ID)
+		require.ErrorIs(t, err, service.ErrAccountProxyUnavailable)
+	}
+	route, err := client.resolveEgressForRequest(req, p.URL(), a.ID)
+	require.NoError(t, err)
+	require.Equal(t, "socks5h://proxy.invalid:1080", route)
+	mode, ok := client.egressModes.Load(a.ID)
+	require.True(t, ok)
+	require.Equal(t, "account_proxy:71", mode)
+	// Even a still-hydrated account must not hide a failed repository lookup.
+	proxies.err = errors.New("injected lookup failure")
+	_, err = client.resolveEgressForRequest(req, p.URL(), a.ID)
+	require.Error(t, err)
+}
+
+func TestClaudeEgressBoundProxyReceivesOfficialCONNECTHostname(t *testing.T) {
+	var managedCalls, boundCalls atomic.Int64
+	managed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		managedCalls.Add(1)
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer managed.Close()
+	connectTarget := make(chan string, 1)
+	bound := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		boundCalls.Add(1)
+		if req.Method == http.MethodConnect {
+			connectTarget <- req.Host
+		}
+		// Deliberately stop at the proxy: no official TLS connection is opened.
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer bound.Close()
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: managed.URL}}}
+	p := strictEgressBoundProxy(t, bound.URL)
+	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &p.ID, Proxy: p}
+	client := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.anthropic.com/api/oauth/usage", nil)
+	require.NoError(t, err)
+	_, err = client.Do(req, p.URL(), a.ID, 1)
+	require.Error(t, err)
+	require.Equal(t, int64(1), boundCalls.Load())
+	require.Zero(t, managedCalls.Load())
+	select {
+	case target := <-connectTarget:
+		require.Equal(t, "api.anthropic.com:443", target)
+	default:
+		t.Fatal("account proxy did not receive the official hostname via CONNECT")
+	}
+}
+
+func TestClaudeEgressOAuthClientKeepsExplicitProxy(t *testing.T) {
+	var managedCalls, boundCalls atomic.Int64
+	managed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		managedCalls.Add(1)
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer managed.Close()
+	bound := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		boundCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `[{"uuid":"test-org"}]`)
+	}))
+	defer bound.Close()
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: managed.URL}}}
+	client := ProvideClaudeOAuthClient(cfg).(*claudeOAuthService)
+	client.baseURL = "http://claude.ai"
+	org, err := client.GetOrganizationUUID(t.Context(), "simulated-session-key", bound.URL)
+	require.NoError(t, err)
+	require.Equal(t, "test-org", org)
+	require.Equal(t, int64(1), boundCalls.Load())
+	require.Zero(t, managedCalls.Load())
 }

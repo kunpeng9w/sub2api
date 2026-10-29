@@ -1,7 +1,6 @@
 export default {
     accounts: {
-      managedClaudeEgress: 'Official Claude accounts use the server-managed egress',
-      clearConflictingProxy: 'Clear the existing proxy binding',
+      claudeProxyPriorityHint: 'Use the account proxy when set; otherwise use the server Mihomo egress. If the account proxy is unavailable, requests stop without switching routes.',
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',
