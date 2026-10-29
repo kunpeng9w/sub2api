@@ -880,19 +880,28 @@ function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
       path = 'Terminal'
       content = `export ANTHROPIC_BASE_URL="${baseUrl}"
 export ANTHROPIC_AUTH_TOKEN="${apiKey}"
-export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+export CLAUDE_CODE_ATTRIBUTION_HEADER=1
+export DISABLE_TELEMETRY=1
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+export ENABLE_PROMPT_CACHING_1H=1`
       break
     case 'cmd':
       path = 'Command Prompt'
       content = `set ANTHROPIC_BASE_URL=${baseUrl}
 set ANTHROPIC_AUTH_TOKEN=${apiKey}
-set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+set CLAUDE_CODE_ATTRIBUTION_HEADER=1
+set DISABLE_TELEMETRY=1
+set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+set ENABLE_PROMPT_CACHING_1H=1`
       break
     case 'powershell':
       path = 'PowerShell'
       content = `$env:ANTHROPIC_BASE_URL="${baseUrl}"
 $env:ANTHROPIC_AUTH_TOKEN="${apiKey}"
-$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+$env:CLAUDE_CODE_ATTRIBUTION_HEADER=1
+$env:DISABLE_TELEMETRY=1
+$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+$env:ENABLE_PROMPT_CACHING_1H=1`
       break
     default:
       path = 'Terminal'
@@ -905,10 +914,14 @@ $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
 
   const vscodeContent = `{
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "skipWebFetchPreflight": true,
   "env": {
     "ANTHROPIC_BASE_URL": "${baseUrl}",
     "ANTHROPIC_AUTH_TOKEN": "${apiKey}",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "1",
+    "DISABLE_TELEMETRY": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "ENABLE_PROMPT_CACHING_1H": "1"
   }
 }`
 
