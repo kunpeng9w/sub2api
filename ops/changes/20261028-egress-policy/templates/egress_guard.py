@@ -2,6 +2,7 @@
 """Candidate v2 guard. Installed only by the operator during phase 2."""
 import argparse
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -90,7 +91,19 @@ class Guard:
         matching = [rule for rule in document if rule.get("priority") == RULE_PRIORITY]
         if not matching:
             return False
-        if len(matching) != 1 or matching[0].get("dst") != PREFIX or str(matching[0].get("table")) != str(ROUTE_TABLE):
+        if len(matching) != 1:
+            raise GuardError("reserved policy-rule priority is already in use")
+        rule = matching[0]
+        destination = str(rule.get("dst", ""))
+        # iproute2 versions emit either a CIDR string or separate dst/dstlen
+        # fields. Compare networks so both represent the same owned rule.
+        if "/" not in destination and "dstlen" in rule:
+            destination += "/" + str(rule["dstlen"])
+        try:
+            correct_destination = ipaddress.ip_network(destination) == ipaddress.ip_network(PREFIX)
+        except ValueError:
+            correct_destination = False
+        if not correct_destination or str(rule.get("table")) != str(ROUTE_TABLE):
             raise GuardError("reserved policy-rule priority is already in use")
         return True
 

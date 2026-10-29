@@ -39,7 +39,7 @@ class FakeKernel:
             return ""
         if args[:3] == ["/usr/sbin/ip", "-j", "rule"]:
             if self.rule_conflict: return json.dumps([{"priority": 2000, "dst": "203.0.113.0/24", "table": 254}])
-            return json.dumps([{"priority": 2000, "dst": "198.18.0.0/16", "table": 2022}] if self.policy_rule else [])
+            return json.dumps([{"priority": 2000, "dst": "198.18.0.0", "dstlen": 16, "table": 2022}] if self.policy_rule else [])
         if args[:3] == ["/usr/sbin/ip", "rule", "add"]:
             if self.fail == "policy-rule": raise guard_module.GuardError("simulated policy-rule failure")
             self.policy_rule = True
@@ -66,7 +66,7 @@ class PolicySimulationTests(unittest.TestCase):
     def test_manual_bash_blocks_are_syntax_only_validated(self):
         import re
         import subprocess
-        for name in ["DEPLOY.md", "ROLLBACK.md"]:
+        for name in ["DEPLOY.md", "ROLLBACK.md", "PHASE2-MANUAL.md"]:
             for index, block in enumerate(re.findall(r"```bash\n(.*?)```", (HERE / name).read_text(), re.S)):
                 # -n only parses: no install, systemd, routing or network call runs.
                 result = subprocess.run(["bash", "-n"], input=block, capture_output=True, text=True)
@@ -121,6 +121,31 @@ class PolicySimulationTests(unittest.TestCase):
             self.assertEqual(guard.read()["phase"], "confirmed")
             self.assertFalse(any(args[:3] == ["/usr/sbin/ip", "rule", "add"] for args, _ in fake.events))
             self.assertFalse(any(args[0] == "/usr/sbin/nft" for args, _ in fake.events))
+
+    def test_policy_rule_supports_both_iproute2_json_formats(self):
+        for rule in [
+            {"priority": 2000, "dst": "198.18.0.0/16", "table": 2022},
+            {"priority": 2000, "dst": "198.18.0.0", "dstlen": 16, "table": "2022"},
+        ]:
+            with self.subTest(rule=rule):
+                def execute(args):
+                    self.assertEqual(args, ["/usr/sbin/ip", "-j", "rule", "show"])
+                    return json.dumps([rule])
+                self.assertTrue(guard_module.Guard(execute=execute).policy_rule_present())
+
+    def test_policy_rule_rejects_incorrect_or_ambiguous_destinations(self):
+        correct = {"priority": 2000, "dst": "198.18.0.0", "dstlen": 16, "table": 2022}
+        for rules in [
+            [{**correct, "dstlen": 24}],
+            [{**correct, "dstlen": "invalid"}],
+            [{**correct, "dst": "203.0.113.0"}],
+            [{**correct, "table": 254}],
+            [{"priority": 2000, "dst": "198.18.0.0", "table": 2022}],
+            [correct, correct],
+        ]:
+            with self.subTest(rules=rules):
+                with self.assertRaises(guard_module.GuardError):
+                    guard_module.Guard(execute=lambda args: json.dumps(rules)).policy_rule_present()
 
     def test_fingerprint_change_is_detected(self):
         with tempfile.TemporaryDirectory() as directory:
