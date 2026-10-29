@@ -1,0 +1,503 @@
+{
+  "checked_at_utc": "2026-10-29T03:58:29.289434+00:00",
+  "application_commit": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+  "network_policy_commit": "095d0913cc0cec3bb9c77d47e178dabc6b17f422",
+  "backup_directory": "/root/sub2api-phase2-20261029.retry.zepmvg",
+  "deployment": {
+    "status": "success",
+    "stage": "phase2_active",
+    "network_mutation_started": true,
+    "started_at": "2026-10-29T03:41:46.002462+00:00",
+    "updated_at": "2026-10-29T03:41:55.185378+00:00",
+    "network": {
+      "guard": {
+        "consistent": true,
+        "mode": "claude-only",
+        "phase": "confirmed",
+        "prefix": "198.18.0.0/16"
+      },
+      "dns": {
+        "api.anthropic.com": [
+          "198.18.0.4"
+        ],
+        "example.com": [
+          "104.20.23.154",
+          "172.66.147.243"
+        ]
+      },
+      "fake_route": [
+        {
+          "dst": "198.18.1.1",
+          "gateway": "198.18.0.2",
+          "dev": "mihomo",
+          "table": "2022",
+          "prefsrc": "198.18.0.1",
+          "flags": [],
+          "uid": 0,
+          "cache": []
+        }
+      ],
+      "normal_route": [
+        {
+          "dst": "1.1.1.1",
+          "gateway": "172.17.63.253",
+          "dev": "eth0",
+          "prefsrc": "172.17.59.32",
+          "flags": [],
+          "uid": 0,
+          "cache": []
+        }
+      ]
+    },
+    "health": "ok"
+  },
+  "first_attempt": {
+    "status": "rolled_back",
+    "stage": "phase1_restored",
+    "started_at": "2026-10-29T03:30:25.296746+00:00",
+    "updated_at": "2026-10-29T03:30:40.139144+00:00",
+    "error": "SSH return rule changed"
+  },
+  "services": {
+    "sub2api": {
+      "MainPID": "310143",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Wed 2026-10-28 23:41:54 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "mihomo": {
+      "MainPID": "310039",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Wed 2026-10-28 23:41:53 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "dnsmasq-claude": {
+      "MainPID": "310118",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Wed 2026-10-28 23:41:53 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "sub2api-egress": {
+      "MainPID": "0",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Wed 2026-10-28 23:41:52 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "exited"
+    },
+    "aliyun.service": {
+      "MainPID": "310168",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Wed 2026-10-28 23:41:55 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "nginx": {
+      "MainPID": "119632",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-10-24 06:44:44 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "postgresql@16-main": {
+      "MainPID": "124681",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-10-24 06:48:00 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "redis-server": {
+      "MainPID": "124613",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-10-24 06:47:56 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "systemd-resolved": {
+      "MainPID": "124618",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-10-24 06:47:56 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "running"
+    }
+  },
+  "boot_enabled": {
+    "sub2api": "enabled",
+    "mihomo": "enabled",
+    "dnsmasq-claude": "enabled",
+    "sub2api-egress": "enabled"
+  },
+  "running_binary_sha256": "6535d20036928c966bcd10c447d8449ae4d7c342a2baea1f2dcc72583f6706d0",
+  "configuration_checks": {
+    "application_matches_candidate": true,
+    "mihomo_matches_candidate": true,
+    "managed_claude_enabled": true,
+    "resolv_conf_regular_file": true,
+    "deployment_account_binding_snapshots_identical": true,
+    "egress_guard.py_matches_template": true,
+    "mihomo.service_matches_template": true,
+    "dnsmasq-claude.service_matches_template": true,
+    "dnsmasq-claude.conf_matches_template": true,
+    "resolv.conf_matches_template": true
+  },
+  "guard": {
+    "consistent": true,
+    "mode": "claude-only",
+    "phase": "confirmed",
+    "prefix": "198.18.0.0/16"
+  },
+  "dns": {
+    "api.anthropic.com": [
+      "198.18.0.4"
+    ],
+    "claude.ai": [
+      "198.18.0.5"
+    ],
+    "claude.com": [
+      "198.18.0.6"
+    ],
+    "api.openai.com": [
+      "162.159.140.245",
+      "172.66.0.243"
+    ],
+    "example.com": [
+      "104.20.23.154",
+      "172.66.147.243"
+    ]
+  },
+  "routes": {
+    "198.18.1.1": [
+      {
+        "dst": "198.18.1.1",
+        "gateway": "198.18.0.2",
+        "dev": "mihomo",
+        "table": "2022",
+        "prefsrc": "198.18.0.1",
+        "flags": [],
+        "uid": 0,
+        "cache": []
+      }
+    ],
+    "1.1.1.1": [
+      {
+        "dst": "1.1.1.1",
+        "gateway": "172.17.63.253",
+        "dev": "eth0",
+        "prefsrc": "172.17.59.32",
+        "flags": [],
+        "uid": 0,
+        "cache": []
+      }
+    ],
+    "100.100.2.148": [
+      {
+        "dst": "100.100.2.148",
+        "gateway": "172.17.63.253",
+        "dev": "eth0",
+        "prefsrc": "172.17.59.32",
+        "flags": [],
+        "uid": 0,
+        "cache": []
+      }
+    ]
+  },
+  "table_2022": [
+    {
+      "dst": "198.18.0.0/16",
+      "gateway": "198.18.0.2",
+      "dev": "mihomo",
+      "flags": []
+    }
+  ],
+  "ssh_rules": {
+    "-4": [
+      {
+        "priority": 100,
+        "src": "all",
+        "ipproto": "tcp",
+        "sport": 22,
+        "table": "main"
+      }
+    ],
+    "-6": [
+      {
+        "priority": 100,
+        "src": "all",
+        "ipproto": "tcp",
+        "sport": 22,
+        "table": "main"
+      }
+    ]
+  },
+  "health": {
+    "local": {
+      "method": "GET",
+      "http_status": 200,
+      "tls_verify_result": null,
+      "body": {
+        "status": "ok"
+      }
+    },
+    "public": {
+      "method": "GET",
+      "http_status": 200,
+      "tls_verify_result": 0,
+      "body": {
+        "status": "ok"
+      }
+    }
+  },
+  "logs": {
+    "sub2api": {
+      "since": "Wed 2026-10-28 23:41:54 EDT",
+      "levels": {
+        "INFO": 206
+      },
+      "problem_events": []
+    },
+    "mihomo": {
+      "since": "Wed 2026-10-28 23:41:53 EDT",
+      "levels": {
+        "INFO": 14,
+        "WARNING": 1
+      },
+      "problem_events": [
+        {
+          "timestamp_us": "1793245313136436",
+          "level": "WARNING",
+          "message": "[TUN] default interface changed by monitor, => eth0"
+        }
+      ]
+    },
+    "dnsmasq-claude": {
+      "since": "Wed 2026-10-28 23:41:53 EDT",
+      "levels": {
+        "INFO": 8
+      },
+      "problem_events": []
+    },
+    "aliyun.service": {
+      "since": "Wed 2026-10-28 23:41:55 EDT",
+      "levels": {
+        "INFO": 3
+      },
+      "problem_events": []
+    }
+  },
+  "warning_review": {
+    "message": "[TUN] default interface changed by monitor, => eth0",
+    "source_version": "v1.19.33",
+    "source_path": "listener/sing_tun/server.go",
+    "source_lines": [
+      366,
+      374
+    ],
+    "source_url": "https://github.com/MetaCubeX/mihomo/blob/v1.19.33/listener/sing_tun/server.go#L366-L374",
+    "assessment": "Default-interface callback logs a non-null interface at WARNING; loss uses a separate ERROR branch. One startup occurrence; current eth0 direct routes, Mihomo fake-IP route, DNS and HTTPS checks pass. No configuration change required.",
+    "observed_occurrences": 1
+  },
+  "backup_checksums_verified": true,
+  "orchestration_units": {
+    "sub2api-phase2-switch-20261029-480btl.service": {
+      "MainPID": "0",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Wed 2026-10-28 23:30:24 EDT",
+      "ExecMainStatus": "1",
+      "ActiveState": "failed",
+      "SubState": "failed"
+    },
+    "sub2api-phase2-switch-20261029-zepmvg.service": {
+      "MainPID": "0",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Wed 2026-10-28 23:41:45 EDT",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "exited"
+    }
+  },
+  "limitations": [
+    "No paid model requests",
+    "No production failure injection",
+    "No reboot verification",
+    "Account binding comparison uses the snapshots captured during deployment"
+  ],
+  "result": "passed",
+  "network_ci": {
+    "conclusion": "success",
+    "headSha": "095d0913cc0cec3bb9c77d47e178dabc6b17f422",
+    "jobs": [
+      {
+        "completedAt": "2026-10-29T03:38:13Z",
+        "conclusion": "success",
+        "databaseId": 123248220937,
+        "name": "simulate",
+        "startedAt": "2026-10-29T03:38:01Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-29T03:38:03Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-29T03:38:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:06Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v6",
+            "number": 2,
+            "startedAt": "2026-10-29T03:38:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:06Z",
+            "conclusion": "skipped",
+            "name": "Run actions/setup-go@v6",
+            "number": 3,
+            "startedAt": "2026-10-29T03:38:06Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:06Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-python@v6",
+            "number": 4,
+            "startedAt": "2026-10-29T03:38:06Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:08Z",
+            "conclusion": "success",
+            "name": "Run python -m pip install PyYAML==6.0.3",
+            "number": 5,
+            "startedAt": "2026-10-29T03:38:06Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:08Z",
+            "conclusion": "skipped",
+            "name": "Format candidate source only",
+            "number": 6,
+            "startedAt": "2026-10-29T03:38:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:08Z",
+            "conclusion": "skipped",
+            "name": "Compile and run simulated account egress regressions",
+            "number": 7,
+            "startedAt": "2026-10-29T03:38:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:08Z",
+            "conclusion": "success",
+            "name": "Simulate network policy and manual deployment transitions",
+            "number": 8,
+            "startedAt": "2026-10-29T03:38:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:10Z",
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@v7",
+            "number": 9,
+            "startedAt": "2026-10-29T03:38:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:10Z",
+            "conclusion": "success",
+            "name": "Post Run actions/setup-python@v6",
+            "number": 17,
+            "startedAt": "2026-10-29T03:38:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:10Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v6",
+            "number": 18,
+            "startedAt": "2026-10-29T03:38:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-29T03:38:10Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 19,
+            "startedAt": "2026-10-29T03:38:10Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40813231305/job/123248220937"
+      },
+      {
+        "completedAt": "2026-10-29T03:37:58Z",
+        "conclusion": "skipped",
+        "databaseId": 123248222339,
+        "name": "frontend",
+        "startedAt": "2026-10-29T03:37:58Z",
+        "status": "completed",
+        "steps": [],
+        "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40813231305/job/123248222339"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/kunpeng9w/sub2api/actions/runs/40813231305",
+    "simulation_tests_passed": 15
+  },
+  "earlier_http_probes": {
+    "phase": "immediately after successful switch",
+    "probes": [
+      {
+        "name": "public website",
+        "returncode": 0,
+        "status_remote_tls_connect": "200 8.222.213.180 0 000",
+        "error": "",
+        "method": "HEAD"
+      },
+      {
+        "name": "public health",
+        "returncode": 0,
+        "status_remote_tls_connect": "404 8.222.213.180 0 000",
+        "error": "",
+        "method": "HEAD"
+      },
+      {
+        "name": "VPC package mirror",
+        "returncode": 0,
+        "status_remote_tls_connect": "200 100.100.2.148 0 000",
+        "error": "",
+        "method": "HEAD"
+      },
+      {
+        "name": "official domain via TUN",
+        "returncode": 0,
+        "status_remote_tls_connect": "404 198.18.0.4 0 000",
+        "error": "",
+        "method": "HEAD"
+      },
+      {
+        "name": "official domain via managed HTTP proxy",
+        "returncode": 0,
+        "status_remote_tls_connect": "404 127.0.0.1 0 200",
+        "error": "",
+        "method": "HEAD"
+      }
+    ],
+    "interpretation": "HEAD /health returned 404; final acceptance uses GET /health (200, status ok). Official root-path HEAD 404 with TLS success establishes transport reachability, not model API correctness. HTTP CONNECT via managed proxy returned 200."
+  }
+}
