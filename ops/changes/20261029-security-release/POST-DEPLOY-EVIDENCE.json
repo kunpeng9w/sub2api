@@ -1,0 +1,113 @@
+{
+  "recorded_at": "2026-10-29T09:07:02.937184+08:00",
+  "deployment_performed_by": "user",
+  "verification_scope": "read-only phase-1 post-deployment checks",
+  "result": "passed",
+  "application_commit": "1dce7da6bcd3330c9b4ce92e6e5aa6a8746e2eaf",
+  "running_binary_sha256": "6535d20036928c966bcd10c447d8449ae4d7c342a2baea1f2dcc72583f6706d0",
+  "running_proc_exe_matches_candidate": true,
+  "go_version": "go1.27.3",
+  "x_net_version": "v0.62.0",
+  "application_started_at_singapore": "2026-10-29T08:55:08+08:00",
+  "systemd": {
+    "MainPID": "298600",
+    "NRestarts": "0",
+    "ExecMainStatus": "0",
+    "ActiveState": "active",
+    "SubState": "running"
+  },
+  "services_active": [
+    "sub2api",
+    "mihomo",
+    "sub2api-egress",
+    "nginx",
+    "postgresql@16-main",
+    "redis-server"
+  ],
+  "local_health": "ok",
+  "public_health": "ok",
+  "https_status": 200,
+  "tls_verify_result": 0,
+  "http_checks": {
+    "public_and_local_assets_match": true,
+    "assets_checked": 6,
+    "assets": [
+      {
+        "path": "/assets/index-C0gPlsGl.js",
+        "status": 200,
+        "content_type": "text/javascript"
+      },
+      {
+        "path": "/assets/index-n4TA9nEB.css",
+        "status": 200,
+        "content_type": "text/css"
+      },
+      {
+        "path": "/assets/vendor-i18n-DJCkfKOX.js",
+        "status": 200,
+        "content_type": "text/javascript"
+      },
+      {
+        "path": "/assets/vendor-misc-DB0Q8XAf.css",
+        "status": 200,
+        "content_type": "text/css"
+      },
+      {
+        "path": "/assets/vendor-misc-qs3K7PvU.js",
+        "status": 200,
+        "content_type": "text/javascript"
+      },
+      {
+        "path": "/assets/vendor-vue-lh_A1E_n.js",
+        "status": 200,
+        "content_type": "text/javascript"
+      }
+    ],
+    "login": {
+      "status": 200,
+      "content_type": "text/html"
+    },
+    "admin_without_auth_status": 401
+  },
+  "i18n_runtime": {
+    "asset": "/assets/vendor-i18n-DJCkfKOX.js",
+    "public_matches_local": true,
+    "sha256": "1ad236dd452d0c8b8f118649fba92f25d3b049e1232a775b57490011087213c1",
+    "patched_i18n_version_present": true
+  },
+  "nginx_configuration_test": "passed",
+  "postgres_ready": true,
+  "database_readonly_query": "passed",
+  "redis_ping": "PONG",
+  "active_accounts": 2,
+  "active_bound_accounts": 1,
+  "active_broken_bound_accounts": 0,
+  "legacy_fallback_proxies": 0,
+  "guard": {
+    "phase": "confirmed",
+    "rules_present": true,
+    "consistent": true
+  },
+  "managed_claude_egress_enabled": false,
+  "installed_configuration_matches_prepared_phase1": true,
+  "backup_directory": "/root/sub2api-egress-20261029.FAbSXj",
+  "backup_directory_mode": "0700",
+  "backup_checksums": {
+    "executable": true,
+    "configuration": true,
+    "database_dump": true
+  },
+  "database_dump_catalog_readable": true,
+  "deployment_binding_snapshots_equal": true,
+  "startup_log_sample": {
+    "entries_examined": 140,
+    "info": 140,
+    "warnings": 0,
+    "errors": 0
+  },
+  "limits": [
+    "No paid upstream model requests",
+    "No interactive browser session",
+    "No production fault injection or database restore rehearsal"
+  ]
+}
