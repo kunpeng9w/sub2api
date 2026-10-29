@@ -78,7 +78,7 @@ describe('UseKeyModal', () => {
     expect(wrapper.find('pre code').text()).toContain('ANTHROPIC_BASE_URL')
   })
 
-  it('omits the attribution override from every standard Claude Code setup form', async () => {
+  it('includes the requested defaults in every standard Claude Code setup form', async () => {
     const wrapper = mount(UseKeyModal, {
       props: {
         show: true,
@@ -98,10 +98,10 @@ describe('UseKeyModal', () => {
       }
     })
 
-    for (const [shell, trafficSetting] of [
-      ['macOS / Linux', 'export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1'],
-      ['Windows CMD', 'set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1'],
-      ['PowerShell', '$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1']
+    for (const [shell, prefix] of [
+      ['macOS / Linux', 'export '],
+      ['Windows CMD', 'set '],
+      ['PowerShell', '$env:']
     ]) {
       if (shell !== 'macOS / Linux') {
         const shellTab = wrapper.findAll('button').find(
@@ -116,10 +116,17 @@ describe('UseKeyModal', () => {
       const allCode = codeBlocks.join('\n')
       const settings = JSON.parse(codeBlocks.find((content) => content.includes('"$schema"'))!)
 
-      expect(allCode).not.toContain('CLAUDE_CODE_ATTRIBUTION_HEADER')
-      expect(allCode).toContain(trafficSetting)
-      expect(settings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBe('1')
-      expect(settings.env).not.toHaveProperty('CLAUDE_CODE_ATTRIBUTION_HEADER')
+      for (const name of [
+        'CLAUDE_CODE_ATTRIBUTION_HEADER',
+        'DISABLE_TELEMETRY',
+        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+        'ENABLE_PROMPT_CACHING_1H'
+      ]) {
+        expect(allCode).toContain(`${prefix}${name}=1`)
+        expect(settings.env[name]).toBe('1')
+      }
+      expect(settings.skipWebFetchPreflight).toBe(true)
+      expect(settings.env).not.toHaveProperty('skipWebFetchPreflight')
     }
   })
 
