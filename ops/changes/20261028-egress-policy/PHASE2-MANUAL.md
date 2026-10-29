@@ -4,6 +4,9 @@
 
 **本阶段会短暂停止 Sub2API、Mihomo 和原本运行的云助手 `aliyun.service`。使用独立 SSH 或云控制台 VNC，保留第二个连接；不要在依赖云助手的命令窗口中进行切换。** 在另一个窗口保留本文件及回滚部分，切换可能中断当前工具会话。不要把所有代码块一次性粘贴。
 
+
+**会话要求：各段在同一个 root Bash 中执行。新建 SSH 窗口、再次 `sudo -i` 或 shell 因报错退出后，变量不会自动保留。** 此时先执行 `source /root/本次第二阶段目录/session.env` 恢复变量，再继续。不要重用第一阶段的 session.env，也不要跳过代码块开头的检查。
+
 只读预检时：第一阶段正常；没有官方 Claude 账号代理冲突；`127.0.0.1:53` 可用；优先级 2000 未占用；现有保护 confirmed 且一致；旧试运行 timer inactive。当前 Mihomo 使用全量 TUN 和 redir-host，观察到应用及云助手的旧 TUN 关联连接。除了下面列出的服务，操作者还需确认没有遗漏正在使用旧出口或显式代理的其他客户端；自带 DoH、固定官方 IP、独立远端代理的客户端不属于这套系统 DNS 路由的自动覆盖范围。
 
 一、先安装缺少的 DNS 二进制，应用继续运行。若已经安装 dnsmasq-base 且 `/usr/sbin/dnsmasq` 可执行，可直接进入第二段。
@@ -66,6 +69,19 @@ CHECK
 三、从当前在线配置生成私有候选并备份网络原件。
 
 ```bash
+set -Eeuo pipefail
+: "${APP_DIR:?请先 source 本次第二阶段 session.env}"
+: "${POLICY_DIR:?请先 source 本次第二阶段 session.env}"
+: "${PRIVATE_DIR:?请先 source 本次第二阶段 session.env}"
+: "${CLOUD_ASSIST_WAS_ACTIVE:?请先 source 本次第二阶段 session.env}"
+case "$PRIVATE_DIR" in
+  /root/sub2api-phase2-20261029.*) ;;
+  *) printf '第二阶段备份目录不正确，停止操作\n' >&2; exit 1 ;;
+esac
+test -f "$PRIVATE_DIR/session.env"
+test -x /usr/sbin/dnsmasq
+test -f "$POLICY_DIR/prepare_private_config.py"
+test -f "$APP_DIR/data/config.yaml"
 python3 "$POLICY_DIR/prepare_private_config.py" \
   --mihomo-source /etc/mihomo/config.yaml \
   --app-source "$APP_DIR/data/config.yaml" \
@@ -74,7 +90,7 @@ mkdir -m 700 "$PRIVATE_DIR/phase2"
 cp -a /etc/resolv.conf "$PRIVATE_DIR/phase2/resolv.conf"
 cp -a "$APP_DIR/data/config.yaml" "$PRIVATE_DIR/phase2/config.yaml"
 if systemctl is-enabled mihomo sub2api-egress mihomo-trial-rollback.timer > "$PRIVATE_DIR/phase2/service-enablement.txt"; then
-  printf 'all recorded units enabled\n'
+  printf 'service enablement states recorded\n'
 else
   cat "$PRIVATE_DIR/phase2/service-enablement.txt"
 fi
@@ -105,6 +121,22 @@ python3 "$POLICY_DIR/templates/egress_guard.py" render > "$PRIVATE_DIR/phase2/gu
 四、开始维护切换。先手动暂停前面识别的其他客户端，然后逐段执行。
 
 ```bash
+set -Eeuo pipefail
+: "${APP_DIR:?请先 source 本次第二阶段 session.env}"
+: "${POLICY_DIR:?请先 source 本次第二阶段 session.env}"
+: "${PRIVATE_DIR:?请先 source 本次第二阶段 session.env}"
+: "${CLOUD_ASSIST_WAS_ACTIVE:?请先 source 本次第二阶段 session.env}"
+case "$PRIVATE_DIR" in
+  /root/sub2api-phase2-20261029.*) ;;
+  *) printf '第二阶段备份目录不正确，停止操作\n' >&2; exit 1 ;;
+esac
+test -f "$PRIVATE_DIR/session.env"
+test -x /usr/sbin/dnsmasq
+test -s "$PRIVATE_DIR/phase2/installed.tar"
+test -s "$PRIVATE_DIR/phase2/config.yaml"
+test -s "$PRIVATE_DIR/phase2-candidates/mihomo.yaml"
+test -s "$PRIVATE_DIR/phase2-candidates/application-phase2.yaml"
+sha256sum -c "$PRIVATE_DIR/phase2/files.sha256"
 if [ "$CLOUD_ASSIST_WAS_ACTIVE" -eq 1 ]; then systemctl stop aliyun.service; fi
 systemctl stop sub2api
 systemctl disable --now mihomo-trial-rollback.timer
@@ -129,6 +161,17 @@ systemctl is-active mihomo sub2api-egress dnsmasq-claude
 保护输出必须是 `phase: confirmed`、`mode: claude-only`、`consistent: true`。全部成功后才切换 DNS 文件和应用配置：
 
 ```bash
+set -Eeuo pipefail
+: "${APP_DIR:?请先 source 本次第二阶段 session.env}"
+: "${POLICY_DIR:?请先 source 本次第二阶段 session.env}"
+: "${PRIVATE_DIR:?请先 source 本次第二阶段 session.env}"
+: "${CLOUD_ASSIST_WAS_ACTIVE:?请先 source 本次第二阶段 session.env}"
+case "$PRIVATE_DIR" in
+  /root/sub2api-phase2-20261029.*) ;;
+  *) printf '第二阶段备份目录不正确，停止操作\n' >&2; exit 1 ;;
+esac
+test -f "$PRIVATE_DIR/session.env"
+test -s "$PRIVATE_DIR/phase2-candidates/application-phase2.yaml"
 test ! -e /etc/resolv.conf.egress-new
 test ! -L /etc/resolv.conf.egress-new
 install -o root -g root -m 644 "$POLICY_DIR/templates/resolv.conf" /etc/resolv.conf.egress-new
@@ -141,6 +184,16 @@ systemctl start sub2api
 五、正常状态验收。不要通过停代理、断网或真实模型请求来做故障测试。
 
 ```bash
+set -Eeuo pipefail
+: "${APP_DIR:?请先 source 本次第二阶段 session.env}"
+: "${POLICY_DIR:?请先 source 本次第二阶段 session.env}"
+: "${PRIVATE_DIR:?请先 source 本次第二阶段 session.env}"
+: "${CLOUD_ASSIST_WAS_ACTIVE:?请先 source 本次第二阶段 session.env}"
+case "$PRIVATE_DIR" in
+  /root/sub2api-phase2-20261029.*) ;;
+  *) printf '第二阶段备份目录不正确，停止操作\n' >&2; exit 1 ;;
+esac
+test -f "$PRIVATE_DIR/session.env"
 DEPLOY_READY=0
 for attempt in {1..30}; do
   if curl -fsS --max-time 2 http://127.0.0.1:8080/health > "$PRIVATE_DIR/health-after.json"; then
@@ -165,6 +218,16 @@ ip rule show
 确认通过后恢复云助手及之前暂停的其他客户端，使其重新解析 DNS、建立新连接：
 
 ```bash
+set -Eeuo pipefail
+: "${APP_DIR:?请先 source 本次第二阶段 session.env}"
+: "${POLICY_DIR:?请先 source 本次第二阶段 session.env}"
+: "${PRIVATE_DIR:?请先 source 本次第二阶段 session.env}"
+: "${CLOUD_ASSIST_WAS_ACTIVE:?请先 source 本次第二阶段 session.env}"
+case "$PRIVATE_DIR" in
+  /root/sub2api-phase2-20261029.*) ;;
+  *) printf '第二阶段备份目录不正确，停止操作\n' >&2; exit 1 ;;
+esac
+test -f "$PRIVATE_DIR/session.env"
 if [ "$CLOUD_ASSIST_WAS_ACTIVE" -eq 1 ]; then
   systemctl start aliyun.service
   systemctl is-active aliyun.service
@@ -181,6 +244,18 @@ printf '第二阶段部署完成；备份目录：%s\n' "$PRIVATE_DIR"
 ```bash
 set -Eeuo pipefail
 source /root/sub2api-phase2-20261029.替换为实际后缀/session.env
+set -Eeuo pipefail
+: "${APP_DIR:?请先 source 本次第二阶段 session.env}"
+: "${POLICY_DIR:?请先 source 本次第二阶段 session.env}"
+: "${PRIVATE_DIR:?请先 source 本次第二阶段 session.env}"
+: "${CLOUD_ASSIST_WAS_ACTIVE:?请先 source 本次第二阶段 session.env}"
+case "$PRIVATE_DIR" in
+  /root/sub2api-phase2-20261029.*) ;;
+  *) printf '第二阶段备份目录不正确，停止操作\n' >&2; exit 1 ;;
+esac
+test -f "$PRIVATE_DIR/session.env"
+test -s "$PRIVATE_DIR/phase2/config.yaml"
+test -s "$PRIVATE_DIR/phase2/installed.tar"
 sha256sum -c "$PRIVATE_DIR/phase2/files.sha256"
 systemctl stop sub2api
 systemctl stop mihomo
@@ -208,6 +283,16 @@ systemctl start mihomo
 确认旧保护已恢复为 confirmed 且一致、旧 Mihomo 正常后，按实际存在情况删除本次新增的精确规则和黑洞。以下检查支持切换中途失败、规则尚未创建的情况；若优先级 2000 被其他规则占用则停止，不删除它。
 
 ```bash
+set -Eeuo pipefail
+: "${APP_DIR:?请先 source 本次第二阶段 session.env}"
+: "${POLICY_DIR:?请先 source 本次第二阶段 session.env}"
+: "${PRIVATE_DIR:?请先 source 本次第二阶段 session.env}"
+: "${CLOUD_ASSIST_WAS_ACTIVE:?请先 source 本次第二阶段 session.env}"
+case "$PRIVATE_DIR" in
+  /root/sub2api-phase2-20261029.*) ;;
+  *) printf '第二阶段备份目录不正确，停止操作\n' >&2; exit 1 ;;
+esac
+test -f "$PRIVATE_DIR/session.env"
 RULE_SNAPSHOT=$(ip -4 rule show)
 if printf '%s\n' "$RULE_SNAPSHOT" | grep -q '^2000:'; then
   printf '%s\n' "$RULE_SNAPSHOT" | grep -Eq '^2000:[[:space:]]+from all to 198\.18\.0\.0/16 lookup 2022[[:space:]]*$'

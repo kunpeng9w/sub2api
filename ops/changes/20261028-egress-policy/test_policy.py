@@ -72,6 +72,33 @@ class PolicySimulationTests(unittest.TestCase):
                 result = subprocess.run(["bash", "-n"], input=block, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, f"{name} block {index}: {result.stderr}")
 
+    def test_manual_context_guard_rejects_lost_variables_before_work(self):
+        import re
+        import subprocess
+        text = (HERE / "PHASE2-MANUAL.md").read_text()
+        blocks = re.findall(r"```bash\n(.*?)```", text, re.S)
+        block = next(block for block in blocks if 'prepare_private_config.py' in block)
+        # Execute only the pure shell context guard, never the operational commands.
+        guard = block.split('test -f "$PRIVATE_DIR/session.env"', 1)[0]
+        self.assertNotIn('python3', guard)
+        valid = {"APP_DIR": "/app", "POLICY_DIR": "/policy",
+                 "PRIVATE_DIR": "/root/sub2api-phase2-20261029.fixture",
+                 "CLOUD_ASSIST_WAS_ACTIVE": "1"}
+        for missing in valid:
+            with self.subTest(missing=missing):
+                env = {key: value for key, value in valid.items() if key != missing}
+                result = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", guard + "\nprintf 'CONTEXT_ACCEPTED'"], env=env, text=True, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("CONTEXT_ACCEPTED", result.stdout)
+        for directory in ["", "/", "/phase2", "/root/sub2api-egress-20261029.fixture"]:
+            with self.subTest(directory=directory):
+                result = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", guard + "\nprintf 'CONTEXT_ACCEPTED'"], env={**valid, "PRIVATE_DIR": directory}, text=True, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("CONTEXT_ACCEPTED", result.stdout)
+        result = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", guard + "\nprintf 'CONTEXT_ACCEPTED'"], env=valid, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "CONTEXT_ACCEPTED")
+
     def test_only_fake_prefix_enters_tun_and_no_dns_dependency(self):
         import yaml
         c = yaml.safe_load(generator.render()["mihomo.yaml.example"])
