@@ -104,6 +104,8 @@ tar --acls --xattrs -cpf "$PRIVATE_DIR/phase2/installed.tar" \
   /etc/systemd/system/sub2api.service.d \
   /etc/systemd/system/mihomo-trial-rollback.service \
   /etc/systemd/system/mihomo-trial-rollback.timer \
+  /usr/local/libexec/mihomo-ssh-route \
+  /usr/local/libexec/mihomo-check \
   /usr/local/libexec/egress_guard.py \
   /usr/local/libexec/mihomo_control.py \
   /usr/local/sbin/mihomo-ctl \

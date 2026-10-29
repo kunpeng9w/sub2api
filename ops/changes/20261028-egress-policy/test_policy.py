@@ -113,6 +113,18 @@ class PolicySimulationTests(unittest.TestCase):
         self.assertNotIn("mihomo.service", (HERE / "templates/dnsmasq-claude.service").read_text())
         self.assertNotIn("uid", guard_module.rules())
 
+    def test_candidate_service_preserves_existing_ssh_return_lifecycle(self):
+        original = (HERE.parents[1] / "config/systemd/mihomo.service").read_text().splitlines()
+        candidate = (HERE / "templates/mihomo.service").read_text().splitlines()
+        hooks = [line for line in original if "mihomo-ssh-route" in line]
+        self.assertEqual(len(hooks), 2)
+        for hook in hooks:
+            self.assertIn(hook, candidate)
+        start = next(i for i, line in enumerate(candidate) if line.startswith("ExecStart="))
+        add = candidate.index("ExecStartPre=/usr/local/libexec/mihomo-ssh-route add")
+        self.assertLess(add, start)
+        self.assertIn("ExecStopPost=/usr/local/libexec/mihomo-ssh-route del", candidate)
+
     def test_migration_keeps_locked_intent_and_installs_only_owned_table(self):
         with tempfile.TemporaryDirectory() as directory:
             fake = FakeKernel(); guard = self.new_guard(directory, fake)
