@@ -1,0 +1,124 @@
+{
+  "started_at_utc": "2026-10-29T04:41:46.436733+00:00",
+  "private_evidence_directory": "/root/sub2api-business-smoke-20261029.420268a3",
+  "user_agent": "sub2api-deployment-smoke/a9f9f78157d249b492cf9b5bcb584eff",
+  "request_count": 1,
+  "endpoint": "https://idontknow.site/v1/responses",
+  "run_mode": "simple",
+  "model_requested": "gpt-6.1-sol",
+  "max_output_tokens_requested": 128,
+  "api_key_id": 2,
+  "user_id": 1,
+  "balance_before": "0.00000000",
+  "http_status": 200,
+  "content_type": "text/event-stream",
+  "client_request_id": "a1e7e16a-9d64-4aa3-a3fa-f15df3f089a8",
+  "tls_verified": true,
+  "first_text_ms": 1884,
+  "terminal_event": "response.completed",
+  "duration_ms": 1977,
+  "event_counts": {
+    "response.created": 1,
+    "response.in_progress": 1,
+    "response.output_item.added": 1,
+    "response.content_part.added": 1,
+    "response.output_text.delta": 1,
+    "response.metadata": 1,
+    "response.output_text.done": 1,
+    "response.content_part.done": 1,
+    "response.output_item.done": 1,
+    "response.completed": 1
+  },
+  "response_exactly_ok": true,
+  "response_status": "completed",
+  "usage_from_stream": {
+    "input_tokens": 4232,
+    "input_tokens_details": {
+      "cached_tokens": 4096,
+      "cache_write_tokens": 0
+    },
+    "output_tokens": 5,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 4237
+  },
+  "response_model": "gpt-6.1-sol",
+  "output_text_matches_deltas": true,
+  "usage_rows": [
+    {
+      "id": 4398,
+      "request_id": "client:a1e7e16a-9d64-4aa3-a3fa-f15df3f089a8",
+      "api_key_id": 2,
+      "user_id": 1,
+      "account_id": 4,
+      "model": "gpt-6.1-sol",
+      "requested_model": "gpt-6.1-sol",
+      "upstream_model": "gpt-6.1-sol",
+      "upstream_response_model": "gpt-6.1-sol",
+      "input_tokens": 136,
+      "output_tokens": 5,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 4096,
+      "total_cost": 0.0007316,
+      "actual_cost": 0.0007316,
+      "billing_type": 0,
+      "stream": true,
+      "duration_ms": 1934,
+      "first_token_ms": 1838,
+      "created_at": "2026-10-29T12:41:48.650841+08:00"
+    }
+  ],
+  "balance_after": "0.00000000",
+  "balance_unchanged": true,
+  "result": "passed",
+  "completed_at_utc": "2026-10-29T04:41:48.921201+00:00",
+  "correlated_log_summary": {
+    "levels": {
+      "INFO": 3
+    },
+    "events": [
+      {
+        "level": "INFO",
+        "message": "security_audit.gateway_check_start",
+        "status_code": null,
+        "account_id": null
+      },
+      {
+        "level": "INFO",
+        "message": "security_audit.gateway_check_done",
+        "status_code": null,
+        "account_id": null
+      },
+      {
+        "level": "INFO",
+        "message": "http request completed",
+        "status_code": 200,
+        "account_id": 4
+      }
+    ]
+  },
+  "usage_consistency": {
+    "input_including_cache_matches": true,
+    "output_matches": true,
+    "cache_matches": true,
+    "request_id_matches": true,
+    "single_record": true
+  },
+  "health_after": {
+    "status": "ok"
+  },
+  "guard_after": {
+    "consistent": true,
+    "mode": "claude-only",
+    "phase": "confirmed",
+    "prefix": "198.18.0.0/16"
+  },
+  "limitations": [
+    "Existing OpenAI-compatible API-key account only; no official Claude account available",
+    "Bound-proxy OAuth account was not schedulable and was not tested",
+    "Simple mode records calculated cost without debiting user balance; upstream provider invoice not independently verified",
+    "No reboot or fault injection"
+  ],
+  "cost_interpretation": "Application-calculated cost only; simple mode does not debit user balance. Provider settlement was not independently verified."
+}
