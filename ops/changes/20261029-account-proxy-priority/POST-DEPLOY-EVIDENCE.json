@@ -1,0 +1,37 @@
+{
+  "checked_at": "2026-10-29T23:41:00.526011+08:00",
+  "deployment_status": "deployed_by_user_basic_verification_passed",
+  "application_commit": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+  "systemd": {
+    "MainPID": "335001",
+    "NRestarts": "0",
+    "ExecMainStartTimestamp": "Thu 2026-10-29 23:36:43 +08",
+    "ExecMainStatus": "0",
+    "ActiveState": "active",
+    "SubState": "running"
+  },
+  "listening_at": "2026-10-29T23:36:44.311+0800",
+  "health": {
+    "status": "ok"
+  },
+  "disk_binary_sha256": "89d3c99845988494d44ede994911b288263b7b7b10e302ca78bfbc0ee2943a32",
+  "running_binary_sha256": "89d3c99845988494d44ede994911b288263b7b7b10e302ca78bfbc0ee2943a32",
+  "candidate_match": true,
+  "config_matches_backup": true,
+  "claude_egress_enabled": true,
+  "guard": {
+    "consistent": true,
+    "mihomo_state": "active",
+    "mode": "claude-only",
+    "phase": "confirmed",
+    "prefix": "198.18.0.0/16"
+  },
+  "backup_dir": "/root/sub2api-proxy-priority-20261029-233639.CoRkuw",
+  "backup_manifest_valid": true,
+  "log_levels_since_start": {
+    "INFO": 133,
+    "WARN": 8
+  },
+  "startup_probe_issue": "First deployment health probe ran before port 8080 listened. curl refused connection and the old parser tried to decode its empty output. A later probe succeeded.",
+  "verification_scope": "Read-only checks after user deployment. No production stop/restart, failure injection, rollback or real Claude model request by the assistant."
+}

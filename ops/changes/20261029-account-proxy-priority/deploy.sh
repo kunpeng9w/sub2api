@@ -17,8 +17,15 @@ GUARD=/usr/local/libexec/egress_guard.py
 
 hash_file() { sha256sum -- "$1" | cut -d ' ' -f 1; }
 health() {
-  curl -fsS --max-time 5 http://127.0.0.1:8080/health |
-    python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("status")=="ok" else 1)'
+  local body
+  body=$(curl -fsS --max-time "${1:-5}" http://127.0.0.1:8080/health 2>/dev/null) || return 1
+  python3 -c 'import json,sys
+try:
+    payload = json.load(sys.stdin)
+except ValueError:
+    sys.exit(1)
+sys.exit(0 if isinstance(payload, dict) and payload.get("status") == "ok" else 1)
+' <<<"$body"
 }
 [[ $(hash_file "$RELEASE_DIR/sub2api-linux-amd64.tar.gz") == "$EXPECTED_ARCHIVE" ]]
 [[ $(hash_file "$RELEASE_DIR/sub2api") == "$EXPECTED_BINARY" ]]
@@ -27,7 +34,7 @@ systemctl is-active --quiet sub2api mihomo dnsmasq-claude sub2api-egress
 [[ $(systemctl show sub2api -p WorkingDirectory --value) == "$APP_DIR" ]]
 systemctl show sub2api -p ExecStart --value | grep -Fq "path=$APP_DIR/bin/sub2api ;"
 "$GUARD" verify >/dev/null
-health
+health || { echo "Preflight failed: health endpoint is not ready; no changes made." >&2; exit 1; }
 python3 - "$APP_DIR/data/config.yaml" <<'PY'
 import sys
 import yaml
@@ -64,6 +71,17 @@ set -euo pipefail
 [[ $EUID -eq 0 ]] || { echo 'Run with sudo bash.' >&2; exit 2; }
 backup=$(cd -- "$(dirname -- "$0")" && pwd -P)
 app=/home/pk/workspace/sub2api
+health() {
+  local body
+  body=$(curl -fsS --max-time "${1:-5}" http://127.0.0.1:8080/health 2>/dev/null) || return 1
+  python3 -c 'import json,sys
+try:
+    payload = json.load(sys.stdin)
+except ValueError:
+    sys.exit(1)
+sys.exit(0 if isinstance(payload, dict) and payload.get("status") == "ok" else 1)
+' <<<"$body"
+}
 cd "$backup"
 grep '  sub2api.previous$' SHA256SUMS | sha256sum -c -
 stage=$(mktemp "$app/bin/.sub2api-rollback.XXXXXX")
@@ -75,7 +93,7 @@ systemctl reset-failed sub2api
 systemctl start sub2api
 [[ $(sha256sum "$app/bin/sub2api" | cut -d ' ' -f 1) == $(sha256sum sub2api.previous | cut -d ' ' -f 1) ]]
 for attempt in {1..30}; do
-  if systemctl is-active --quiet sub2api && curl -fsS --max-time 3 http://127.0.0.1:8080/health | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("status")=="ok" else 1)'; then
+  if systemctl is-active --quiet sub2api && health 3; then
     echo 'Previous application restored and healthy. Account bindings and config were not restored or cleared.'
     exit 0
   fi
@@ -115,11 +133,12 @@ mv -fT -- "$stage" "$APP_DIR/bin/sub2api"
 systemctl reset-failed sub2api
 systemctl start sub2api
 ready=0
+echo "Waiting for Sub2API readiness (up to 30 checks)..."
 for attempt in {1..30}; do
   if systemctl is-active --quiet sub2api && health; then ready=1; break; fi
   sleep 1
 done
-[[ $ready == 1 ]]
+[[ $ready == 1 ]] || { echo "Application health did not become ready; deployment will be rolled back." >&2; exit 1; }
 pid=$(systemctl show sub2api -p MainPID --value)
 [[ $pid =~ ^[1-9][0-9]*$ && $(hash_file "/proc/$pid/exe") == "$EXPECTED_BINARY" ]]
 cmp -s -- "$APP_DIR/data/config.yaml" "$backup/config.yaml"

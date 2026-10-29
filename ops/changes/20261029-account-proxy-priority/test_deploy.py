@@ -34,14 +34,26 @@ if name == 'systemctl':
     if args[0] == 'stop': state['active'] = False; save(); sys.exit(0)
     if args[0] == 'reset-failed': sys.exit(0)
     assert args[0] == 'start', args
-    if os.environ.get('SCENARIO') == 'start-failure' and (app/'bin/sub2api').read_bytes() == b'candidate':
+    if os.environ.get('SCENARIO') in ('start-failure', 'rollback-delay') and (app/'bin/sub2api').read_bytes() == b'candidate':
         sys.exit(1)
     state['active'] = True; save()
     shutil.copyfile(app/'bin/sub2api', root/'proc/4321/exe')
 elif name == 'curl':
-    if not state['active'] or (os.environ.get('SCENARIO') == 'health-failure' and (app/'bin/sub2api').read_bytes() == b'candidate'):
-        sys.exit(22)
-    print('{"status":"ok"}')
+    scenario = os.environ.get('SCENARIO')
+    candidate = (app/'bin/sub2api').read_bytes() == b'candidate'
+    if scenario == 'preflight-unavailable' or not state['active'] or (scenario == 'health-failure' and candidate):
+        print("curl: (7) Couldn't connect to server", file=sys.stderr)
+        sys.exit(7)
+    delayed = (scenario == 'startup-delay' and candidate) or (scenario == 'rollback-delay' and 'start' in state['events'] and not candidate)
+    if delayed:
+        state['delayed_probes'] = state.get('delayed_probes', 0) + 1; save()
+        if state['delayed_probes'] <= 2:
+            print("curl: (7) Couldn't connect to server", file=sys.stderr)
+            sys.exit(7)
+    if candidate and scenario in ('invalid-json', 'empty-json', 'unhealthy-json', 'non-object-json'):
+        print({'invalid-json': '<html>not ready</html>', 'empty-json': '', 'unhealthy-json': '{"status":"starting"}', 'non-object-json': '[]'}[scenario])
+    else:
+        print('{"status":"ok"}')
 elif name == 'install':
     shutil.copyfile(args[-2], args[-1]); pathlib.Path(args[-1]).chmod(0o755)
 elif name == 'guard':
@@ -128,6 +140,42 @@ class DeployRecipeTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((self.app/'bin/sub2api').read_bytes(), b'previous')
         self.assertTrue(self.state()['active'])
+
+    def test_startup_delay_is_quiet_and_eventually_succeeds(self):
+        result = self.run_recipe(scenario='startup-delay')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Deployment passed', result.stdout)
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(self.state()['delayed_probes'], 3)
+        self.assertEqual(self.state()['events'], ['stop', 'reset-failed', 'start'])
+
+    def test_rollback_delay_is_quiet_and_eventually_recovers(self):
+        result = self.run_recipe(scenario='rollback-delay')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('Traceback', result.stderr)
+        self.assertNotIn('curl:', result.stderr)
+        self.assertIn('Previous application restored and healthy', result.stdout)
+        self.assertEqual((self.app/'bin/sub2api').read_bytes(), b'previous')
+        self.assertEqual(self.state()['delayed_probes'], 3)
+
+    def test_invalid_health_never_becomes_a_success(self):
+        for scenario in ('invalid-json', 'empty-json', 'unhealthy-json', 'non-object-json'):
+            with self.subTest(scenario=scenario):
+                result = self.run_recipe(scenario=scenario)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn('Traceback', result.stderr)
+                self.assertNotIn('Deployment passed', result.stdout)
+                self.assertIn('Application health did not become ready', result.stderr)
+                self.assertEqual((self.app/'bin/sub2api').read_bytes(), b'previous')
+                self.assertTrue(self.state()['active'])
+
+    def test_unavailable_preflight_reports_failure_without_traceback(self):
+        result = self.run_recipe('--check', scenario='preflight-unavailable')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Preflight failed: health endpoint is not ready', result.stderr)
+        self.assertNotIn('Traceback', result.stderr)
+        self.assertNotIn('curl:', result.stderr)
+        self.assert_untouched()
 
     def test_corrupt_candidate_never_stops_service(self):
         (self.release/'sub2api').write_bytes(b'corrupt')
