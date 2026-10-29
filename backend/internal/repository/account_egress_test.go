@@ -335,7 +335,8 @@ func TestClaudeEgressTransportRejectsMissingOrChangedBoundRoute(t *testing.T) {
 	p := &service.Proxy{ID: 71, Protocol: "socks5", Host: "proxy.invalid", Port: 1080, Status: service.StatusActive}
 	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &p.ID, Proxy: p}
 	proxies := &strictEgressProxies{value: p}
-	client := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, proxies).(*httpUpstreamService)
+	client, ok := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, proxies).(*httpUpstreamService)
+	require.True(t, ok)
 	req := httptest.NewRequest(http.MethodGet, "https://api.anthropic.com/api/oauth/usage", nil)
 	for _, omitted := range []string{"", cfg.Gateway.ClaudeEgress.ProxyURL, "http://another.invalid:8080"} {
 		_, err := client.resolveEgressForRequest(req, omitted, a.ID)
@@ -402,7 +403,8 @@ func TestClaudeEgressOAuthClientKeepsExplicitProxy(t *testing.T) {
 	}))
 	defer bound.Close()
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: managed.URL}}}
-	client := ProvideClaudeOAuthClient(cfg).(*claudeOAuthService)
+	client, ok := ProvideClaudeOAuthClient(cfg).(*claudeOAuthService)
+	require.True(t, ok)
 	client.baseURL = "http://claude.ai"
 	org, err := client.GetOrganizationUUID(t.Context(), "simulated-session-key", bound.URL)
 	require.NoError(t, err)
