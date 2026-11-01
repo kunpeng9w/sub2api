@@ -412,7 +412,7 @@ func TestGrokCatalogSyncKeepsAPIKeyAndCustomURLIdentity(t *testing.T) {
 		account.Credentials["header_overrides"] = map[string]any{"X-Account-Trace": "trace-1"}
 		proxyID := int64(4)
 		account.ProxyID = &proxyID
-		account.Proxy = &Proxy{Protocol: "http", Host: "proxy.example.test", Port: 8080}
+		account.Proxy = &Proxy{ID: proxyID, Protocol: "http", Host: "proxy.example.test", Port: 8080, Status: StatusActive}
 		repo := newGrokCatalogMemoryRepo(account)
 		upstream := newGrokCatalogUpstream(http.StatusOK, `{"data":[{"model":"grok-4.7"}]}`, http.StatusBadGateway, `{"error":"registry-down"}`)
 		svc := grokCatalogSyncService(repo, upstream)
@@ -626,7 +626,7 @@ func TestGrokCatalogBackgroundUsesAccountProxy(t *testing.T) {
 	account.ProxyID = &proxyID
 	repo := newGrokCatalogMemoryRepo(account)
 	upstream := newGrokCatalogUpstream(http.StatusOK, `{"data":[{"model":"grok-4.7"}]}`, http.StatusOK, `{}`)
-	proxy := &Proxy{ID: proxyID, Protocol: "http", Host: "proxy.example.test", Port: 9090}
+	proxy := &Proxy{ID: proxyID, Protocol: "http", Host: "proxy.example.test", Port: 9090, Status: StatusActive}
 	svc := &GrokQuotaService{
 		accountRepo:  repo,
 		httpUpstream: upstream,
