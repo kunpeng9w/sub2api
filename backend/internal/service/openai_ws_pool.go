@@ -96,18 +96,19 @@ type openAIWSHandshakeCompatibilityKey struct {
 }
 
 type openAIWSConnLease struct {
-	auditAccount *Account
-	auditRoute   string
-	auditTarget  string
-	pool         *openAIWSConnPool
-	accountID    int64
-	conn         *openAIWSConn
-	queueWait    time.Duration
-	connPick     time.Duration
-	idleBefore   time.Duration
-	ageBefore    time.Duration
-	reused       bool
-	released     atomic.Bool
+	auditAccount     *Account
+	auditRoute       string
+	auditTarget      string
+	auditTurnStarted atomic.Bool
+	pool             *openAIWSConnPool
+	accountID        int64
+	conn             *openAIWSConn
+	queueWait        time.Duration
+	connPick         time.Duration
+	idleBefore       time.Duration
+	ageBefore        time.Duration
+	reused           bool
+	released         atomic.Bool
 }
 
 func (l *openAIWSConnLease) activeConn() (*openAIWSConn, error) {
@@ -2541,5 +2542,8 @@ func (l *openAIWSConnLease) beginEgressAudit(ctx context.Context, turn int) *Egr
 	if l == nil || l.pool == nil {
 		return nil
 	}
-	return l.pool.auditor.Begin(ctx, l.auditAccount, l.auditRoute, l.auditTarget, "websocket", "conn_id", l.ConnID(), "connection_reused", l.Reused(), "turn_id", turn)
+	// Reused describes acquisition of the lease. Later response turns on that
+	// same lease also reuse its connection, even when it was initially new.
+	previousTurn := l.auditTurnStarted.Swap(true)
+	return l.pool.auditor.Begin(ctx, l.auditAccount, l.auditRoute, l.auditTarget, "websocket", "conn_id", l.ConnID(), "connection_reused", l.Reused() || previousTurn, "turn_id", turn)
 }
