@@ -1,0 +1,77 @@
+{
+  "observed_at": "2026-11-01T15:31:19+08:00",
+  "status": "deployed_core_checks_passed_with_findings",
+  "branch": "codex/upgrade-v0.2.19",
+  "build": {
+    "version": "0.2.19",
+    "source_commit": "6690819d4819b43f4d3d4f670594d3a4b3cec3c0",
+    "build_time_utc": "2026-11-01T05:44:31Z",
+    "binary_sha256": "012b45620c714bc187405a49a14ad3810f583f6fa8ecdb5d3c6ebe0234961d72",
+    "disk_and_running_process_match": true,
+    "matches_verified_build": true
+  },
+  "application": {
+    "pid": 450540,
+    "started_at": "2026-11-01T15:28:42+08:00",
+    "active_state": "active",
+    "sub_state": "running",
+    "automatic_restarts": 0,
+    "memory_bytes_at_final_check": 134160384,
+    "local_health": "ok"
+  },
+  "active_dependencies": ["nginx", "postgresql@16-main", "redis-server", "mihomo", "dnsmasq-claude", "sub2api-egress"],
+  "https": {
+    "vantage": "local nginx via TLS/SNI with curl --resolve",
+    "health_status": 200,
+    "health_body_status": "ok",
+    "tls_verify_result": 0,
+    "frontend_status": 200,
+    "nginx_config_test": "passed",
+    "certificate_expires_utc": "2027-01-22T04:18:45Z"
+  },
+  "authentication": {
+    "invalid_downstream_key_status": 401,
+    "registration_enabled": false,
+    "saved_operator_admin_credentials_status": 401,
+    "admin_login_verified": false
+  },
+  "migrations": [
+    {"filename": "247_scoped_admin_api_keys.sql", "applied_at": "2026-11-01T15:28:42.481898+08:00", "normalized_checksum_matches_source": true},
+    {"filename": "248_group_image_count_billing.sql", "applied_at": "2026-11-01T15:28:42.521646+08:00", "normalized_checksum_matches_source": true}
+  ],
+  "new_schema_verified": ["scoped_admin_api_keys.id", "scoped_admin_api_keys.policy", "scoped_admin_api_keys.deleted_at", "groups.image_count_billing"],
+  "egress_guard": {"consistent": true, "mihomo_state": "active", "mode": "claude-only", "phase": "confirmed"},
+  "natural_traffic_snapshot": {
+    "started_attempts": 19,
+    "completed_attempts": 19,
+    "in_flight_attempts": 0,
+    "outcomes": {"completed": 19},
+    "protocols": {"websocket": 19},
+    "dial_attempts": 8,
+    "websocket_turns": 11,
+    "routes": {"account_proxy": 19},
+    "connection_turn_counts": [9, 2],
+    "each_connection_first_turn_reused": false,
+    "all_subsequent_turns_reused": true,
+    "fresh_exit_ip_probes": 2
+  },
+  "backup": {
+    "directory": "/root/sub2api-before-v0.2.19.VPC5OI",
+    "current_config_identical_to_backup": true,
+    "old_binary_sha256": "deb10cee0365d57554a33b6ac71303f18efb41f1a23e5e12cc9c396de819b3f2",
+    "database_dump_bytes": 2336573,
+    "database_dump_mtime": "2026-11-01T15:28:40.746846+08:00",
+    "pg_restore_list_exit_code": 0,
+    "restore_test_performed": false
+  },
+  "findings": {
+    "application_log_error_fatal_panic_count": 0,
+    "application_log_warning_count": 6,
+    "existing_startup_warning_count": 5,
+    "monitor": {"id": 6, "enabled": true, "account_id": 8, "account_deleted_at": "2026-11-01T14:56:54.403145+08:00", "warning": "channel_monitor: load linked account failed"},
+    "historical_failed_units": ["aegis.service", "sub2api-phase2-switch-20261029-480btl.service"],
+    "web_reply_rules_101_102_present": false
+  },
+  "verification_limits": ["no external-network vantage", "no active paid model probes", "no real HTTP/SSE, Claude, Grok or plugin acceptance", "no isolated migration or old-binary compatibility validation", "no restore, rollback or reboot exercise"],
+  "production_changes_by_this_check": []
+}
