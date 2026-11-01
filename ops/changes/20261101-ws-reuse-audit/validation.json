@@ -1,0 +1,124 @@
+{
+  "observed_at": "2026-11-01T12:41:20.831445+08:00",
+  "status": "acceptance_passed_ready_for_manual_deployment",
+  "source_commit": "5957d502d942d4cfebd9595e269beae5e397e45c",
+  "branch": "codex/egress-audit",
+  "build": {
+    "location": "GitHub Actions",
+    "toolchain": "go1.27.3",
+    "target": "linux/amd64",
+    "embedded_frontend": true,
+    "vcs_modified": false,
+    "release_directory": "/home/pk/workspace/sub2api-egress-delivery/5957d502d942d4cfebd9595e269beae5e397e45c",
+    "binary_sha256": "deb10cee0365d57554a33b6ac71303f18efb41f1a23e5e12cc9c396de819b3f2",
+    "archive_sha256": "25a4e28ed462b9c826078dc156cd07ed8a6695052d9048622b0ac358519f0cc1",
+    "archive_checksum_verified": true,
+    "version_commit_verified": true
+  },
+  "actions": {
+    "source_and_operations": {
+      "id": 41272880391,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41272880391",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Operations configuration and existing unit tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Frontend template tests and embedded Linux amd64 build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Egress audit integration and routing regressions",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "ci": {
+      "id": 41272880393,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41272880393",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "shell",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "frontend",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "release-helpers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "golangci-lint",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "test",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "security": {
+      "id": 41272880406,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41272880406",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "backend-security",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "frontend-security",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  },
+  "regressions": {
+    "top_level_tests_passed": 125,
+    "new_reuse_test": "TestEgressAuditPoolConnectionReuseAcrossTurns",
+    "reuse_cases_passed": [
+      "new connection: false, true, true",
+      "existing pooled connection: true, true",
+      "new replacement at later session turn: false, true",
+      "repeated/from-zero attempt numbers: false, true, true"
+    ],
+    "started_completed_consistent": true,
+    "acquisition_metrics_unchanged": true,
+    "component_race_checks_passed": true
+  },
+  "deployment_recipe": {
+    "isolated_tests": "passed",
+    "live_read_only_preflight": "passed",
+    "apply_executed": false,
+    "isolated_tests_passed": 15,
+    "bash_syntax": "passed"
+  },
+  "baseline": {
+    "application_commit": "742271e18840fdde7fab5c120ee827b122da080c",
+    "binary_sha256": "8de67bdabaa7fb63ccd138cbd4aab5c1c3c362498d99dec6b34dd9d6cc4e443e",
+    "migrations_unchanged": true
+  },
+  "deployed": false,
+  "production_restart_performed": false,
+  "real_multi_turn_validation": "pending user deployment",
+  "repository_check": "passed",
+  "diff_whitespace_check": "passed"
+}
