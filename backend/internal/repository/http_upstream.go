@@ -163,6 +163,7 @@ type openAIHTTP2FallbackState struct {
 // 7. 代理变更时清空旧连接池，避免复用错误代理
 // 8. 账号并发数与连接池上限对应（账号隔离策略下）
 type httpUpstreamService struct {
+	audit          *service.EgressAuditor
 	egressModes    sync.Map
 	egressAccounts service.AccountRepository
 	egressProxies  service.ProxyRepository
@@ -204,16 +205,20 @@ func NewHTTPUpstream(cfg *config.Config) service.HTTPUpstream {
 // 注意:
 //   - 调用方必须关闭 resp.Body，否则会导致 inFlight 计数泄漏
 //   - inFlight > 0 的客户端不会被淘汰，确保活跃请求不被中断
-func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
+func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (resp *http.Response, err error) {
 	if req == nil || req.URL == nil {
 		return nil, fmt.Errorf("upstream request URL missing")
 	}
-	route, routeErr := s.resolveEgressForRequest(req, proxyURL, accountID)
+	route, account, routeErr := s.resolveEgressSnapshot(req, proxyURL, accountID)
 	if routeErr != nil {
+		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
 	proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
+	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)
+	defer func() { attempt.FinishHTTP(resp, err) }()
+	req = attempt.TraceRequest(req)
 	applyGrokCLIProxyHeaders(req)
 	if err := s.validateRequestHost(req); err != nil {
 		return nil, err
@@ -232,7 +237,7 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 	// 执行请求
 	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
 	client = httpClientWithGrokAccessDeniedFallback(client)
-	resp, err := doUpstreamRequest(client, req)
+	resp, err = doUpstreamRequest(client, req)
 	if err != nil {
 		s.recordOpenAIHTTP2Failure(profile, entry.protocolMode, entry.proxyKey, err)
 		// 请求失败，立即减少计数
@@ -256,24 +261,23 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 //
 // profile 为 nil 时不启用 TLS 指纹，行为与 Do 方法相同。
 // profile 非 nil 时使用指定的 Profile 进行 TLS 指纹伪装。
-func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (resp *http.Response, err error) {
+	if profile == nil || (req != nil && req.URL != nil && strings.EqualFold(req.URL.Scheme, "http")) {
+		return s.Do(req, proxyURL, accountID, accountConcurrency)
+	}
 	if req == nil || req.URL == nil {
 		return nil, fmt.Errorf("upstream request URL missing")
 	}
-	route, routeErr := s.resolveEgressForRequest(req, proxyURL, accountID)
+	route, account, routeErr := s.resolveEgressSnapshot(req, proxyURL, accountID)
 	if routeErr != nil {
+		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
 	proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
-	if profile == nil {
-		return s.Do(req, proxyURL, accountID, accountConcurrency)
-	}
-	// Plain HTTP has no TLS handshake to fingerprint. Reuse the normal transport
-	// so a configured HTTP or SOCKS proxy is not bypassed.
-	if req != nil && req.URL != nil && strings.EqualFold(req.URL.Scheme, "http") {
-		return s.Do(req, proxyURL, accountID, accountConcurrency)
-	}
+	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)
+	defer func() { attempt.FinishHTTP(resp, err) }()
+	req = attempt.TraceRequest(req)
 	applyGrokCLIProxyHeaders(req)
 	upstreamProfile := service.HTTPUpstreamProfileDefault
 	if req != nil {
@@ -302,7 +306,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 
 	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
 	client = httpClientWithGrokAccessDeniedFallback(client)
-	resp, err := doUpstreamRequest(client, req)
+	resp, err = doUpstreamRequest(client, req)
 	if err != nil {
 		atomic.AddInt64(&entry.inFlight, -1)
 		atomic.StoreInt64(&entry.lastUsed, time.Now().UnixNano())
@@ -1656,38 +1660,59 @@ func (d *decompressedBody) Close() error {
 // ProvideHTTPUpstream adds a final, current-binding check in production. Narrow
 // unit tests can still inject a transport through NewHTTPUpstream.
 func ProvideHTTPUpstream(cfg *config.Config, accounts service.AccountRepository, proxies service.ProxyRepository) service.HTTPUpstream {
-	s := &httpUpstreamService{cfg: cfg, clients: make(map[string]*upstreamClientEntry), egressAccounts: accounts, egressProxies: proxies}
+	s := &httpUpstreamService{cfg: cfg, clients: make(map[string]*upstreamClientEntry), egressAccounts: accounts, egressProxies: proxies, audit: newUpstreamEgressAuditor(cfg)}
 	return s
 }
 
+func (s *httpUpstreamService) EgressAuditor() *service.EgressAuditor { return s.audit }
+
 func (s *httpUpstreamService) resolveEgressForRequest(req *http.Request, selected string, accountID int64) (string, error) {
+	route, _, err := s.resolveEgressSnapshot(req, selected, accountID)
+	return route, err
+}
+
+func (s *httpUpstreamService) resolveEgressSnapshot(req *http.Request, selected string, accountID int64) (string, *service.Account, error) {
+	snapshot := &service.Account{ID: accountID}
 	var proxyID *int64
 	if accountID > 0 && s.egressAccounts != nil {
 		account, err := s.egressAccounts.GetByID(req.Context(), accountID)
 		if err != nil || account == nil {
-			return "", service.ErrAccountProxyUnavailable
+			return "", snapshot, service.ErrAccountProxyUnavailable
 		}
+		// Copy repository data before hydrating: cached account pointers are shared.
+		copy := *account
+		snapshot = &copy
 		proxyID = account.ProxyID
-		expected, err := service.ResolveAccountProxyFromRepository(req.Context(), s.egressProxies, account, s.cfg)
+		if proxyID != nil {
+			if s.egressProxies == nil {
+				return "", snapshot, service.ErrAccountProxyUnavailable
+			}
+			proxy, err := s.egressProxies.GetByID(req.Context(), *proxyID)
+			if err != nil {
+				return "", snapshot, service.ErrAccountProxyUnavailable
+			}
+			snapshot.Proxy = proxy
+		}
+		expected, err := service.ResolveAccountProxyURL(snapshot, s.cfg)
 		if err != nil {
-			return "", err
+			return "", snapshot, err
 		}
 		actual, _, err := proxyurl.Parse(selected)
 		if err != nil {
-			return "", service.ErrAccountProxyUnavailable
+			return "", snapshot, service.ErrAccountProxyUnavailable
 		}
 		if expected != actual {
 			// Only unbound official Claude accounts may omit the managed default.
 			// A bound account must always supply its current proxy, even for Claude.
 			if actual != "" || account.ProxyID != nil || s.cfg == nil || !s.cfg.Gateway.ClaudeEgress.Enabled || !service.IsOfficialClaudeAccount(account) {
-				return "", service.ErrAccountProxyUnavailable
+				return "", snapshot, service.ErrAccountProxyUnavailable
 			}
 		}
 		selected = expected
 	}
 	route, err := service.ProxyRouteForTarget(s.cfg, req.URL.String(), selected)
 	if err != nil {
-		return "", err
+		return "", snapshot, err
 	}
 	kind := "normal"
 	if route != "" {
@@ -1705,5 +1730,20 @@ func (s *httpUpstreamService) resolveEgressForRequest(req *http.Request, selecte
 	if !loaded || previous != mode {
 		slog.Info("upstream_egress_selected", "account_id", accountID, "route_kind", kind, "proxy_id", proxyID)
 	}
-	return route, nil
+	return route, snapshot, nil
+}
+
+func newUpstreamEgressAuditor(cfg *config.Config) *service.EgressAuditor {
+	var probeCfg config.Config
+	if cfg != nil {
+		probeCfg = *cfg
+	}
+	if len(probeCfg.Security.ProxyProbe.URLs) == 0 {
+		probeCfg.Security.ProxyProbe.URLs = []config.ProbeURLConfig{{URL: "https://api64.ipify.org?format=json", Parser: "ipify"}}
+	}
+	managedRoute := ""
+	if cfg != nil && cfg.Gateway.ClaudeEgress.Enabled {
+		managedRoute = cfg.Gateway.ClaudeEgress.ProxyURL
+	}
+	return service.NewEgressAuditor(managedRoute, NewProxyExitInfoProber(&probeCfg))
 }

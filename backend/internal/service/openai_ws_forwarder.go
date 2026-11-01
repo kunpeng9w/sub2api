@@ -277,6 +277,7 @@ func (s *OpenAIGatewayService) getOpenAIWSConnPool() *openAIWSConnPool {
 		if s.openaiWSPool == nil {
 			s.openaiWSPool = newOpenAIWSConnPool(s.cfg)
 			s.openaiWSPool.egressAccounts = s.accountRepo
+			s.openaiWSPool.auditor = EgressAuditorFrom(s.httpUpstream)
 		}
 	})
 	return s.openaiWSPool

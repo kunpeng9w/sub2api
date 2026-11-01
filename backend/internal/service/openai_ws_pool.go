@@ -96,15 +96,18 @@ type openAIWSHandshakeCompatibilityKey struct {
 }
 
 type openAIWSConnLease struct {
-	pool       *openAIWSConnPool
-	accountID  int64
-	conn       *openAIWSConn
-	queueWait  time.Duration
-	connPick   time.Duration
-	idleBefore time.Duration
-	ageBefore  time.Duration
-	reused     bool
-	released   atomic.Bool
+	auditAccount *Account
+	auditRoute   string
+	auditTarget  string
+	pool         *openAIWSConnPool
+	accountID    int64
+	conn         *openAIWSConn
+	queueWait    time.Duration
+	connPick     time.Duration
+	idleBefore   time.Duration
+	ageBefore    time.Duration
+	reused       bool
+	released     atomic.Bool
 }
 
 func (l *openAIWSConnLease) activeConn() (*openAIWSConn, error) {
@@ -850,6 +853,7 @@ type openAIWSPoolMetrics struct {
 
 type openAIWSConnPool struct {
 	egressAccounts AccountRepository
+	auditor        *EgressAuditor
 	cfg            *config.Config
 	// 通过接口解耦底层 WS 客户端实现，默认使用 coder/websocket。
 	clientDialer openAIWSClientDialer
@@ -1115,6 +1119,7 @@ func (p *openAIWSConnPool) Acquire(ctx context.Context, req openAIWSAcquireReque
 	}
 	route, routeErr := p.resolveRequestEgress(ctx, req)
 	if routeErr != nil {
+		p.auditor.Rejected(ctx, req.Account, req.ProxyURL, req.WSURL, "websocket")
 		return nil, routeErr
 	}
 	req.ProxyURL = route
@@ -1137,10 +1142,18 @@ func (p *openAIWSConnPool) Acquire(ctx context.Context, req openAIWSAcquireReque
 	}
 	if lease != nil && lease.conn != nil {
 		// Binding/endpoint/expiry may have changed while this request waited.
-		if _, err := p.resolveRequestEgress(ctx, req); err != nil {
+		_, snapshot, err := p.resolveRequestEgressSnapshot(ctx, req)
+		if err != nil {
+			p.auditor.Rejected(ctx, req.Account, req.ProxyURL, req.WSURL, "websocket")
 			lease.Release()
 			return nil, err
 		}
+		copy := *snapshot
+		if snapshot.Proxy != nil {
+			proxyCopy := *snapshot.Proxy
+			copy.Proxy = &proxyCopy
+		}
+		lease.auditAccount, lease.auditRoute, lease.auditTarget = &copy, req.ProxyURL, req.WSURL
 		now := time.Now()
 		lease.idleBefore = lease.conn.idleDuration(now)
 		lease.ageBefore = lease.conn.age(now)
@@ -2134,8 +2147,9 @@ func (p *openAIWSConnPool) dialConn(ctx context.Context, req openAIWSAcquireRequ
 	if p == nil {
 		return nil, errors.New("ws pool missing")
 	}
-	route, routeErr := p.resolveRequestEgress(ctx, req)
+	route, snapshot, routeErr := p.resolveRequestEgressSnapshot(ctx, req)
 	if routeErr != nil {
+		p.auditor.Rejected(ctx, req.Account, req.ProxyURL, req.WSURL, "websocket")
 		return nil, routeErr
 	}
 	req.ProxyURL = route
@@ -2150,7 +2164,7 @@ func (p *openAIWSConnPool) dialConn(ctx context.Context, req openAIWSAcquireRequ
 			return nil, err
 		}
 	}
-	conn, status, handshakeHeaders, err := p.clientDialer.Dial(ctx, req.WSURL, headers, req.ProxyURL)
+	conn, status, handshakeHeaders, err := dialWithEgressAudit(ctx, p.clientDialer, p.auditor, snapshot, req.WSURL, headers, req.ProxyURL, "websocket")
 	if err != nil {
 		var handshakeErr *openAIWSHandshakeError
 		var responseBody []byte
@@ -2491,29 +2505,46 @@ func stringsTrim(value string) string {
 }
 
 func (p *openAIWSConnPool) resolveEgress(ctx context.Context, selected *Account) (string, error) {
-	if selected == nil {
-		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
-	}
-	if p.egressAccounts == nil {
-		return ResolveAccountProxyURL(selected, p.cfg)
-	}
-	current, err := p.egressAccounts.GetByID(ctx, selected.ID)
-	if err != nil || current == nil || !grokCredentialProxyIDsEqual(current.ProxyID, selected.ProxyID) {
-		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
-	}
-	return ResolveAccountProxyURL(current, p.cfg)
+	route, _, err := p.resolveEgressSnapshot(ctx, selected)
+	return route, err
 }
 
-// Compare canonical routes, so the mandatory socks5 -> socks5h DNS policy does
-// not reject an otherwise unchanged SOCKS binding supplied by a legacy caller.
+func (p *openAIWSConnPool) resolveEgressSnapshot(ctx context.Context, selected *Account) (string, *Account, error) {
+	if selected == nil {
+		return "", nil, accountEgressUnavailable(ErrAccountProxyUnavailable)
+	}
+	current := selected
+	if p.egressAccounts != nil {
+		loaded, err := p.egressAccounts.GetByID(ctx, selected.ID)
+		if err != nil || loaded == nil || !grokCredentialProxyIDsEqual(loaded.ProxyID, selected.ProxyID) {
+			return "", nil, accountEgressUnavailable(ErrAccountProxyUnavailable)
+		}
+		current = loaded
+	}
+	route, err := ResolveAccountProxyURL(current, p.cfg)
+	return route, current, err
+}
+
+// Compare canonical routes, including the socks5 -> socks5h DNS policy.
 func (p *openAIWSConnPool) resolveRequestEgress(ctx context.Context, req openAIWSAcquireRequest) (string, error) {
-	expected, err := p.resolveEgress(ctx, req.Account)
+	route, _, err := p.resolveRequestEgressSnapshot(ctx, req)
+	return route, err
+}
+func (p *openAIWSConnPool) resolveRequestEgressSnapshot(ctx context.Context, req openAIWSAcquireRequest) (string, *Account, error) {
+	expected, account, err := p.resolveEgressSnapshot(ctx, req.Account)
 	if err != nil {
-		return "", err
+		return "", account, err
 	}
 	selected, _, err := proxyurl.Parse(req.ProxyURL)
 	if err != nil || selected != expected {
-		return "", accountEgressUnavailable(ErrAccountProxyUnavailable)
+		return "", account, accountEgressUnavailable(ErrAccountProxyUnavailable)
 	}
-	return expected, nil
+	return expected, account, nil
+}
+
+func (l *openAIWSConnLease) beginEgressAudit(ctx context.Context, turn int) *EgressAuditAttempt {
+	if l == nil || l.pool == nil {
+		return nil
+	}
+	return l.pool.auditor.Begin(ctx, l.auditAccount, l.auditRoute, l.auditTarget, "websocket", "conn_id", l.ConnID(), "connection_reused", l.Reused(), "turn_id", turn)
 }

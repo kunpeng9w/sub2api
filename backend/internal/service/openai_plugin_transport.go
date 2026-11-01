@@ -35,7 +35,7 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 			}
 			proxyURL = currentRoute
 		}
-		response, handled, err := s.pluginManager.RoundTripOpenAIOAuth(request.Context(), request, proxyURL, account)
+		response, handled, err := s.pluginManager.RoundTripOpenAIOAuth(withEgressAuditor(request.Context(), s.httpUpstream), request, proxyURL, account)
 		if handled {
 			return response, err
 		}
@@ -59,7 +59,7 @@ func (s *AccountTestService) doOpenAIAccountTestUpstream(
 			}
 			proxyURL = currentRoute
 		}
-		response, handled, err := s.pluginManager.RoundTripOpenAIOAuth(request.Context(), request, proxyURL, account)
+		response, handled, err := s.pluginManager.RoundTripOpenAIOAuth(withEgressAuditor(request.Context(), s.httpUpstream), request, proxyURL, account)
 		if handled {
 			return response, err
 		}

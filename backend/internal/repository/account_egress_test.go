@@ -67,7 +67,7 @@ func TestStrictEgressHTTPAndSSEFailureNeverUsesDirectOrBackup(t *testing.T) {
 	p.BackupProxyID = &backupID
 	a := &service.Account{ID: 4, Platform: service.PlatformOpenAI, ProxyID: &p.ID, Proxy: p}
 	accounts, proxies := &strictEgressAccounts{value: a}, &strictEgressProxies{value: p}
-	client := ProvideHTTPUpstream(nil, accounts, proxies)
+	client := strictEgressHTTPUpstream(nil, accounts, proxies)
 	for i := 0; i < 2; i++ {
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, upstream.URL, nil)
 		require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestStrictEgressTransportChecksLatestBindingBeforeAnyDial(t *testing.T) {
 	p := strictEgressBoundProxy(t, proxy.URL)
 	a := &service.Account{ID: 4, ProxyID: &p.ID, Proxy: p}
 	proxies := &strictEgressProxies{value: p}
-	client := ProvideHTTPUpstream(nil, &strictEgressAccounts{value: a}, proxies)
+	client := strictEgressHTTPUpstream(nil, &strictEgressAccounts{value: a}, proxies)
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://upstream.invalid", nil)
 	require.NoError(t, err)
 	for _, scenario := range []string{"lookup", "missing", "disabled", "expired", "changed", "omitted"} {
@@ -130,7 +130,7 @@ func TestStrictEgressTransportChecksLatestBindingBeforeAnyDial(t *testing.T) {
 func TestClaudeEgressTransportSelectsManagedDefaultForUnboundAccounts(t *testing.T) {
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: "http://127.0.0.1:7890"}}}
 	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth}
-	client, ok := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{}).(*httpUpstreamService)
+	client, ok := strictEgressHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{}).(*httpUpstreamService)
 	require.True(t, ok)
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://api.anthropic.com/v1/messages", nil)
 	require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestStrictEgressCrossAccountRetryKeepsEachBindingAndInvalidatesChangedRoute
 	a1 := &service.Account{ID: 4, ProxyID: &p1.ID, Proxy: p1}
 	a2 := &service.Account{ID: 5, ProxyID: &p2.ID, Proxy: p2}
 	accounts, proxies := &strictEgressAccounts{}, &strictEgressProxies{}
-	client := ProvideHTTPUpstream(nil, accounts, proxies)
+	client := strictEgressHTTPUpstream(nil, accounts, proxies)
 	for _, attempt := range []struct {
 		account *service.Account
 		proxy   *service.Proxy
@@ -241,7 +241,7 @@ func TestStrictEgressProxyTimeoutNeverDialsDirect(t *testing.T) {
 	defer close(release)
 	p := strictEgressBoundProxy(t, proxy.URL)
 	a := &service.Account{ID: 4, ProxyID: &p.ID, Proxy: p}
-	client := ProvideHTTPUpstream(nil, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
+	client := strictEgressHTTPUpstream(nil, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
 	ctx, cancel := context.WithTimeout(t.Context(), 150*time.Millisecond)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, upstream.URL, nil)
@@ -297,7 +297,7 @@ func TestClaudeEgressBoundProxySurvivesManagedIngressLifecycle(t *testing.T) {
 	t.Cleanup(bound.Close)
 	p := strictEgressBoundProxy(t, bound.URL)
 	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &p.ID, Proxy: p}
-	client := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
+	client := strictEgressHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
 	for _, state := range []string{"running", "stopped", "restarted"} {
 		switch state {
 		case "stopped":
@@ -335,7 +335,7 @@ func TestClaudeEgressTransportRejectsMissingOrChangedBoundRoute(t *testing.T) {
 	p := &service.Proxy{ID: 71, Protocol: "socks5", Host: "proxy.invalid", Port: 1080, Status: service.StatusActive}
 	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &p.ID, Proxy: p}
 	proxies := &strictEgressProxies{value: p}
-	client, ok := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, proxies).(*httpUpstreamService)
+	client, ok := strictEgressHTTPUpstream(cfg, &strictEgressAccounts{value: a}, proxies).(*httpUpstreamService)
 	require.True(t, ok)
 	req := httptest.NewRequest(http.MethodGet, "https://api.anthropic.com/api/oauth/usage", nil)
 	for _, omitted := range []string{"", cfg.Gateway.ClaudeEgress.ProxyURL, "http://another.invalid:8080"} {
@@ -374,7 +374,7 @@ func TestClaudeEgressBoundProxyReceivesOfficialCONNECTHostname(t *testing.T) {
 	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: managed.URL}}}
 	p := strictEgressBoundProxy(t, bound.URL)
 	a := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &p.ID, Proxy: p}
-	client := ProvideHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
+	client := strictEgressHTTPUpstream(cfg, &strictEgressAccounts{value: a}, &strictEgressProxies{value: p})
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.anthropic.com/api/oauth/usage", nil)
 	require.NoError(t, err)
 	_, err = client.Do(req, p.URL(), a.ID, 1)
@@ -411,4 +411,12 @@ func TestClaudeEgressOAuthClientKeepsExplicitProxy(t *testing.T) {
 	require.Equal(t, "test-org", org)
 	require.Equal(t, int64(1), boundCalls.Load())
 	require.Zero(t, managedCalls.Load())
+}
+
+// Keep policy/transport tests offline: the production provider enables exit-IP
+// probing, which must not create extra requests in the fake proxy counters.
+func strictEgressHTTPUpstream(cfg *config.Config, accounts service.AccountRepository, proxies service.ProxyRepository) service.HTTPUpstream {
+	s := ProvideHTTPUpstream(cfg, accounts, proxies).(*httpUpstreamService)
+	s.audit = service.NewEgressAuditor("", nil)
+	return s
 }

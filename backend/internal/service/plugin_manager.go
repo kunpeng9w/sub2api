@@ -944,7 +944,7 @@ func (m *PluginManager) ReadUIAsset(ctx context.Context, id int64, relative stri
 	return data, path, nil
 }
 
-func (m *PluginManager) RoundTripOpenAIOAuth(ctx context.Context, request *http.Request, proxyURL string, account *Account) (*http.Response, bool, error) {
+func (m *PluginManager) RoundTripOpenAIOAuth(ctx context.Context, request *http.Request, proxyURL string, account *Account) (response *http.Response, handled bool, err error) {
 	if !m.ShouldRouteOpenAIOAuth(account) {
 		return nil, false, nil
 	}
@@ -952,6 +952,9 @@ func (m *PluginManager) RoundTripOpenAIOAuth(ctx context.Context, request *http.
 	if route == nil {
 		return nil, false, nil
 	}
+	auditor, _ := ctx.Value(egressAuditorContextKey{}).(*EgressAuditor)
+	audit := auditor.Begin(ctx, account, proxyURL, request.URL.String(), "http_plugin")
+	defer func() { audit.FinishHTTP(response, err) }()
 	if route.runtime == nil {
 		return nil, true, fmt.Errorf("OpenAI OAuth 插件不可用: %s", route.unavailable)
 	}
@@ -965,7 +968,7 @@ func (m *PluginManager) RoundTripOpenAIOAuth(ctx context.Context, request *http.
 	if !route.runtime.beginRequest() {
 		return nil, true, errors.New("OpenAI OAuth 插件正在停止")
 	}
-	response, err := route.runtime.roundTrip(ctx, request, proxyURL, account)
+	response, err = route.runtime.roundTrip(ctx, request, proxyURL, account)
 	if err != nil {
 		route.runtime.finishRequest()
 		if route.runtime.client.Exited() {

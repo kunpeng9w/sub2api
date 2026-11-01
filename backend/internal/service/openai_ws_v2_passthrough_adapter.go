@@ -858,6 +858,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	}
 	proxyURL, egressErr := ResolveAccountProxyURL(account, s.cfg)
 	if egressErr != nil {
+		EgressAuditorFrom(s.httpUpstream).Rejected(ctx, account, proxyURL, wsURL, "websocket_passthrough")
 		return egressErr
 	}
 
@@ -876,7 +877,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			return fmt.Errorf("refresh ws authentication headers: %w", err)
 		}
 		dialCtx, cancelDial := context.WithTimeout(ctx, s.openAIWSDialTimeout())
-		upstreamConn, statusCode, handshakeHeaders, err = dialer.Dial(dialCtx, wsURL, headers, proxyURL)
+		upstreamConn, statusCode, handshakeHeaders, err = dialWithEgressAudit(dialCtx, dialer, EgressAuditorFrom(s.httpUpstream), account, wsURL, headers, proxyURL, "websocket_passthrough")
 		cancelDial()
 		if err == nil {
 			break
@@ -921,6 +922,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	if !ok {
 		return errors.New("openai ws passthrough upstream connection does not support frame relay")
 	}
+	auditFrames := newEgressAuditFrameConn(upstreamFrameConn, EgressAuditorFrom(s.httpUpstream), account, proxyURL, wsURL)
+	defer auditFrames.finish(context.Canceled)
+	upstreamFrameConn = auditFrames
 	relayUpstreamFrameConn := &openAIWSPassthroughFirstOutputFrameConn{
 		inner:             upstreamFrameConn,
 		activeReadTimeout: s.openAIWSPassthroughIdleTimeout(),
