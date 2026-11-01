@@ -145,6 +145,47 @@ func TestSyncGrokObservedModelsRejectsOAuthCustomURLOutsideOperatorPolicy(t *tes
 	require.Nil(t, upstream.lastReq)
 }
 
+func TestStrictEgressGrokObservedModelsValidatesCurrentBinding(t *testing.T) {
+	for _, scenario := range []string{"valid", "missing repository", "lookup failure", "missing proxy", "disabled proxy"} {
+		t.Run(scenario, func(t *testing.T) {
+			account := strictEgressAccount()
+			account.Platform = PlatformGrok
+			account.Credentials = map[string]any{"access_token": "test-token"}
+			proxy := *account.Proxy
+			proxyRepo := &strictEgressProxyRepo{value: &proxy}
+			var proxies ProxyRepository = proxyRepo
+			switch scenario {
+			case "missing repository":
+				proxies = nil
+			case "lookup failure":
+				proxyRepo.err = errors.New("injected lookup failure")
+			case "missing proxy":
+				proxyRepo.value = nil
+			case "disabled proxy":
+				proxy.Status = "inactive"
+			}
+			repo := &grokQuotaAccountRepo{mockAccountRepoForPlatform: &mockAccountRepoForPlatform{
+				accountsByID: map[int64]*Account{account.ID: account},
+			}}
+			upstream := &httpUpstreamRecorder{resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(`{"data":[{"id":"grok-4.5"}]}`)),
+			}}
+			svc := &GrokQuotaService{accountRepo: repo, proxyRepo: proxies, httpUpstream: upstream, cfg: &config.Config{}}
+			err := svc.syncGrokObservedModels(t.Context(), account)
+			if scenario == "valid" {
+				require.NoError(t, err)
+				require.NotNil(t, upstream.lastReq)
+				require.Equal(t, proxy.URL(), upstream.lastProxyURL)
+			} else {
+				require.ErrorIs(t, err, ErrAccountProxyUnavailable)
+				require.Nil(t, upstream.lastReq)
+			}
+			require.EqualValues(t, 71, *account.ProxyID)
+		})
+	}
+}
+
 func TestSyncGrokObservedModelsUsesCLIIdentityAndAccountHeaders(t *testing.T) {
 	account := &Account{
 		ID:       902,

@@ -156,7 +156,7 @@ func (s *GrokQuotaService) prepareGrokObservedModelsRequest(ctx context.Context,
 
 	proxyURL, egressErr := ResolveAccountProxyFromRepository(ctx, s.proxyRepo, account, s.cfg)
 	if egressErr != nil {
-		return egressErr
+		return nil, "", egressErr
 	}
 	if s.httpUpstream == nil {
 		return nil, "", nil
