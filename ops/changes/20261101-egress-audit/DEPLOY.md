@@ -1,6 +1,6 @@
 # 请求出口审计：手动部署操作单
 
-状态：**验收通过，产物校验和服务器只读预检通过，等待用户手动部署；尚未部署。**最终验收记录见 [validation.json](validation.json)。[完整 CI](https://github.com/kunpeng9w/sub2api/actions/runs/41270389665)、[安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/41270389709) 均通过。
+状态：**用户已于新加坡时间 2026-11-01 12:14:06 完成部署，无需重复部署。**基础检查、已观察到的 WebSocket 业务及日志待修正项见 [上线检查](POST-DEPLOY.md)。以下操作保留供恢复参考。最终验收记录见 [validation.json](validation.json)。[完整 CI](https://github.com/kunpeng9w/sub2api/actions/runs/41270389665)、[安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/41270389709) 均通过。
 
 候选源码提交：`742271e18840fdde7fab5c120ee827b122da080c`，分支 `codex/egress-audit`。前后端均由 GitHub Actions 构建，本机只下载、校验和暂存产物。[构建与审计回归记录](https://github.com/kunpeng9w/sub2api/actions/runs/41270389720)。本次补充请求出口日志，并修复两个前端间接依赖；没有数据库迁移。
 

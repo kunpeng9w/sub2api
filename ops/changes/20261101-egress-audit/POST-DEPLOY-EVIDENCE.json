@@ -1,0 +1,127 @@
+{
+  "checked_at": "2026-11-01T12:18:40.436095+08:00",
+  "deployment_status": "deployed_by_user_basic_and_observed_websocket_verification_passed_with_logging_followup",
+  "application_commit": "742271e18840fdde7fab5c120ee827b122da080c",
+  "systemd": {
+    "MainPID": "427823",
+    "NRestarts": "0",
+    "ExecMainStartTimestamp": "Sun 2026-11-01 12:14:06 +08",
+    "ExecMainStatus": "0",
+    "ActiveState": "active",
+    "SubState": "running"
+  },
+  "services": {
+    "sub2api": "active",
+    "nginx": "active",
+    "postgresql@16-main": "active",
+    "redis-server": "active",
+    "mihomo": "active",
+    "dnsmasq-claude": "active",
+    "sub2api-egress": "active"
+  },
+  "disk_binary_sha256": "8de67bdabaa7fb63ccd138cbd4aab5c1c3c362498d99dec6b34dd9d6cc4e443e",
+  "running_binary_sha256": "8de67bdabaa7fb63ccd138cbd4aab5c1c3c362498d99dec6b34dd9d6cc4e443e",
+  "candidate_match": true,
+  "health": {
+    "status": "ok"
+  },
+  "local_nginx_tls_health": {
+    "status": "ok"
+  },
+  "embedded_frontend_http_status": "200",
+  "guard": {
+    "consistent": true,
+    "mode": "claude-only",
+    "phase": "confirmed",
+    "prefix": "198.18.0.0/16"
+  },
+  "backup_dir": "/root/sub2api-egress-audit-20261101-121400.IRUKyU",
+  "backup_manifest_valid": true,
+  "backup_old_binary_sha256": "89d3c99845988494d44ede994911b288263b7b7b10e302ca78bfbc0ee2943a32",
+  "config_matches_backup": true,
+  "rollback_script_exists": true,
+  "current_process_logs": {
+    "levels": {
+      "WARN": 5,
+      "INFO": 111
+    },
+    "warning_messages": [
+      {
+        "level": "WARN",
+        "message": "security.url_allowlist.enabled=false; allowlist/SSRF checks disabled (minimal format validation only)."
+      },
+      {
+        "level": "WARN",
+        "message": "security.url_allowlist.enabled=false; allowlist/SSRF checks disabled (minimal format validation only)."
+      },
+      {
+        "level": "WARN",
+        "message": "[Pricing] Fallback merge skipped: open ./resources/model-pricing/model_prices_and_context_window.json: no such file or directory"
+      },
+      {
+        "level": "WARN",
+        "message": "Warning: server.trusted_proxies is not configured; disabling the forwarded-IP compatibility switch will use direct peer addresses only"
+      },
+      {
+        "level": "WARN",
+        "message": "Warning: CORS allowed_origins not configured; cross-origin requests will be rejected."
+      }
+    ],
+    "http_statuses": {
+      "200": 20
+    },
+    "events": {
+      "upstream_egress_started": 11,
+      "upstream_egress_probe_completed": 1,
+      "upstream_egress_completed": 11
+    },
+    "outcomes": {
+      "completed": 11
+    }
+  },
+  "observed_audit": {
+    "started_attempts": 11,
+    "completed_attempts": 11,
+    "pending_attempts": 0,
+    "dial_attempts": 4,
+    "response_turns": 7,
+    "distinct_turn_connections": 1,
+    "turn_numbers": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "turn_connection_reused_flags": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "required_fields_present": true,
+    "all_turns_have_user_key_and_request_ids": true,
+    "proxy_names_present": true,
+    "proxy_endpoints_without_credentials": true,
+    "sensitive_field_names_observed": [],
+    "probe_statuses": {
+      "fresh": 1
+    },
+    "successful_probe_ips_valid_global": true,
+    "observed_protocols": [
+      "websocket"
+    ]
+  },
+  "known_followup": {
+    "field": "connection_reused",
+    "issue": "Same pooled WebSocket connection with increasing turn_id continues to log false because the value is the original lease-acquisition flag. conn_id and turn_id still correlate the successful turns.",
+    "source": "backend/internal/service/openai_ws_pool.go:2544",
+    "production_behavior_impact_observed": false
+  },
+  "verification_scope": "Read-only post-deployment checks and existing natural WebSocket traffic. No assistant deployment, restart, rollback, failure injection, or paid model probe. HTTP/SSE and Claude/Mihomo request paths not yet observed in the audited traffic snapshot."
+}
