@@ -1,6 +1,6 @@
 # 请求出口日志补充
 
-源码实现；尚未替换线上程序或重启服务。没有数据库迁移。
+源码实现；尚未替换线上程序或重启服务。没有数据库迁移。 手动部署步骤见 [DEPLOY.md](DEPLOY.md)，最终验收与构建来源见 [validation.json](validation.json)。
 
 每条网关上游请求日志记录 Sub2API 用户 ID、API Key ID（非密钥）、上游账号 ID/名称、代理 ID、IP 管理中的名称、代理地址、目标域名与请求关联标识。`proxy_name` 和 `proxy_endpoint_name` 均表示代理名称；走受管本机代理时为 `Mihomo`，没有应用层代理时为 `直连`。`proxy_endpoint` 单独保存去掉认证信息的协议、主机和端口。
 
@@ -57,7 +57,7 @@ bash ops/changes/20261101-egress-audit/test-isolated.sh
 bash ops/changes/20261101-egress-audit/test-isolated.sh -race
 ```
 
-完整包测试因已有 Ent 包编译在本机持续换页而主动停止，没有把中止视为通过。仓库检查与差异空白检查通过；发布前需在资源充足环境完成上述完整包专项及常规 CI。线上程序未替换。
+早期完整包测试因已有 Ent 包编译在本机持续换页而主动停止，没有把中止视为通过。本次验收将完整编译移至 GitHub Actions；最终候选 `742271e18840fdde7fab5c120ee827b122da080c` 的 124 项出口/传输专项回归（含 9 项新审计测试）、7 项组件 race 检查和嵌入前端构建已通过。完整常规 CI 的最终状态和下载产物摘要以 [validation.json](validation.json) 为准。仓库检查与差异空白检查通过，线上程序未替换。
 
 ## 验收时补充的依赖修复
 

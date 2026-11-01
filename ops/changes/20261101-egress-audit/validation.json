@@ -1,16 +1,135 @@
 {
-  "date": "2026-11-01",
-  "isolated_audit_tests": {
-    "count": 7,
-    "passed": true,
-    "race_detector_passed": true,
-    "scope": "Exact audit sources and tests with minimal model/interface stubs; excludes service/repository/middleware integration"
+  "observed_at": "2026-11-01T12:03:40.071836+08:00",
+  "status": "acceptance_passed_ready_for_manual_deployment",
+  "source_commit": "742271e18840fdde7fab5c120ee827b122da080c",
+  "branch": "codex/egress-audit",
+  "build": {
+    "location": "GitHub Actions",
+    "toolchain": "go1.27.3",
+    "target": "linux/amd64",
+    "embedded_frontend": true,
+    "vcs_modified": false,
+    "release_directory": "/home/pk/workspace/sub2api-egress-delivery/742271e18840fdde7fab5c120ee827b122da080c",
+    "binary_sha256": "8de67bdabaa7fb63ccd138cbd4aab5c1c3c362498d99dec6b34dd9d6cc4e443e",
+    "archive_sha256": "ffcec58454c62a81361776a3665c85ecdb164205eedb2a8510fbb77dec623e06",
+    "archive_checksum_verified": true,
+    "version_commit_verified": true
   },
+  "actions": {
+    "source_and_operations": {
+      "id": 41270389720,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41270389720",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Egress audit integration and routing regressions",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Frontend template tests and embedded Linux amd64 build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Operations configuration and existing unit tests",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "ci": {
+      "id": 41270389665,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41270389665",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "release-helpers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "test",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "frontend",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "shell",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "golangci-lint",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "security": {
+      "id": 41270389709,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41270389709",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "backend-security",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "frontend-security",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  },
+  "audit_regressions": {
+    "top_level_tests_passed": 124,
+    "new_audit_tests_passed": 9,
+    "component_race_tests_passed": 7,
+    "packages": [
+      "internal/service",
+      "internal/repository"
+    ],
+    "middleware_package": "compiled successfully; no tests matched the audit-specific filter; covered by full CI"
+  },
+  "deployment_recipe": {
+    "isolated_tests_passed": 15,
+    "bash_syntax": "passed",
+    "live_read_only_preflight": "passed",
+    "apply_executed": false,
+    "automatic_failure_recovery_tested": "isolated mocks only"
+  },
+  "baseline": {
+    "application_commit": "5ed77ee58816d638350e26ff22f10918f8dff82a",
+    "binary_sha256": "89d3c99845988494d44ede994911b288263b7b7b10e302ca78bfbc0ee2943a32",
+    "migrations_unchanged": true
+  },
+  "dependency_fixes": [
+    {
+      "package": "decode-uri-component",
+      "from": "0.4.1",
+      "to": "0.5.1",
+      "advisory": "https://github.com/advisories/GHSA-qr28-fpjm-wq7f"
+    },
+    {
+      "package": "follow-redirects",
+      "from": "1.16.1",
+      "to": "1.16.2",
+      "advisory": "https://github.com/advisories/GHSA-mrwp-f3q8-3g9p"
+    }
+  ],
+  "deployed": false,
+  "production_restart_performed": false,
+  "real_model_sse_websocket_validation": "pending user deployment and business acceptance",
   "repository_check": "passed",
-  "diff_whitespace_check": "passed",
-  "full_package_tests": {
-    "status": "stopped",
-    "reason": "Existing Ent compilation caused sustained swapping on the low-memory production host; requires CI on a larger runner"
-  },
-  "deployed": false
+  "diff_whitespace_check": "passed"
 }
