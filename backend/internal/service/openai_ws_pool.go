@@ -2504,11 +2504,6 @@ func stringsTrim(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func (p *openAIWSConnPool) resolveEgress(ctx context.Context, selected *Account) (string, error) {
-	route, _, err := p.resolveEgressSnapshot(ctx, selected)
-	return route, err
-}
-
 func (p *openAIWSConnPool) resolveEgressSnapshot(ctx context.Context, selected *Account) (string, *Account, error) {
 	if selected == nil {
 		return "", nil, accountEgressUnavailable(ErrAccountProxyUnavailable)

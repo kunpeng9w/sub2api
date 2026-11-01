@@ -22,7 +22,8 @@ func TestEgressAuditHTTPUsesCurrentProxyNameWithoutChangingBinding(t *testing.T)
 	stale := *p
 	stale.Name = "旧名称"
 	account := &service.Account{ID: 4, Name: "上游账号", ProxyID: &p.ID, Proxy: &stale}
-	s := strictEgressHTTPUpstream(nil, &strictEgressAccounts{value: account}, &strictEgressProxies{value: p}).(*httpUpstreamService)
+	s, ok := strictEgressHTTPUpstream(t, nil, &strictEgressAccounts{value: account}, &strictEgressProxies{value: p}).(*httpUpstreamService)
+	require.True(t, ok)
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://upstream.invalid/v1", nil)
 	require.NoError(t, err)
 	route, snapshot, err := s.resolveEgressSnapshot(req, p.URL(), account.ID)
