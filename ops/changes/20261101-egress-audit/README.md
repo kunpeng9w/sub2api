@@ -1,6 +1,6 @@
 # 请求出口日志补充
 
-用户已于新加坡时间 2026-11-01 12:14:06 完成部署，基础与已观察到的 WebSocket 验收通过，存在一项连接复用日志标记待修正。详见 [上线检查](POST-DEPLOY.md)。没有数据库迁移。手动部署与回滚操作保留在 [DEPLOY.md](DEPLOY.md)，部署前构建验收见 [validation.json](validation.json)。
+用户已于新加坡时间 2026-11-01 12:14:06 完成部署，基础与已观察到的 WebSocket 验收通过，当时发现的连接复用日志标记问题已在后续构建修正上线，见 [修正版本验收及使用说明](../20261101-ws-reuse-audit/POST-DEPLOY.md)。详见 [上线检查](POST-DEPLOY.md)。没有数据库迁移。手动部署与回滚操作保留在 [DEPLOY.md](DEPLOY.md)，部署前构建验收见 [validation.json](validation.json)。
 
 每条网关上游请求日志记录 Sub2API 用户 ID、API Key ID（非密钥）、上游账号 ID/名称、代理 ID、IP 管理中的名称、代理地址、目标域名与请求关联标识。`proxy_name` 和 `proxy_endpoint_name` 均表示代理名称；走受管本机代理时为 `Mihomo`，没有应用层代理时为 `直连`。`proxy_endpoint` 单独保存去掉认证信息的协议、主机和端口。
 

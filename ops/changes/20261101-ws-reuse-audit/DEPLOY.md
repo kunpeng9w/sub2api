@@ -1,6 +1,6 @@
 # WebSocket 连接复用日志修正：手动部署
 
-状态：**验收通过，产物校验、15 项部署模拟和服务器只读预检通过；等待用户手动部署，尚未部署。**源码提交为 `5957d502d942d4cfebd9595e269beae5e397e45c`，分支 `codex/egress-audit`。[构建和专项回归](https://github.com/kunpeng9w/sub2api/actions/runs/41272880391) 已通过。[完整 CI](https://github.com/kunpeng9w/sub2api/actions/runs/41272880393) 和 [安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/41272880406) 均通过，最终记录见 [validation.json](validation.json)。
+状态：**用户已于新加坡时间 2026-11-01 12:44:09 完成部署，复用日志修正已验证生效，无需重复部署。** 见 [上线验收](POST-DEPLOY.md)。以下步骤保留供恢复参考。源码提交为 `5957d502d942d4cfebd9595e269beae5e397e45c`，分支 `codex/egress-audit`。[构建和专项回归](https://github.com/kunpeng9w/sub2api/actions/runs/41272880391) 已通过。[完整 CI](https://github.com/kunpeng9w/sub2api/actions/runs/41272880393) 和 [安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/41272880406) 均通过，最终记录见 [validation.json](validation.json)。
 
 产物已下载到 `/home/pk/workspace/sub2api-egress-delivery/5957d502d942d4cfebd9595e269beae5e397e45c/`。程序 SHA256 为 `deb10cee0365d57554a33b6ac71303f18efb41f1a23e5e12cc9c396de819b3f2`，构建包 SHA256 为 `25a4e28ed462b9c826078dc156cd07ed8a6695052d9048622b0ac358519f0cc1`。
 
