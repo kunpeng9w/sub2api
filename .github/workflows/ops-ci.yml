@@ -93,10 +93,11 @@ jobs:
           GOOS: linux
           GOARCH: amd64
         run: |
+          source_version=$(./scripts/resolve-version.sh)
           source_commit=$(git rev-parse HEAD)
           build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           go build -mod=readonly -tags=embed -trimpath \
-            -ldflags "-s -w -X main.Version=0.2.18 -X main.Commit=$source_commit -X main.Date=$build_date -X main.BuildType=source" \
+            -ldflags "-s -w -X main.Version=$source_version -X main.Commit=$source_commit -X main.Date=$build_date -X main.BuildType=source" \
             -o "$RUNNER_TEMP/sub2api" ./cmd/server
           "$RUNNER_TEMP/sub2api" -version
           go version -m "$RUNNER_TEMP/sub2api"
@@ -106,10 +107,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/delivery"
           tar -czf "$RUNNER_TEMP/delivery/sub2api-linux-amd64.tar.gz" -C "$RUNNER_TEMP" sub2api
           cp "$RUNNER_TEMP/template-tests.log" "$RUNNER_TEMP/delivery/"
+          "$RUNNER_TEMP/sub2api" -version > "$RUNNER_TEMP/delivery/version.txt"
+          go version -m "$RUNNER_TEMP/sub2api" > "$RUNNER_TEMP/delivery/build-provenance.txt"
+          (cd "$RUNNER_TEMP" && sha256sum sub2api) > "$RUNNER_TEMP/delivery/sub2api.sha256"
+          source_version=$(backend/scripts/resolve-version.sh)
           cd "$RUNNER_TEMP/delivery"
           sha256sum sub2api-linux-amd64.tar.gz > SHA256SUMS
-          printf 'source_commit=%s\nactions_run=%s/%s/actions/runs/%s\n' \
-            "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > build-info.txt
+          printf 'source_version=%s\nsource_commit=%s\nactions_run=%s/%s/actions/runs/%s\n' \
+            "$source_version" "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > build-info.txt
       - uses: actions/upload-artifact@v7
         with:
           name: sub2api-linux-amd64-${{ github.sha }}

@@ -1,6 +1,6 @@
 # Sub2API 源码与服务器运维
 
-本仓库以官方 **v0.2.18**（`ac1b8f1271be0d674fa6f074403c1410f30a3a81`）为基线，保留官方完整源码和提交历史。`origin` 是 `kunpeng9w/sub2api`，`upstream` 是 `Wei-Shaw/sub2api`。已有部署仓库的初始化提交也保留在历史中。
+本分支源码以官方 **v0.2.19**（`dece26153621959ccd7635814f4b2d08304e681a`）为基线，保留官方完整源码和本地定制提交历史。`origin` 是 `kunpeng9w/sub2api`，`upstream` 是 `Wei-Shaw/sub2api`。已有部署仓库的初始化提交也保留在历史中。升级构建说明见 [v0.2.19 定制升级](changes/20261101-upgrade-v0.2.19/README.md)；源码基线升级不代表线上已部署，以下带日期的部署记录保留其历史含义。
 
 `backend/`、`frontend/`、`deploy/` 等目录沿用官方结构；服务器额外配置、脚本、审计及验证材料集中在本目录。官方文档仍以官方行为为准，本页说明本机实际差异。
 
@@ -57,7 +57,7 @@ Git 跟踪源码、锁文件、配置模板、脚本、说明及脱敏证据。�
 
 GitHub Actions 保留官方 CI，另由 `Source and operations verification` 工作流运行前端模板测试、前端生产构建和嵌入前端的 Linux amd64 编译，以及运维脚本检查。使用官方锁文件、Node 20、pnpm 9 和 `backend/go.mod` 指定的 Go 工具链。构建顺序是前端先、后端后；根目录默认 `make build` 不能替代这里的嵌入前端构建流程。
 
-构建程序写入 `0.2.18`、真实 Git SHA、UTC 构建时间及 `source` 类型。工作流上传 Linux amd64 构建包、SHA256 和来源信息作为 Actions artifact，保留 7 天，不自动部署。2026-10-27 本次构建经用户授权，通过独立临时交付任务和产物分支完成 Git SSH 下载；下载校验后清理临时产物分支及写入任务，源码保留在 `build/codex-model-catalog` 分支，常规工作流继续使用只读仓库权限。用户手动部署，保留 `deployed-build.json` 登记的官方程序备份，不额外备份当前定制程序。
+构建程序通过 `backend/scripts/resolve-version.sh` 读取版本，当前非标签定制分支使用 `backend/cmd/server/VERSION` 中的 `0.2.19`，同时写入真实 Git SHA、UTC 构建时间及 `source` 类型。工作流上传 Linux amd64 构建包、SHA256 和来源信息作为 Actions artifact，保留 7 天，不自动部署。2026-10-27 本次构建经用户授权，通过独立临时交付任务和产物分支完成 Git SSH 下载；下载校验后清理临时产物分支及写入任务，源码保留在 `build/codex-model-catalog` 分支，常规工作流继续使用只读仓库权限。用户手动部署，保留 `deployed-build.json` 登记的官方程序备份，不额外备份当前定制程序。
 
 更新官方版本时，在独立开发克隆里执行 `git fetch upstream --tags`，选择明确版本，建立更新分支并合并对应标签，解决冲突后运行 CI。只有升级任务才变更版本基线和数据库兼容性要求。推送时明确指定自己的分支，不执行 `git push --mirror` 或 `git push --tags`。
 
