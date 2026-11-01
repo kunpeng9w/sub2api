@@ -1,0 +1,169 @@
+{
+  "observed_at": "2026-11-01T14:00:30.778559+08:00",
+  "status": "build_and_ci_verified_not_deployed",
+  "branch": "codex/upgrade-v0.2.19",
+  "source_commit": "6690819d4819b43f4d3d4f670594d3a4b3cec3c0",
+  "upstream": {
+    "tag": "v0.2.19",
+    "commit": "dece26153621959ccd7635814f4b2d08304e681a"
+  },
+  "previous_custom_commit": "7d067c42cf81bd73ea13b1514ac0c7d0adbd8fbe",
+  "build": {
+    "location": "GitHub Actions",
+    "toolchain": "go1.27.3",
+    "release_directory": "/home/pk/workspace/sub2api-upgrade-delivery/6690819d4819b43f4d3d4f670594d3a4b3cec3c0",
+    "artifact_id": 13072426563,
+    "artifact_url": "https://github.com/kunpeng9w/sub2api/actions/runs/41277898403/artifacts/13072426563",
+    "artifact_expires_at": "2026-11-08T05:48:18Z",
+    "verified_at": "2026-11-01T13:49:21.078733+08:00",
+    "source_commit": "6690819d4819b43f4d3d4f670594d3a4b3cec3c0",
+    "version": "0.2.19",
+    "build_time_utc": "2026-11-01T05:44:31Z",
+    "target": "linux/amd64",
+    "embedded_frontend": true,
+    "vcs_modified": false,
+    "binary_sha256": "012b45620c714bc187405a49a14ad3810f583f6fa8ecdb5d3c6ebe0234961d72",
+    "archive_sha256": "bdf6d24d2e2908d55768830462fea2b539584838612c1a57a26f21bc07c33b83",
+    "archive_checksum_verified": true,
+    "binary_checksum_verified": true,
+    "version_commit_verified": true,
+    "production_replaced": false,
+    "service_restarted": false
+  },
+  "actions": {
+    "CI": {
+      "id": 41277898414,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41277898414",
+      "source_commit": "6690819d4819b43f4d3d4f670594d3a4b3cec3c0",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "release-helpers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "test",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "golangci-lint",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "shell",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "frontend",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "Security Scan": {
+      "id": 41277898449,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41277898449",
+      "source_commit": "6690819d4819b43f4d3d4f670594d3a4b3cec3c0",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "frontend-security",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "backend-security",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "Source and operations verification": {
+      "id": 41277898403,
+      "url": "https://github.com/kunpeng9w/sub2api/actions/runs/41277898403",
+      "source_commit": "6690819d4819b43f4d3d4f670594d3a4b3cec3c0",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Egress audit integration and routing regressions",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Operations configuration and existing unit tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Frontend template tests and embedded Linux amd64 build",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  },
+  "local_checks": {
+    "repository": "passed",
+    "workflow_yaml_and_shell_syntax": "passed",
+    "diff_whitespace": "passed",
+    "dependency_checksums": "all modules verified",
+    "scoped_admin_policy_unit_tests": "passed",
+    "operations_isolated_tests_passed": 21
+  },
+  "regressions": {
+    "top_level_egress_tests_passed": 126,
+    "grok_binding_scenarios_passed": [
+      "valid",
+      "missing repository",
+      "lookup failure",
+      "missing proxy",
+      "disabled proxy"
+    ],
+    "client_template_tests_passed": 30,
+    "scoped_custom_egress_endpoint": "default denial preserved; policy and registered-route tests passed in full unit CI",
+    "component_race_checks_passed": true
+  },
+  "migration": {
+    "new_files": [
+      "247_scoped_admin_api_keys.sql",
+      "248_group_image_count_billing.sql"
+    ],
+    "executed": false,
+    "isolated_database_compatibility_validation": "not performed; required before production upgrade"
+  },
+  "deployed": false,
+  "production_restart_performed": false,
+  "previous_attempts": [
+    {
+      "source_commit": "266c392fa10463b45d6e88772a0d771534d4d0fe",
+      "result": "compile failure",
+      "resolution": "Adapt strict egress error return to upstream three-value Grok request preparation signature."
+    },
+    {
+      "source_commit": "31dba0211e77bc9e15180e68327685930234d0a2",
+      "result": "build, security and egress regressions passed; two upstream unit fixtures failed",
+      "resolution": "Add matching proxy ID and active status to new Grok catalog test fixtures; retain production validation."
+    }
+  ],
+  "source_preservation": {
+    "overlapping_files_with_original_patch_content_preserved": 34,
+    "overlapping_files_with_documented_adaptations": [
+      "backend/go.mod",
+      "backend/go.sum",
+      "backend/internal/service/grok_observed_models.go",
+      "backend/internal/service/grok_quota_service_test.go"
+    ],
+    "local_only_files_unchanged": 250,
+    "local_only_files_updated_for_build_and_docs": [
+      ".github/workflows/ops-ci.yml",
+      "ops/README.md"
+    ]
+  }
+}

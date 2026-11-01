@@ -19,7 +19,20 @@
 
 通过 GitHub Actions 执行完整单元/集成测试、前端关键测试与类型检查、lint、安全扫描、出口专项回归、运维隔离测试及嵌入前端的 Linux amd64 构建。本机不进行完整应用编译。
 
-`Source and operations verification` 的构建 artifact 包含程序压缩包、压缩包与程序 SHA256、版本输出、Go 构建来源、模板测试日志和工作流地址，保留 7 天。最终结果见后续 `validation.json`。
+`Source and operations verification` 的构建 artifact 包含程序压缩包、压缩包与程序 SHA256、版本输出、Go 构建来源、模板测试日志和工作流地址，保留 7 天。最终结果见 [validation.json](validation.json)。
+
+## 验收结果
+
+构建源码提交：`6690819d4819b43f4d3d4f670594d3a4b3cec3c0`。后续归档提交仅更新说明与验收证据，不改变应用源码。
+
+- [完整 CI](https://github.com/kunpeng9w/sub2api/actions/runs/41277898414)：单元、集成、前端类型与关键测试、lint、部署脚本和发行辅助检查全部通过。
+- [源码与运维验证](https://github.com/kunpeng9w/sub2api/actions/runs/41277898403)：126 项出口回归、组件 race 检查、30 项客户端模板测试、运维隔离检查及嵌入前端的 Linux amd64 构建全部通过。
+- [安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/41277898449)：前后端扫描通过，没有新增例外。
+- [构建 artifact](https://github.com/kunpeng9w/sub2api/actions/runs/41277898403/artifacts/13072426563)：保留至新加坡时间 2026-11-08 13:48:18。
+
+本机产物位于 `/home/pk/workspace/sub2api-upgrade-delivery/6690819d4819b43f4d3d4f670594d3a4b3cec3c0/`。压缩包与程序 SHA256 已验证，程序版本输出为 `0.2.19`，内嵌提交号与构建源码一致，Go 构建信息确认 `linux/amd64`、`embed` 与 `vcs.modified=false`。完整 Actions 日志保存在该产物目录。
+
+构建与 CI 验收完成，尚未部署；该结果不代表生产数据库迁移兼容性或真实上线业务验收已完成。
 
 ## 后续部署边界
 

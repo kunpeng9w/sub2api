@@ -55,7 +55,7 @@ Git 跟踪源码、锁文件、配置模板、脚本、说明及脱敏证据。�
 
 ## 构建、更新与部署分离
 
-GitHub Actions 保留官方 CI，另由 `Source and operations verification` 工作流运行前端模板测试、前端生产构建和嵌入前端的 Linux amd64 编译，以及运维脚本检查。使用官方锁文件、Node 20、pnpm 9 和 `backend/go.mod` 指定的 Go 工具链。构建顺序是前端先、后端后；根目录默认 `make build` 不能替代这里的嵌入前端构建流程。
+GitHub Actions 保留官方 CI，另由 `Source and operations verification` 工作流运行前端模板测试、前端生产构建和嵌入前端的 Linux amd64 编译，以及运维脚本检查。使用保留安全修复的仓库锁文件、Node 22、pnpm 9 和 `backend/go.mod` 指定的 Go 工具链。构建顺序是前端先、后端后；根目录默认 `make build` 不能替代这里的嵌入前端构建流程。
 
 构建程序通过 `backend/scripts/resolve-version.sh` 读取版本，当前非标签定制分支使用 `backend/cmd/server/VERSION` 中的 `0.2.19`，同时写入真实 Git SHA、UTC 构建时间及 `source` 类型。工作流上传 Linux amd64 构建包、SHA256 和来源信息作为 Actions artifact，保留 7 天，不自动部署。2026-10-27 本次构建经用户授权，通过独立临时交付任务和产物分支完成 Git SSH 下载；下载校验后清理临时产物分支及写入任务，源码保留在 `build/codex-model-catalog` 分支，常规工作流继续使用只读仓库权限。用户手动部署，保留 `deployed-build.json` 登记的官方程序备份，不额外备份当前定制程序。
 
