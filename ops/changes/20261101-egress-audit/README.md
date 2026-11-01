@@ -58,3 +58,7 @@ bash ops/changes/20261101-egress-audit/test-isolated.sh -race
 ```
 
 完整包测试因已有 Ent 包编译在本机持续换页而主动停止，没有把中止视为通过。仓库检查与差异空白检查通过；发布前需在资源充足环境完成上述完整包专项及常规 CI。线上程序未替换。
+
+## 验收时补充的依赖修复
+
+首次 Actions 安全检查发现既有间接依赖的两个高危告警。仅更新 pnpm overrides 和锁文件：`decode-uri-component` 从 0.4.1 升级至 0.5.1，`follow-redirects` 从 1.16.1 升级至 1.16.2；前端业务源码不变，不新增安全例外。修复版本依据 [decode-uri-component 公告](https://github.com/advisories/GHSA-qr28-fpjm-wq7f) 和 [follow-redirects 公告](https://github.com/advisories/GHSA-mrwp-f3q8-3g9p)。最终交付需重新构建嵌入前端的程序并通过 CI。
