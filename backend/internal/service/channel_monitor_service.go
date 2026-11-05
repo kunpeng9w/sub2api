@@ -522,33 +522,9 @@ func (s *ChannelMonitorService) validateProbeAPIKey(m *ChannelMonitor, newPlainK
 //   - 账号已被删除或平台失配：probe 模式自动解绑（静默修复），
 //     quota 模式显式报错（配额监控必须有可用数据源）
 func (s *ChannelMonitorService) revalidateLinkedAccount(ctx context.Context, m *ChannelMonitor) error {
-	usesQuota := monitorCheckModeUsesQuota(defaultCheckMode(m.CheckMode))
-	if m.AccountID == nil {
-		if usesQuota {
-			return ErrChannelMonitorAccountRequired
-		}
-		return nil
-	}
-	if s.quotaFetcher == nil {
-		return ErrChannelMonitorAccountRequired
-	}
-	account, err := s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
-	if err != nil || account == nil {
-		if usesQuota {
-			return ErrChannelMonitorAccountRequired
-		}
-		m.AccountID = nil
-		return nil
-	}
-	if account.Platform != m.Provider {
-		if usesQuota {
-			return ErrChannelMonitorProviderIncompatible
-		}
-		m.AccountID = nil
-		return nil
-	}
-	if usesQuota { return monitorAccountQuotaCapability(account) }
-	return nil
+ usesQuota:=monitorCheckModeUsesQuota(defaultCheckMode(m.CheckMode))
+ if m.AccountID==nil{if usesQuota{return ErrChannelMonitorAccountRequired};return nil}
+ return s.validateLinkedAccount(ctx,m.Provider,m.AccountID,usesQuota)
 }
 
 // applyAPIKeyUpdate 处理 Update 中的 APIKey 字段：

@@ -22,6 +22,8 @@ jobs:
           /bin/sh deploy/test-caddyfile-cache.sh
 
   test:
+    env:
+      SUB2API_MONITOR_ISOLATED_TESTS: "1"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

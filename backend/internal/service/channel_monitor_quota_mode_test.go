@@ -416,8 +416,8 @@ func TestRevalidateLinkedAccount_QuotaErrorsProbeUnbinds(t *testing.T) {
 	require.NotNil(t, quota.AccountID)
 
 	probe := &ChannelMonitor{Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeProbe, AccountID: int64Ptr(9)}
-	require.NoError(t, svc.revalidateLinkedAccount(context.Background(), probe))
-	require.Nil(t, probe.AccountID, "probe mode should silently unbind stale account")
+	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), probe),ErrChannelMonitorAccountRequired)
+	require.NotNil(t, probe.AccountID, "keep broken proxy source for admin repair")
 
 	quotaNoAccount := &ChannelMonitor{Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeQuota}
 	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), quotaNoAccount), ErrChannelMonitorAccountRequired)
@@ -433,7 +433,7 @@ func TestRevalidateLinkedAccount_PlatformMismatch(t *testing.T) {
 	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), quota), ErrChannelMonitorProviderIncompatible)
 
 	probe := &ChannelMonitor{Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeProbe, AccountID: int64Ptr(2)}
-	require.NoError(t, svc.revalidateLinkedAccount(context.Background(), probe))
+	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), probe),ErrChannelMonitorProviderIncompatible)
 	require.NotNil(t, probe.AccountID)
 }
 
@@ -562,7 +562,7 @@ func TestRevalidateLinkedAccount_Capability(t *testing.T) {
 
 	probe := &ChannelMonitor{Provider: MonitorProviderDeepseek, CheckMode: MonitorCheckModeProbe, AccountID: int64Ptr(2)}
 	require.NoError(t, svc.revalidateLinkedAccount(context.Background(), probe))
-	require.Nil(t, probe.AccountID, "probe mode should silently unbind unusable account")
+	require.NotNil(t, probe.AccountID, "probe mode keeps account as its proxy source")
 }
 
 // provider-only 更新不得绕过 provider × check_mode 组合校验。

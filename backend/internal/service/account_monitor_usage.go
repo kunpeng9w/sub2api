@@ -16,6 +16,11 @@ func(s *AccountUsageService)getMonitorUsage(ctx context.Context,account *Account
   raw,err:=s.fetchOAuthUsageRaw(ctx,account);if err!=nil{return nil,err}
   now:=time.Now();usage:=s.buildUsageInfo(raw,&now);usage.UpdatedAt=&now;usage.Source="active"
   return usage,nil
+ case account.Platform==PlatformAntigravity:
+  if s.antigravityQuotaFetcher==nil{return nil,ErrChannelMonitorAccountNotSupportable}
+  policy,_:=monitorrequest.From(ctx)
+  result,err:=s.antigravityQuotaFetcher.FetchQuota(ctx,account,policy.Route)
+  if err!=nil{return nil,err};return result.UsageInfo,nil
  case account.IsOpenAIOAuth():
   if s.openAIQuotaService==nil{return nil,ErrChannelMonitorAccountNotSupportable}
   quota,err:=s.openAIQuotaService.QueryUsage(withOpenAIQuotaUsageOnly(ctx),account.ID);if err!=nil{return nil,err}
@@ -30,5 +35,5 @@ func(s *AccountUsageService)getMonitorUsage(ctx context.Context,account *Account
 // monitorUsageMode is deliberately narrow: other providers retain their adapters,
 // with the same proxy-pinned context propagated to every transport.
 func monitorDedicatedUsage(ctx context.Context,account *Account)bool{
- return monitorrequest.Active(ctx)&&(account.IsAnthropicOAuthOrSetupToken()||account.IsOpenAIOAuth())
+ return monitorrequest.Active(ctx)&&(account.IsAnthropicOAuthOrSetupToken()||account.IsOpenAIOAuth()||account.Platform==PlatformAntigravity)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitordailyrollup"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
+	"github.com/Wei-Shaw/sub2api/ent/user"
 )
 
 // ChannelMonitorCreate is the builder for creating a ChannelMonitor entity.
@@ -145,6 +146,48 @@ func (_c *ChannelMonitorCreate) SetNillableGroupName(v *string) *ChannelMonitorC
 	return _c
 }
 
+// SetAutoCheckEnabled sets the "auto_check_enabled" field.
+func (_c *ChannelMonitorCreate) SetAutoCheckEnabled(v bool) *ChannelMonitorCreate {
+	_c.mutation.SetAutoCheckEnabled(v)
+	return _c
+}
+
+// SetNillableAutoCheckEnabled sets the "auto_check_enabled" field if the given value is not nil.
+func (_c *ChannelMonitorCreate) SetNillableAutoCheckEnabled(v *bool) *ChannelMonitorCreate {
+	if v != nil {
+		_c.SetAutoCheckEnabled(*v)
+	}
+	return _c
+}
+
+// SetVisibility sets the "visibility" field.
+func (_c *ChannelMonitorCreate) SetVisibility(v string) *ChannelMonitorCreate {
+	_c.mutation.SetVisibility(v)
+	return _c
+}
+
+// SetNillableVisibility sets the "visibility" field if the given value is not nil.
+func (_c *ChannelMonitorCreate) SetNillableVisibility(v *string) *ChannelMonitorCreate {
+	if v != nil {
+		_c.SetVisibility(*v)
+	}
+	return _c
+}
+
+// SetProxyID sets the "proxy_id" field.
+func (_c *ChannelMonitorCreate) SetProxyID(v int64) *ChannelMonitorCreate {
+	_c.mutation.SetProxyID(v)
+	return _c
+}
+
+// SetNillableProxyID sets the "proxy_id" field if the given value is not nil.
+func (_c *ChannelMonitorCreate) SetNillableProxyID(v *int64) *ChannelMonitorCreate {
+	if v != nil {
+		_c.SetProxyID(*v)
+	}
+	return _c
+}
+
 // SetEnabled sets the "enabled" field.
 func (_c *ChannelMonitorCreate) SetEnabled(v bool) *ChannelMonitorCreate {
 	_c.mutation.SetEnabled(v)
@@ -237,6 +280,21 @@ func (_c *ChannelMonitorCreate) SetNillableBodyOverrideMode(v *string) *ChannelM
 func (_c *ChannelMonitorCreate) SetBodyOverride(v map[string]interface{}) *ChannelMonitorCreate {
 	_c.mutation.SetBodyOverride(v)
 	return _c
+}
+
+// AddViewerIDs adds the "viewers" edge to the User entity by IDs.
+func (_c *ChannelMonitorCreate) AddViewerIDs(ids ...int64) *ChannelMonitorCreate {
+	_c.mutation.AddViewerIDs(ids...)
+	return _c
+}
+
+// AddViewers adds the "viewers" edges to the User entity.
+func (_c *ChannelMonitorCreate) AddViewers(v ...*User) *ChannelMonitorCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddViewerIDs(ids...)
 }
 
 // AddHistoryIDs adds the "history" edge to the ChannelMonitorHistory entity by IDs.
@@ -347,6 +405,14 @@ func (_c *ChannelMonitorCreate) defaults() {
 		v := channelmonitor.DefaultGroupName
 		_c.mutation.SetGroupName(v)
 	}
+	if _, ok := _c.mutation.AutoCheckEnabled(); !ok {
+		v := channelmonitor.DefaultAutoCheckEnabled
+		_c.mutation.SetAutoCheckEnabled(v)
+	}
+	if _, ok := _c.mutation.Visibility(); !ok {
+		v := channelmonitor.DefaultVisibility
+		_c.mutation.SetVisibility(v)
+	}
 	if _, ok := _c.mutation.Enabled(); !ok {
 		v := channelmonitor.DefaultEnabled
 		_c.mutation.SetEnabled(v)
@@ -436,6 +502,12 @@ func (_c *ChannelMonitorCreate) check() error {
 		if err := channelmonitor.GroupNameValidator(v); err != nil {
 			return &ValidationError{Name: "group_name", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.group_name": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.AutoCheckEnabled(); !ok {
+		return &ValidationError{Name: "auto_check_enabled", err: errors.New(`ent: missing required field "ChannelMonitor.auto_check_enabled"`)}
+	}
+	if _, ok := _c.mutation.Visibility(); !ok {
+		return &ValidationError{Name: "visibility", err: errors.New(`ent: missing required field "ChannelMonitor.visibility"`)}
 	}
 	if _, ok := _c.mutation.Enabled(); !ok {
 		return &ValidationError{Name: "enabled", err: errors.New(`ent: missing required field "ChannelMonitor.enabled"`)}
@@ -545,6 +617,18 @@ func (_c *ChannelMonitorCreate) createSpec() (*ChannelMonitor, *sqlgraph.CreateS
 		_spec.SetField(channelmonitor.FieldGroupName, field.TypeString, value)
 		_node.GroupName = value
 	}
+	if value, ok := _c.mutation.AutoCheckEnabled(); ok {
+		_spec.SetField(channelmonitor.FieldAutoCheckEnabled, field.TypeBool, value)
+		_node.AutoCheckEnabled = value
+	}
+	if value, ok := _c.mutation.Visibility(); ok {
+		_spec.SetField(channelmonitor.FieldVisibility, field.TypeString, value)
+		_node.Visibility = value
+	}
+	if value, ok := _c.mutation.ProxyID(); ok {
+		_spec.SetField(channelmonitor.FieldProxyID, field.TypeInt64, value)
+		_node.ProxyID = &value
+	}
 	if value, ok := _c.mutation.Enabled(); ok {
 		_spec.SetField(channelmonitor.FieldEnabled, field.TypeBool, value)
 		_node.Enabled = value
@@ -576,6 +660,22 @@ func (_c *ChannelMonitorCreate) createSpec() (*ChannelMonitor, *sqlgraph.CreateS
 	if value, ok := _c.mutation.BodyOverride(); ok {
 		_spec.SetField(channelmonitor.FieldBodyOverride, field.TypeJSON, value)
 		_node.BodyOverride = value
+	}
+	if nodes := _c.mutation.ViewersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   channelmonitor.ViewersTable,
+			Columns: channelmonitor.ViewersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.HistoryIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -825,6 +925,54 @@ func (u *ChannelMonitorUpsert) UpdateGroupName() *ChannelMonitorUpsert {
 // ClearGroupName clears the value of the "group_name" field.
 func (u *ChannelMonitorUpsert) ClearGroupName() *ChannelMonitorUpsert {
 	u.SetNull(channelmonitor.FieldGroupName)
+	return u
+}
+
+// SetAutoCheckEnabled sets the "auto_check_enabled" field.
+func (u *ChannelMonitorUpsert) SetAutoCheckEnabled(v bool) *ChannelMonitorUpsert {
+	u.Set(channelmonitor.FieldAutoCheckEnabled, v)
+	return u
+}
+
+// UpdateAutoCheckEnabled sets the "auto_check_enabled" field to the value that was provided on create.
+func (u *ChannelMonitorUpsert) UpdateAutoCheckEnabled() *ChannelMonitorUpsert {
+	u.SetExcluded(channelmonitor.FieldAutoCheckEnabled)
+	return u
+}
+
+// SetVisibility sets the "visibility" field.
+func (u *ChannelMonitorUpsert) SetVisibility(v string) *ChannelMonitorUpsert {
+	u.Set(channelmonitor.FieldVisibility, v)
+	return u
+}
+
+// UpdateVisibility sets the "visibility" field to the value that was provided on create.
+func (u *ChannelMonitorUpsert) UpdateVisibility() *ChannelMonitorUpsert {
+	u.SetExcluded(channelmonitor.FieldVisibility)
+	return u
+}
+
+// SetProxyID sets the "proxy_id" field.
+func (u *ChannelMonitorUpsert) SetProxyID(v int64) *ChannelMonitorUpsert {
+	u.Set(channelmonitor.FieldProxyID, v)
+	return u
+}
+
+// UpdateProxyID sets the "proxy_id" field to the value that was provided on create.
+func (u *ChannelMonitorUpsert) UpdateProxyID() *ChannelMonitorUpsert {
+	u.SetExcluded(channelmonitor.FieldProxyID)
+	return u
+}
+
+// AddProxyID adds v to the "proxy_id" field.
+func (u *ChannelMonitorUpsert) AddProxyID(v int64) *ChannelMonitorUpsert {
+	u.Add(channelmonitor.FieldProxyID, v)
+	return u
+}
+
+// ClearProxyID clears the value of the "proxy_id" field.
+func (u *ChannelMonitorUpsert) ClearProxyID() *ChannelMonitorUpsert {
+	u.SetNull(channelmonitor.FieldProxyID)
 	return u
 }
 
@@ -1189,6 +1337,62 @@ func (u *ChannelMonitorUpsertOne) UpdateGroupName() *ChannelMonitorUpsertOne {
 func (u *ChannelMonitorUpsertOne) ClearGroupName() *ChannelMonitorUpsertOne {
 	return u.Update(func(s *ChannelMonitorUpsert) {
 		s.ClearGroupName()
+	})
+}
+
+// SetAutoCheckEnabled sets the "auto_check_enabled" field.
+func (u *ChannelMonitorUpsertOne) SetAutoCheckEnabled(v bool) *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.SetAutoCheckEnabled(v)
+	})
+}
+
+// UpdateAutoCheckEnabled sets the "auto_check_enabled" field to the value that was provided on create.
+func (u *ChannelMonitorUpsertOne) UpdateAutoCheckEnabled() *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.UpdateAutoCheckEnabled()
+	})
+}
+
+// SetVisibility sets the "visibility" field.
+func (u *ChannelMonitorUpsertOne) SetVisibility(v string) *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.SetVisibility(v)
+	})
+}
+
+// UpdateVisibility sets the "visibility" field to the value that was provided on create.
+func (u *ChannelMonitorUpsertOne) UpdateVisibility() *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.UpdateVisibility()
+	})
+}
+
+// SetProxyID sets the "proxy_id" field.
+func (u *ChannelMonitorUpsertOne) SetProxyID(v int64) *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.SetProxyID(v)
+	})
+}
+
+// AddProxyID adds v to the "proxy_id" field.
+func (u *ChannelMonitorUpsertOne) AddProxyID(v int64) *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.AddProxyID(v)
+	})
+}
+
+// UpdateProxyID sets the "proxy_id" field to the value that was provided on create.
+func (u *ChannelMonitorUpsertOne) UpdateProxyID() *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.UpdateProxyID()
+	})
+}
+
+// ClearProxyID clears the value of the "proxy_id" field.
+func (u *ChannelMonitorUpsertOne) ClearProxyID() *ChannelMonitorUpsertOne {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.ClearProxyID()
 	})
 }
 
@@ -1743,6 +1947,62 @@ func (u *ChannelMonitorUpsertBulk) UpdateGroupName() *ChannelMonitorUpsertBulk {
 func (u *ChannelMonitorUpsertBulk) ClearGroupName() *ChannelMonitorUpsertBulk {
 	return u.Update(func(s *ChannelMonitorUpsert) {
 		s.ClearGroupName()
+	})
+}
+
+// SetAutoCheckEnabled sets the "auto_check_enabled" field.
+func (u *ChannelMonitorUpsertBulk) SetAutoCheckEnabled(v bool) *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.SetAutoCheckEnabled(v)
+	})
+}
+
+// UpdateAutoCheckEnabled sets the "auto_check_enabled" field to the value that was provided on create.
+func (u *ChannelMonitorUpsertBulk) UpdateAutoCheckEnabled() *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.UpdateAutoCheckEnabled()
+	})
+}
+
+// SetVisibility sets the "visibility" field.
+func (u *ChannelMonitorUpsertBulk) SetVisibility(v string) *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.SetVisibility(v)
+	})
+}
+
+// UpdateVisibility sets the "visibility" field to the value that was provided on create.
+func (u *ChannelMonitorUpsertBulk) UpdateVisibility() *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.UpdateVisibility()
+	})
+}
+
+// SetProxyID sets the "proxy_id" field.
+func (u *ChannelMonitorUpsertBulk) SetProxyID(v int64) *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.SetProxyID(v)
+	})
+}
+
+// AddProxyID adds v to the "proxy_id" field.
+func (u *ChannelMonitorUpsertBulk) AddProxyID(v int64) *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.AddProxyID(v)
+	})
+}
+
+// UpdateProxyID sets the "proxy_id" field to the value that was provided on create.
+func (u *ChannelMonitorUpsertBulk) UpdateProxyID() *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.UpdateProxyID()
+	})
+}
+
+// ClearProxyID clears the value of the "proxy_id" field.
+func (u *ChannelMonitorUpsertBulk) ClearProxyID() *ChannelMonitorUpsertBulk {
+	return u.Update(func(s *ChannelMonitorUpsert) {
+		s.ClearProxyID()
 	})
 }
 

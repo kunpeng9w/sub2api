@@ -18,6 +18,8 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      SUB2API_MONITOR_ISOLATED_TESTS: "1"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -31,8 +33,8 @@ jobs:
         working-directory: backend
         run: |
           go generate ./ent
-          go generate ./cmd/server
           git ls-files -z '*.go' | xargs -0 gofmt -w
+          GOFLAGS=-mod=mod go generate ./cmd/server
       - name: Preserve generated source for review
         if: always()
         run: git diff --binary > "$RUNNER_TEMP/generated.patch"

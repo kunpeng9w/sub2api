@@ -131,19 +131,11 @@ const (
 	// monitorRunOneBuffer runOne 的总超时缓冲（除请求超时与 ping 超时外的额外裕量）。
 	monitorRunOneBuffer = 10 * time.Second
 
-	// monitorIdleConnTimeout HTTP transport 空闲连接关闭超时。
-	monitorIdleConnTimeout = 30 * time.Second
-	// monitorTLSHandshakeTimeout HTTP transport TLS 握手超时。
-	monitorTLSHandshakeTimeout = 10 * time.Second
 	// monitorResponseHeaderTimeout HTTP transport 等待响应头超时。
 	monitorResponseHeaderTimeout = 30 * time.Second
 	// monitorPingDiscardMaxBytes ping 时丢弃响应体的最大字节数。
 	monitorPingDiscardMaxBytes = 1024
 
-	// monitorDialTimeout 自定义 dialer 单次连接超时。
-	monitorDialTimeout = 10 * time.Second
-	// monitorDialKeepAlive 自定义 dialer keep-alive 间隔。
-	monitorDialKeepAlive = 30 * time.Second
 )
 
 // 业务错误（统一在此声明，避免散落）。

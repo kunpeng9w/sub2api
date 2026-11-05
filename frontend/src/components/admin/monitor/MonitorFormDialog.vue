@@ -614,6 +614,7 @@ const accountOptions = computed(() => {
   if (pinned && !linkedAccounts.value.some((a) => a.id === pinned.id)) {
     opts.unshift({ value: String(pinned.id), label: `${pinned.name} (#${pinned.id})` })
   }
+  opts.unshift({ value: '', label: t('monitorCommon.controls.noAccount') })
   return opts
 })
 
@@ -630,6 +631,7 @@ const accountSelectValue = computed<string>({
     const id = Number(raw)
     if (Number.isFinite(id)) {
       form.account_id = id
+      accountHydrationFailed.value = false
       pinnedAccount.value = linkedAccounts.value.find((a) => a.id === id) ?? pinnedAccount.value
     }
   },
@@ -694,7 +696,7 @@ function onAccountSearch(query: string) {
 }
 
 watch(
-  () => [props.show, form.provider, form.check_mode] as const,
+  () => [props.show, form.provider] as const,
   ([show, provider], prev) => {
     const [prevShow, prevProvider] = prev ?? []
     if (!show) {
@@ -903,6 +905,9 @@ async function handleSubmit() {
   if (!form.name.trim()) {
     appStore.showError(t('admin.channelMonitor.nameRequired'))
     return
+  }
+  if (accountHydrationFailed.value && form.account_id != null) {
+    appStore.showError(t('admin.channelMonitor.form.linkedAccountMissing')); return
   }
   if (usesQuotaMode.value && form.account_id == null) {
     appStore.showError(t('admin.channelMonitor.linkedAccountRequired'))

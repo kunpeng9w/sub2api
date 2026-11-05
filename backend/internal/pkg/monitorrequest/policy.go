@@ -10,6 +10,7 @@ import (
 
 type key struct{}
 type Policy struct {
+ Revision string
  Route string
  AccountID int64
  // Validate reloads the binding before each request; it never probes a proxy.
@@ -20,7 +21,7 @@ func From(ctx context.Context) (Policy, bool) { p, ok := ctx.Value(key{}).(Polic
 func Active(ctx context.Context) bool { _, ok := From(ctx); return ok }
 func CacheKey(ctx context.Context) string {
  p, ok := From(ctx); if !ok { return "" }
- return fmt.Sprintf("monitor:%x", sha256.Sum256([]byte(fmt.Sprintf("%d:%s", p.AccountID, p.Route))))
+ return fmt.Sprintf("monitor:%x", sha256.Sum256([]byte(fmt.Sprintf("%d:%s", p.AccountID, p.Route+":"+p.Revision))))
 }
 func Check(ctx context.Context, route string) error {
  p, ok := From(ctx); if !ok { return nil }

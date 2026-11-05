@@ -1400,6 +1400,29 @@ func RpmLimitLTE(v int) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldRpmLimit, v))
 }
 
+// HasChannelMonitors applies the HasEdge predicate on the "channel_monitors" edge.
+func HasChannelMonitors() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, ChannelMonitorsTable, ChannelMonitorsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChannelMonitorsWith applies the HasEdge predicate on the "channel_monitors" edge with a given conditions (other predicates).
+func HasChannelMonitorsWith(preds ...predicate.ChannelMonitor) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newChannelMonitorsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasAPIKeys applies the HasEdge predicate on the "api_keys" edge.
 func HasAPIKeys() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

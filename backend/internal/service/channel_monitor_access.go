@@ -49,26 +49,32 @@ func (s *ChannelMonitorService) validateAccess(ctx context.Context, m *ChannelMo
 func (s *ChannelMonitorService) SetExecutionDependencies(proxies ProxyRepository, locks LeaderLockCache) {
  s.proxies=proxies; s.runLocks=locks
 }
-func (s *ChannelMonitorService) resolveMonitorRoute(ctx context.Context, m *ChannelMonitor) (string,error) {
- if m.AccountID != nil {
-  if s.quotaFetcher == nil { return "",ErrChannelMonitorEgress }
+func(s *ChannelMonitorService)resolveMonitorRoute(ctx context.Context,m *ChannelMonitor)(string,error){
+ route,_,err:=s.monitorRouteSnapshot(ctx,m);return route,err
+}
+func(s *ChannelMonitorService)monitorRouteSnapshot(ctx context.Context,m *ChannelMonitor)(string,string,error){
+ binding:=m.ProxyID;accountID:=int64(0)
+ if m.AccountID!=nil{
+  if s.quotaFetcher==nil{return "","",ErrChannelMonitorEgress}
   account,err:=s.quotaFetcher.LoadAccount(ctx,*m.AccountID)
-  if err!=nil || account==nil || account.Platform!=m.Provider || account.ProxyID==nil { return "",ErrChannelMonitorEgress }
-  route,err:=ResolveAccountProxyFromRepository(ctx,s.proxies,account)
-  if err!=nil || route=="" { return "",ErrChannelMonitorEgress }; return route,nil
+  if err!=nil||account==nil||account.Platform!=m.Provider||account.ProxyID==nil{return "","",ErrChannelMonitorEgress}
+  binding=account.ProxyID;accountID=account.ID
  }
- if m.ProxyID==nil { return "",ErrChannelMonitorEgress }
- route,err:=ResolveProxyBinding(ctx,s.proxies,m.ProxyID)
- if err!=nil || route=="" { return "",ErrChannelMonitorEgress }; return route,nil
+ if binding==nil||s.proxies==nil{return "","",ErrChannelMonitorEgress}
+ proxy,err:=s.proxies.GetByID(ctx,*binding)
+ if err!=nil{return "","",ErrChannelMonitorEgress}
+ route,err:=validatedBoundProxyURL(binding,proxy)
+ if err!=nil||route==""{return "","",ErrChannelMonitorEgress}
+ return route,fmt.Sprintf("%d:%d:%d",accountID,*binding,proxy.UpdatedAt.UnixNano()),nil
 }
 func (s *ChannelMonitorService) monitorContext(ctx context.Context,m *ChannelMonitor)(context.Context,error){
- route,err:=s.resolveMonitorRoute(ctx,m); if err!=nil{return ctx,err}
+ route,revision,err:=s.monitorRouteSnapshot(ctx,m); if err!=nil{return ctx,err}
  accountID:=int64(0); if m.AccountID!=nil{accountID=*m.AccountID}
- return monitorrequest.With(ctx,monitorrequest.Policy{Route:route,AccountID:accountID,Validate:func(checkCtx context.Context)error{
+ return monitorrequest.With(ctx,monitorrequest.Policy{Route:route,Revision:revision,AccountID:accountID,Validate:func(checkCtx context.Context)error{
   current,err:=s.repo.GetByID(checkCtx,m.ID)
   if err!=nil || !current.Enabled { return ErrChannelMonitorEgress }
-  fresh,err:=s.resolveMonitorRoute(checkCtx,current)
-  if err!=nil || fresh!=route { return ErrChannelMonitorEgress }; return nil
+  fresh,currentRevision,err:=s.monitorRouteSnapshot(checkCtx,current)
+  if err!=nil || fresh!=route || currentRevision!=revision { return ErrChannelMonitorEgress }; return nil
  }}),nil
 }
 func (s *ChannelMonitorService) RunManual(ctx context.Context,id,userID int64,admin bool)([]*CheckResult,error){

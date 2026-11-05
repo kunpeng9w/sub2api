@@ -170,11 +170,11 @@ describe('MonitorFormDialog linked account selector', () => {
     monitorUpdate.mockReset().mockResolvedValue({})
   })
 
-  it('loads the first page of provider accounts when quota mode is enabled', async () => {
+  it('loads provider accounts for both probe proxy binding and quota mode', async () => {
     accountsList.mockResolvedValue({ items: [{ id: 1, name: 'a', platform: 'anthropic' }] })
     const wrapper = mountDialog()
     await flushPromises()
-    expect(accountsList).not.toHaveBeenCalled()
+    expect(accountsList).toHaveBeenCalledTimes(1)
 
     await wrapper.get('[data-testid="monitor-check-mode-quota"]').trigger('click')
     await flushPromises()
@@ -227,7 +227,7 @@ describe('MonitorFormDialog linked account selector', () => {
     expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 999 }))
   })
 
-  it('clears the binding with a visible hint when the bound account cannot be loaded', async () => {
+  it('preserves an unavailable binding with a visible hint and blocks submission', async () => {
     accountsGetById.mockRejectedValue(new Error('gone'))
     const wrapper = mountDialog(makeMonitor({
       provider: 'anthropic',
@@ -339,8 +339,8 @@ describe('MonitorFormDialog linked account selector', () => {
   })
 
   // P2-7(c)：update 切回 probe 显式发 account_id=0 解绑存量关联（null=不动）。
-  it('unbinds the linked account with account_id=0 when a quota monitor switches back to probe', async () => {
-    accountsGetById.mockRejectedValue(new Error('gone'))
+  it('keeps the linked account as proxy source when switching from quota to probe', async () => {
+    accountsGetById.mockResolvedValue({id:999,name:'bound',platform:'anthropic'})
     const wrapper = mountDialog(makeMonitor({
       provider: 'anthropic',
       check_mode: 'quota',
@@ -355,7 +355,7 @@ describe('MonitorFormDialog linked account selector', () => {
     await wrapper.get('#channel-monitor-form').trigger('submit')
     await flushPromises()
 
-    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 0 }))
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 999 }))
   })
 
   // P2-7(c)：create 绝不发 0（后端会把 0 存成 &0 触发外键违约），保持 null。
