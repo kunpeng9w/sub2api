@@ -37,8 +37,14 @@ def serve(port, address):
         server.bind(('127.0.0.1', port))
         while True:
             request, peer = server.recvfrom(4096)
+            # dnsmasq adds EDNS metadata to forwarded queries. Echo only the
+            # question, not that additional section, before our A answer.
+            end = 12
+            while request[end]:
+                end += request[end] + 1
+            question = request[12:end + 5]
             answer = (request[:2] + struct.pack('!HHHHH', 0x8180, 1, 1, 0, 0)
-                      + request[12:] + b'\xc0\x0c' + struct.pack('!HHIH', 1, 1, 0, 4)
+                      + question + b'\xc0\x0c' + struct.pack('!HHIH', 1, 1, 0, 4)
                       + socket.inet_aton(address))
             server.sendto(answer, peer)
 
@@ -179,6 +185,9 @@ class SystemdIntegrationTests(unittest.TestCase):
 
     def cleanup_units(self):
         subprocess.run(['systemctl', 'stop', self.mihomo, self.resolver], capture_output=True, timeout=25)
+        logs = subprocess.run(['journalctl', '-u', self.mihomo, '-u', self.resolver,
+                               '--no-pager', '-n', '60'], capture_output=True, text=True)
+        print('\nFixture service journal:\n' + logs.stdout)
         for path in self.unit_paths:
             path.unlink(missing_ok=True)
         subprocess.run(['systemctl', 'daemon-reload'], capture_output=True, timeout=25)
