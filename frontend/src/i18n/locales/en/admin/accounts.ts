@@ -1708,6 +1708,10 @@ export default {
         noData: 'No usage data available for this account'
       },
       usageWindow: {
+        refreshFailedHistorical: 'Refresh failed; showing historical data',
+        refreshFailedUnknown: 'Refresh failed; quota unknown',
+        quotaUnknown: 'Unknown',
+        snapshotTime: 'Snapshot time: {time}',
         statsTitle: '5-Hour Window Usage Statistics',
         statsTitleDaily: 'Daily Usage Statistics',
         geminiProDaily: 'Pro',

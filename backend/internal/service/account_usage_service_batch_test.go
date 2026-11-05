@@ -229,10 +229,10 @@ func TestAccountUsageService_OpenAIQueriesPreserveRefreshError(t *testing.T) {
 					account.Extra = map[string]any{"codex_5h_used_percent": 18.0, "codex_7d_used_percent": 34.0}
 				}
 				if scenario == "probe_throttled" {
-					cache.openAIProbeCache.Store(account.ID, time.Now())
+					cache.openAIUsageCache.Store(account.ID, &openAIUsageCacheEntry{timestamp: time.Now()})
 				}
-				// Forced requests take the probe path, but fail locally without
-				// credentials; no external network is needed for this regression.
+				// Forced queries fail locally without a configured quota service;
+				// no external network is needed for this regression.
 				if query == "forced_usage_batch" {
 					delete(account.Credentials, "access_token")
 				}

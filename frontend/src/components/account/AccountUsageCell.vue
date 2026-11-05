@@ -124,6 +124,17 @@
 
     <!-- OpenAI OAuth accounts: single source from /usage API -->
     <template v-else-if="account.platform === 'openai' && account.type === 'oauth'">
+      <div
+        v-if="openAIUsageError"
+        data-test="openai-usage-error"
+        class="text-[10px] text-amber-600 dark:text-amber-400"
+        :title="openAIUsageError"
+      >
+        {{ t(hasOpenAIUsageFallback ? 'admin.accounts.usageWindow.refreshFailedHistorical' : 'admin.accounts.usageWindow.refreshFailedUnknown') }}
+      </div>
+      <div v-if="openAISnapshotTime" data-test="openai-snapshot-time" class="text-[10px] text-gray-400">
+        {{ t('admin.accounts.usageWindow.snapshotTime', { time: openAISnapshotTime }) }}
+      </div>
       <div v-if="hasOpenAIUsageFallback" class="space-y-1">
         <UsageProgressBar
           v-if="usageInfo?.five_hour"
@@ -145,7 +156,7 @@
           color="emerald"
         />
         <!--
-          Upstream codex /wham/usage quota query + reset. The local active-sampling
+          Upstream codex /wham/usage quota query + reset. The usage
           refresh button is rendered via the pre-actions slot so the user sees a
           single row of related buttons instead of two stacked rows.
         -->
@@ -189,7 +200,7 @@
         </div>
       </div>
       <div v-else>
-        <div class="text-xs text-gray-400">-</div>
+        <div class="text-xs text-gray-400">{{ t('admin.accounts.usageWindow.quotaUnknown') }}</div>
         <!-- Always allow on-demand upstream quota query, even before local data exists. -->
         <OpenAIQuotaResetCell
           :account="account"
@@ -848,6 +859,13 @@ const geminiUsageAvailable = computed(() => {
 const hasOpenAIUsageFallback = computed(() => {
   if (props.account.platform !== 'openai' || props.account.type !== 'oauth') return false
   return !!usageInfo.value?.five_hour || !!usageInfo.value?.seven_day
+})
+
+const openAIUsageError = computed(() => usageInfo.value?.error || error.value || props.batchedUsageError || '')
+const openAISnapshotTime = computed(() => {
+  if (!hasOpenAIUsageFallback.value || !usageInfo.value?.updated_at) return ''
+  const timestamp = new Date(usageInfo.value.updated_at)
+  return Number.isNaN(timestamp.getTime()) ? '' : timestamp.toLocaleString()
 })
 
 const openAISevenDayEstimatedTotalCost = computed(() => {
@@ -1542,9 +1560,12 @@ const attachVisibilityObserver = () => {
 
 const loadActiveUsage = async () => {
   activeQueryLoading.value = true
+  error.value = null
   try {
     usageInfo.value = await adminAPI.accounts.getUsage(props.account.id, 'active', true)
+    _usageCache.set(props.account.id, { data: usageInfo.value, ts: Date.now() })
   } catch (e: any) {
+    error.value = t('common.error')
     console.error('Failed to load active usage:', e)
   } finally {
     activeQueryLoading.value = false

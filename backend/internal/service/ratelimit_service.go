@@ -1252,7 +1252,7 @@ func (s *RateLimitService) handle429(ctx context.Context, account *Account, head
 	// /responses 的 429 携带的 x-codex-*/usage_limit_reached 是 global codex 道(plan/spec §8),
 	// 套到影子会把 spark 误耦合到 global 窗口——即便 spark 仍有配额也会被冷却到 global reset,
 	// 单影子场景直接变成无可用账号(外审第8轮 P1)。整段跳过;影子的 codex_* 仅由 account_usage 的
-	// QueryUsage→persistOpenAICodexProbeSnapshot 维护,枯竭由调度守卫处理。
+	// QueryUsage→只读用量快照刷新维护,枯竭由调度守卫处理。
 	if account.IsShadow() {
 		if account.ParentAccountID != nil {
 			notifyOpenAIAutoReset(*account.ParentAccountID)

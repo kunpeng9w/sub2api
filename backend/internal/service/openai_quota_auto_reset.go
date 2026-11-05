@@ -21,7 +21,7 @@ import (
 
 const (
 	openAIAutoResetScanInterval  = time.Minute
-	openAIAutoResetSnapshotTTL   = openAIProbeCacheTTL
+	openAIAutoResetSnapshotTTL   = openAIUsageCacheTTL
 	openAIAutoResetBatchSize     = 100
 	openAIAutoResetWorkerCount   = 4
 	openAIAutoResetQueueCapacity = 1024

@@ -20,7 +20,7 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
-      t: (key: string) => key
+      t: (key: string, params?: Record<string, unknown>) => params?.time ? `${key} ${params.time}` : key
     })
   }
 })
@@ -1966,4 +1966,67 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).not.toContain('7d S')
     expect(wrapper.text()).not.toContain('7d F')
   })
+  it.each([false, true])('OpenAI 刷新失败保留旧配额与实际时间（批量：%s）', async (managed) => {
+    const timestamp = '2026-01-02T03:04:05Z'
+    const historical = {
+      five_hour: { utilization: 37, resets_at: timestamp, remaining_seconds: 0 },
+      seven_day: { utilization: 63, resets_at: timestamp, remaining_seconds: 0 },
+      seven_day_sonnet: null,
+      updated_at: timestamp
+    }
+    getUsage.mockResolvedValue(historical)
+    const requestBatchedUsage = vi.fn()
+    const wrapper = mount(AccountUsageCell, {
+      props: {
+        account: makeAccount({ id: managed ? 9501 : 9500, platform: 'openai', type: 'oauth' }),
+        ...(managed ? { requestBatchedUsage, batchedUsage: historical } : {})
+      },
+      global: { stubs: {
+        UsageProgressBar: { props: ['label', 'utilization'], template: '<div>{{ label }}|{{ utilization }}</div>' },
+        OpenAIQuotaResetCell: { template: '<div><slot name="pre-actions" /></div>' }
+      } }
+    })
+    await flushPromises()
+    const failed = { ...historical, error: 'OpenAI quota query failed', error_code: 'quota_query_failed' }
+    if (managed) {
+      await wrapper.setProps({ batchedUsage: failed })
+    } else {
+      getUsage.mockResolvedValue(failed)
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+      expect(getUsage).toHaveBeenLastCalledWith(9500, 'active', true)
+    }
+    expect(wrapper.text()).toContain('5h|37')
+    expect(wrapper.text()).toContain('7d|63')
+    expect(wrapper.get('[data-test="openai-usage-error"]').text()).toContain('refreshFailedHistorical')
+    expect(wrapper.get('[data-test="openai-snapshot-time"]').text()).toContain(new Date(timestamp).toLocaleString())
+    if (managed) {
+      await wrapper.setProps({ batchedUsage: historical, batchedUsageError: null })
+    } else {
+      getUsage.mockResolvedValue(historical)
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+    }
+    expect(wrapper.find('[data-test="openai-usage-error"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it.each([false, true])('OpenAI 无快照时失败显示未知，不显示虚假零用量（批量：%s）', async (managed) => {
+    const failed = { five_hour: null, seven_day: null, seven_day_sonnet: null, updated_at: null, error: 'OpenAI quota query returned no usable windows', error_code: 'quota_windows_missing' }
+    getUsage.mockResolvedValue(failed)
+    const wrapper = mount(AccountUsageCell, {
+      props: {
+        account: makeAccount({ id: managed ? 9503 : 9502, platform: 'openai', type: 'oauth' }),
+        ...(managed ? { requestBatchedUsage: vi.fn(), batchedUsage: failed } : {})
+      },
+      global: { stubs: { UsageProgressBar: true, OpenAIQuotaResetCell: true } }
+    })
+    await flushPromises()
+    expect(wrapper.get('[data-test="openai-usage-error"]').text()).toContain('refreshFailedUnknown')
+    expect(wrapper.text()).toContain('quotaUnknown')
+    expect(wrapper.findComponent({ name: 'UsageProgressBar' }).exists()).toBe(false)
+    expect(wrapper.find('[data-test="openai-snapshot-time"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
 })
