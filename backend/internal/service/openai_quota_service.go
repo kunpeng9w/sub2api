@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -55,6 +56,37 @@ type OpenAIRateLimit struct {
 	LimitReached    bool                   `json:"limit_reached"`
 	PrimaryWindow   *OpenAIRateLimitWindow `json:"primary_window,omitempty"`
 	SecondaryWindow *OpenAIRateLimitWindow `json:"secondary_window,omitempty"`
+}
+
+// UnmarshalJSON treats a window without an observed percentage as unavailable.
+// In particular, an absent/null used_percent must not become a measured 0%.
+// Normalize at the boundary so display, monitoring and reset consumers agree.
+func (r *OpenAIRateLimit) UnmarshalJSON(data []byte) error {
+	type rateLimit OpenAIRateLimit
+	type window struct {
+		OpenAIRateLimitWindow
+		UsedPercent *float64 `json:"used_percent"`
+	}
+	var decoded rateLimit
+	payload := struct {
+		*rateLimit
+		PrimaryWindow   *window `json:"primary_window"`
+		SecondaryWindow *window `json:"secondary_window"`
+	}{rateLimit: &decoded}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	observedWindow := func(w *window) *OpenAIRateLimitWindow {
+		if w == nil || w.UsedPercent == nil {
+			return nil
+		}
+		w.OpenAIRateLimitWindow.UsedPercent = *w.UsedPercent
+		return &w.OpenAIRateLimitWindow
+	}
+	decoded.PrimaryWindow = observedWindow(payload.PrimaryWindow)
+	decoded.SecondaryWindow = observedWindow(payload.SecondaryWindow)
+	*r = OpenAIRateLimit(decoded)
+	return nil
 }
 
 // OpenAIAdditionalRateLimit describes a per-feature rate limit (e.g. Codex Spark).

@@ -58,6 +58,13 @@ jobs:
           go test -json -tags=unit -p 1 -count=1 ./internal/handler/admin ./internal/repository \
             -run 'Test.*(OpenAIQuota|OpenAIRefreshQuota|ResetQuota|ChannelMonitorQuota|CodexDisplaySnapshot)' \
             -timeout 10m 2>&1 | tee "$RUNNER_TEMP/openai-usage-contracts.jsonl"
+      - name: Check shared refresh cancellation for races
+        id: cancellation
+        run: |
+          set -o pipefail
+          go test -race -json -tags=unit -p 1 -count=10 ./internal/service \
+            -run 'TestOpenAIUsageRefresh_(CallerCancellation|AlreadyCanceled)' \
+            -timeout 5m 2>&1 | tee "$RUNNER_TEMP/openai-usage-cancellation.jsonl"
       - name: Compile the server and dependency wiring
         id: compile
         run: |
@@ -68,6 +75,7 @@ jobs:
         env:
           SERVICE_RESULT: ${{ steps.service.outcome }}
           CONTRACTS_RESULT: ${{ steps.contracts.outcome }}
+          CANCELLATION_RESULT: ${{ steps.cancellation.outcome }}
           COMPILE_RESULT: ${{ steps.compile.outcome }}
         run: |
           {
@@ -75,6 +83,7 @@ jobs:
             echo "Commit: $GITHUB_SHA"
             echo "- Mock quota and fallback regressions: $SERVICE_RESULT"
             echo "- Handler and repository contracts: $CONTRACTS_RESULT"
+            echo "- Repeated shared refresh cancellation race checks: $CANCELLATION_RESULT"
             echo "- Server compilation: $COMPILE_RESULT"
             echo 'Upstreams are local mocks; no real account credentials are configured.'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -85,6 +94,7 @@ jobs:
           path: |
             ${{ runner.temp }}/openai-usage-service.jsonl
             ${{ runner.temp }}/openai-usage-contracts.jsonl
+            ${{ runner.temp }}/openai-usage-cancellation.jsonl
             ${{ runner.temp }}/openai-usage-server.log
           if-no-files-found: warn
           retention-days: 14

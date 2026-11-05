@@ -77,6 +77,8 @@ type quotaRefreshUpstream struct {
 	modelHeaders      http.Header
 	models            []string
 	recoverAfterModel bool
+	requestStarted    chan struct{}
+	releaseRequest    <-chan struct{}
 }
 
 func (u *quotaRefreshUpstream) requestLog() []string {
@@ -110,6 +112,7 @@ func (u *quotaRefreshUpstream) serve(w http.ResponseWriter, r *http.Request) {
 	u.requests = append(u.requests, r.Method+" "+r.URL.Path)
 	u.credentials = append(u.credentials, r.Header.Get("Authorization")+"|"+r.Header.Get("chatgpt-account-id"))
 	status, body, timeout := u.status, u.body, u.timeout
+	started, release := u.requestStarted, u.releaseRequest
 	modelHeaders := u.modelHeaders.Clone()
 	if r.Method == http.MethodPost {
 		u.models = append(u.models, model)
@@ -119,6 +122,17 @@ func (u *quotaRefreshUpstream) serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.mu.Unlock()
+	if r.Method == http.MethodGet && release != nil {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
+	}
 	if timeout {
 		select {
 		case <-r.Context().Done():
@@ -596,5 +610,184 @@ func TestOpenAIUsageRefresh_FallbackRejectsInvalidPercent(t *testing.T) {
 		require.Equal(t, 63.0, usage.SevenDay.Utilization)
 		require.Equal(t, "2020-01-01T00:00:00Z", usage.UpdatedAt.Format(time.RFC3339))
 		require.Empty(t, repo.writes)
+	}
+}
+
+// Signal when the caller reaches its wait select, so cancellation coverage does
+// not depend on sleeps or goroutine scheduling.
+type quotaRefreshWaitContext struct {
+	context.Context
+	waiting chan struct{}
+	once    sync.Once
+}
+
+func (c *quotaRefreshWaitContext) Done() <-chan struct{} {
+	c.once.Do(func() { close(c.waiting) })
+	return c.Context.Done()
+}
+
+func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *testing.T) {
+	for _, cancelLeader := range []bool{true, false} {
+		t.Run(fmt.Sprintf("cancelLeader=%t", cancelLeader), func(t *testing.T) {
+			svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
+			started := make(chan struct{}, 1)
+			release := make(chan struct{})
+			var releaseOnce sync.Once
+			unblock := func() { releaseOnce.Do(func() { close(release) }) }
+			t.Cleanup(unblock)
+			upstream.requestStarted, upstream.releaseRequest = started, release
+			type result struct {
+				usage *UsageInfo
+				err   error
+			}
+			waitFor := func(ch <-chan struct{}) {
+				t.Helper()
+				select {
+				case <-ch:
+				case <-time.After(2 * time.Second):
+					t.Fatal("timed out waiting for refresh synchronization")
+				}
+			}
+			awaitResult := func(ch <-chan result) result {
+				t.Helper()
+				select {
+				case got := <-ch:
+					return got
+				case <-time.After(2 * time.Second):
+					t.Fatal("caller did not finish promptly")
+					return result{}
+				}
+			}
+			startCaller := func() (context.CancelFunc, <-chan result) {
+				ctx, cancel := context.WithCancel(context.Background())
+				t.Cleanup(cancel)
+				tracked := &quotaRefreshWaitContext{Context: ctx, waiting: make(chan struct{})}
+				results := make(chan result, 1)
+				go func() {
+					usage, err := svc.GetUsage(tracked, id)
+					results <- result{usage: usage, err: err}
+				}()
+				waitFor(tracked.waiting)
+				return cancel, results
+			}
+			cancelFirst, first := startCaller()
+			waitFor(started)
+			cancelSecond, second := startCaller()
+			canceled, survivor := first, second
+			if cancelLeader {
+				cancelFirst()
+			} else {
+				cancelSecond()
+				canceled, survivor = second, first
+			}
+			require.ErrorIs(t, awaitResult(canceled).err, context.Canceled)
+			require.Nil(t, svc.cachedOpenAIUsage(id), "caller cancellation must not populate the cache")
+			unblock()
+			got := awaitResult(survivor)
+			require.NoError(t, got.err)
+			require.NotNil(t, got.usage)
+			require.Empty(t, got.usage.Error)
+			require.Equal(t, 12.0, got.usage.FiveHour.Utilization)
+			again, err := svc.GetUsage(context.Background(), id)
+			require.NoError(t, err)
+			require.Empty(t, again.Error)
+			require.Equal(t, got.usage.UpdatedAt, again.UpdatedAt)
+			require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
+			repo.mu.Lock()
+			writes := append([]int64(nil), repo.writes...)
+			repo.mu.Unlock()
+			require.Equal(t, []int64{id}, writes)
+		})
+	}
+}
+
+func TestOpenAIUsageRefresh_AlreadyCanceledCallerDoesNotStartRefresh(t *testing.T) {
+	svc, _, upstream, id := quotaRefreshFixture(t, false, true)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := svc.GetUsage(ctx, id, true)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, svc.cachedOpenAIUsage(id))
+	require.Empty(t, upstream.requestLog())
+}
+
+func TestOpenAIUsageRefresh_MissingPercentIsNotZero(t *testing.T) {
+	for _, path := range []string{"single", "batch", "monitor"} {
+		for _, shadow := range []bool{false, true} {
+			for _, old := range []bool{false, true} {
+				for _, window := range []string{`{}`, `{"limit_window_seconds":18000}`, `{"used_percent":null,"limit_window_seconds":18000}`} {
+					t.Run(fmt.Sprintf("%s/shadow=%t/old=%t/%s", path, shadow, old, window), func(t *testing.T) {
+						svc, repo, upstream, id := quotaRefreshFixture(t, shadow, old)
+						rateLimit := `{"primary_window":` + window + `,"secondary_window":` + window + `}`
+						upstream.body = `{"rate_limit":` + rateLimit + `}`
+						if shadow {
+							upstream.body = `{"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":` + rateLimit + `}]}`
+						}
+						usage, monitor := callQuotaRefresh(t, svc, repo, id, path, false)
+						if monitor != nil {
+							require.False(t, monitor.Success)
+							require.False(t, monitor.CredentialInvalid)
+						} else {
+							require.Equal(t, "quota_windows_missing", usage.ErrorCode)
+							if old {
+								require.Equal(t, 37.0, usage.FiveHour.Utilization)
+								require.Equal(t, 63.0, usage.SevenDay.Utilization)
+								require.Equal(t, "2020-01-01T00:00:00Z", usage.UpdatedAt.Format(time.RFC3339))
+							} else {
+								require.Nil(t, usage.FiveHour)
+								require.Nil(t, usage.SevenDay)
+								require.Nil(t, usage.UpdatedAt)
+							}
+						}
+						require.Empty(t, repo.writes)
+						require.Equal(t, []string{"GET /backend-api/wham/usage", "POST /backend-api/codex/responses"}, upstream.requestLog())
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestOpenAIUsageRefresh_MissingPercentUsesModelFallback(t *testing.T) {
+	svc, _, upstream, id := quotaRefreshFixture(t, false, true)
+	upstream.body = `{"rate_limit":{"primary_window":{}}}`
+	upstream.modelStatus = http.StatusOK
+	upstream.modelHeaders = fallbackQuotaHeaders()
+	usage, err := svc.GetUsage(context.Background(), id)
+	require.NoError(t, err)
+	require.Empty(t, usage.Error)
+	require.Equal(t, 55.0, usage.FiveHour.Utilization)
+	require.Equal(t, 65.0, usage.SevenDay.Utilization)
+	require.Equal(t, []string{"GET /backend-api/wham/usage", "POST /backend-api/codex/responses"}, upstream.requestLog())
+}
+
+func TestOpenAIUsageRefresh_ExplicitZeroWithMissingOtherWindow(t *testing.T) {
+	for _, shadow := range []bool{false, true} {
+		for _, primaryZero := range []bool{false, true} {
+			t.Run(fmt.Sprintf("shadow=%t/primaryZero=%t", shadow, primaryZero), func(t *testing.T) {
+				svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
+				zero := `{"used_percent":0,"limit_window_seconds":18000,"reset_after_seconds":3600}`
+				missing := `{"used_percent":null,"limit_window_seconds":604800}`
+				primary, secondary := zero, missing
+				if !primaryZero {
+					primary, secondary = secondary, primary
+				}
+				rateLimit := `{"allowed":true,"primary_window":` + primary + `,"secondary_window":` + secondary + `}`
+				upstream.body = `{"rate_limit":` + rateLimit + `}`
+				if shadow {
+					upstream.body = `{"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":` + rateLimit + `}]}`
+				}
+				usage, err := svc.GetUsage(context.Background(), id)
+				require.NoError(t, err)
+				require.Empty(t, usage.Error)
+				require.NotNil(t, usage.FiveHour)
+				require.Zero(t, usage.FiveHour.Utilization)
+				require.NotNil(t, usage.FiveHour.ResetsAt)
+				require.Nil(t, usage.SevenDay)
+				require.Nil(t, repo.accounts[id].Extra["codex_7d_used_percent"])
+				require.NotNil(t, usage.UpdatedAt)
+				require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
+			})
+		}
 	}
 }

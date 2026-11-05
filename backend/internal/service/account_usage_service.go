@@ -112,6 +112,10 @@ const (
 	openAIUsageCacheTTL = 10 * time.Minute
 	grokProbeRetryTTL   = 1 * time.Minute
 	grokFreeQuotaWindow = 24 * time.Hour
+
+	// Allow the usage read, model fallback and Spark re-read to finish even if
+	// one waiter disconnects, while bounding the lifetime of the shared task.
+	openAIUsageRefreshTimeout = time.Minute
 )
 
 // UsageCache 封装账户使用量相关的缓存
@@ -746,34 +750,44 @@ func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Accou
 	if account == nil {
 		return nil, fmt.Errorf("account is required")
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	now := time.Now()
 	usage := openAIUsageFromExtra(account.Extra, now)
 	entry := s.cachedOpenAIUsage(account.ID)
 	if force || shouldRefreshOpenAICodexSnapshot(account, usage, now) || (entry != nil && entry.message != "") {
-		refresh := func() *openAIUsageCacheEntry {
+		refresh := func(refreshCtx context.Context) *openAIUsageCacheEntry {
 			if cached := s.cachedOpenAIUsage(account.ID); !force && cached != nil && time.Since(cached.timestamp) < openAIUsageCacheTTL {
 				return cached
 			}
-			result := s.queryOpenAIUsageSnapshot(ctx, account)
+			result := s.queryOpenAIUsageSnapshot(refreshCtx, account)
 			if s.cache != nil {
 				s.cache.openAIUsageCache.Store(account.ID, result)
 			}
 			return result
 		}
 		if s.cache != nil {
-			value, err, _ := s.cache.openAIUsageFlight.Do(fmt.Sprintf("usage:%d", account.ID), func() (any, error) {
-				return refresh(), nil
+			ch := s.cache.openAIUsageFlight.DoChan(fmt.Sprintf("usage:%d", account.ID), func() (any, error) {
+				refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), openAIUsageRefreshTimeout)
+				defer cancel()
+				return refresh(refreshCtx), nil
 			})
-			if err != nil {
-				return nil, err
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case shared := <-ch:
+				if shared.Err != nil {
+					return nil, shared.Err
+				}
+				result, ok := shared.Val.(*openAIUsageCacheEntry)
+				if !ok || result == nil {
+					return nil, fmt.Errorf("invalid OpenAI usage refresh result")
+				}
+				entry = result
 			}
-			result, ok := value.(*openAIUsageCacheEntry)
-			if !ok || result == nil {
-				return nil, fmt.Errorf("invalid OpenAI usage refresh result")
-			}
-			entry = result
 		} else {
-			entry = refresh()
+			entry = refresh(ctx)
 		}
 	}
 	if entry != nil {
