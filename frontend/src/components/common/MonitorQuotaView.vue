@@ -9,18 +9,18 @@
 
     <!-- 用量窗口条形图（复用账号页 UsageProgressBar：同阈值配色、同倒计时格式） -->
     <div v-if="snapshot.success && tierRows.length" class="space-y-1">
-      <UsageProgressBar
-        v-for="row in tierRows"
-        :key="row.key"
-        data-testid="monitor-quota-tier"
-        :label="row.label"
-        :title="row.title"
-        label-width="auto"
-        :color="row.color"
-        :utilization="row.tier.used_percent"
-        :resets-at="row.tier.reset_at ?? null"
-        :estimate="row.tier.estimate"
-      />
+      <div v-for="row in tierRows" :key="row.key" class="space-y-0.5">
+        <QuotaEstimateView :estimate="row.tier.estimate" :resets-at="row.tier.reset_at" />
+        <UsageProgressBar
+          data-testid="monitor-quota-tier"
+          :label="row.label"
+          :title="row.title"
+          label-width="auto"
+          :color="row.color"
+          :utilization="row.tier.used_percent"
+          :resets-at="row.tier.reset_at ?? null"
+        />
+      </div>
     </div>
 
     <!-- 余额（国产 payg；支持多币种） -->
@@ -44,6 +44,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MonitorQuotaSnapshot, MonitorQuotaTier } from '@/api/admin/channelMonitor'
+import QuotaEstimateView from '@/components/common/QuotaEstimateView.vue'
 import UsageProgressBar from '@/components/account/UsageProgressBar.vue'
 
 /**

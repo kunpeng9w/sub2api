@@ -178,7 +178,11 @@ describe('MonitorFormDialog linked account selector', () => {
     const wrapper = mountDialog(); await flushPromises()
     await wrapper.findAll('input[type="text"]')[0].setValue('private monitor')
     await wrapper.get('[data-testid="monitor-primary-model"]').setValue('fixture-model')
-    await wrapper.get('[data-testid="monitor-visibility"]').setValue('selected')
+    await wrapper.get('[data-testid="monitor-visibility"] button').trigger('click')
+    await nextTick()
+    const visibilityDropdown = document.body.querySelector<HTMLElement>('.select-dropdown-portal')!
+    clickOption(visibilityDropdown, 'monitorCommon.controls.selected')
+    await nextTick()
     await wrapper.get('#channel-monitor-form').trigger('submit'); await flushPromises()
     expect(monitorCreate).not.toHaveBeenCalled()
     await wrapper.get('[data-testid="monitor-user-search"]').setValue('alpha')

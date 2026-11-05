@@ -22,7 +22,7 @@
             :data-testid="`monitor-check-mode-${opt.value}`"
             :aria-pressed="form.check_mode === opt.value"
             :disabled="opt.disabled"
-            class="rounded-lg border-2 px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            class="rounded-xl border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
             :class="checkModeButtonClass(opt.value)"
             @click="selectCheckMode(opt.value)"
           >
@@ -148,35 +148,73 @@
         />
       </div>
 
-      <div v-if="form.account_id == null">
-        <label class="input-label">{{ t('monitorCommon.controls.proxy') }}</label>
-        <select v-model="form.proxy_id" class="input" data-testid="monitor-proxy">
-          <option :value="null">{{ t('monitorCommon.controls.chooseProxy') }}</option>
-          <option v-for="p in proxyChoices" :key="p.id" :value="p.id">{{ p.name }} (#{{ p.id }})</option>
-        </select>
-      </div>
-      <p v-else class="text-xs text-gray-500">{{ t('monitorCommon.controls.accountProxy') }}</p>
-      <div>
-        <label class="input-label">{{ t('monitorCommon.controls.visibility') }}</label>
-        <select v-model="form.visibility" class="input" data-testid="monitor-visibility">
-          <option value="admin_only">{{ t('monitorCommon.controls.adminOnly') }}</option>
-          <option value="selected">{{ t('monitorCommon.controls.selected') }}</option>
-          <option value="all">{{ t('monitorCommon.controls.allUsers') }}</option>
-        </select>
-        <div v-if="form.visibility === 'selected'" class="mt-2 space-y-2">
-          <div class="flex gap-2">
-            <input v-model="viewerQuery" data-testid="monitor-user-search" class="input" :placeholder="t('monitorCommon.controls.searchUsers')" @keydown.enter.prevent="searchViewers" />
-            <button type="button" class="btn btn-secondary" data-testid="monitor-user-search-submit" @click="searchViewers">{{ t('common.search') }}</button>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label class="input-label">{{ t('monitorCommon.controls.proxy') }}</label>
+          <Select
+            v-if="form.account_id == null"
+            v-model="form.proxy_id"
+            :options="proxyOptions"
+            :aria-label="t('monitorCommon.controls.proxy')"
+            data-testid="monitor-proxy"
+          />
+          <div v-else class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-400">
+            {{ t('monitorCommon.controls.accountProxy') }}
           </div>
-          <label v-for="user in viewerChoices" :key="user.id" class="mr-3 inline-flex items-center gap-1">
-            <input v-model="form.allowed_user_ids" type="checkbox" :value="user.id" />{{ user.label }}
-          </label>
-          <button v-for="id in form.allowed_user_ids" :key="id" type="button" class="mr-2 text-xs" @click="form.allowed_user_ids = form.allowed_user_ids.filter(value => value !== id)">#{{ id }} ×</button>
+        </div>
+        <div>
+          <label class="input-label">{{ t('monitorCommon.controls.visibility') }}</label>
+          <Select
+            v-model="form.visibility"
+            :options="visibilityOptions"
+            :aria-label="t('monitorCommon.controls.visibility')"
+            data-testid="monitor-visibility"
+          />
         </div>
       </div>
-      <div class="flex items-center justify-between">
-        <label class="input-label mb-0">{{ t('monitorCommon.controls.autoCheck') }}</label>
-        <Toggle v-model="form.auto_check_enabled" data-testid="monitor-auto-check" />
+
+      <div v-if="form.visibility === 'selected'" class="space-y-3 rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-dark-700 dark:bg-dark-900/30">
+        <div class="flex gap-2">
+          <input
+            v-model="viewerQuery"
+            data-testid="monitor-user-search"
+            class="input min-w-0 flex-1"
+            :aria-label="t('monitorCommon.controls.searchUsers')"
+            :placeholder="t('monitorCommon.controls.searchUsers')"
+            @keydown.enter.prevent="searchViewers"
+          />
+          <button type="button" class="btn btn-secondary shrink-0" data-testid="monitor-user-search-submit" @click="searchViewers">
+            {{ t('common.search') }}
+          </button>
+        </div>
+        <div v-if="viewerChoices.length" class="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 dark:border-dark-700 dark:bg-dark-800 dark:divide-dark-700">
+          <label
+            v-for="user in viewerChoices"
+            :key="user.id"
+            class="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-dark-700"
+          >
+            <input v-model="form.allowed_user_ids" type="checkbox" :value="user.id" class="h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-500 dark:bg-dark-700" />
+            <span class="min-w-0 break-all">{{ user.label }}</span>
+          </label>
+        </div>
+        <div v-if="form.allowed_user_ids.length" class="flex flex-wrap gap-2">
+          <button
+            v-for="id in form.allowed_user_ids"
+            :key="id"
+            type="button"
+            class="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-primary-900/20 dark:text-primary-300 dark:hover:bg-primary-900/40"
+            :aria-label="t('common.remove') + ' ' + viewerLabel(id)"
+            @click="form.allowed_user_ids = form.allowed_user_ids.filter(value => value !== id)"
+          >
+            <span class="truncate">{{ viewerLabel(id) }}</span>
+            <Icon name="x" size="xs" class="shrink-0" />
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-dark-700 dark:bg-dark-900/30">
+        <label for="monitor-auto-check" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('monitorCommon.controls.autoCheck') }}</label>
+        <Toggle id="monitor-auto-check" v-model="form.auto_check_enabled" data-testid="monitor-auto-check" />
       </div>
       <div>
         <label class="input-label">{{ t('admin.channelMonitor.form.groupName') }}</label>
@@ -282,6 +320,7 @@ import type {
 import type { ChannelMonitorTemplate } from '@/api/admin/channelMonitorTemplate'
 import type { ApiKey } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import Icon from '@/components/icons/Icon.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Select from '@/components/common/Select.vue'
 import ModelTagInput from '@/components/admin/channel/ModelTagInput.vue'
@@ -398,8 +437,21 @@ const form = reactive<MonitorForm>({
 })
 
 const proxyChoices = ref<{ id: number; name: string }[]>([])
+const proxyOptions = computed(() => [
+  { value: null, label: t('monitorCommon.controls.chooseProxy') },
+  ...proxyChoices.value.map(proxy => ({ value: proxy.id, label: `${proxy.name} (#${proxy.id})` })),
+])
+const visibilityOptions = computed(() => [
+  { value: 'admin_only', label: t('monitorCommon.controls.adminOnly') },
+  { value: 'selected', label: t('monitorCommon.controls.selected') },
+  { value: 'all', label: t('monitorCommon.controls.allUsers') },
+])
 const viewerQuery = ref('')
 const viewerChoices = ref<{ id: number; label: string }[]>([])
+const viewerLabels = ref<Record<number, string>>({})
+function viewerLabel(id: number): string {
+  return viewerLabels.value[id] || `#${id}`
+}
 async function loadProxyChoices() {
   try { proxyChoices.value = await adminAPI.proxies?.getAll?.() || [] }
   catch { proxyChoices.value = [] }
@@ -408,6 +460,7 @@ async function searchViewers() {
   try {
     const result = await adminAPI.users.list(1, 20, { search: viewerQuery.value.trim() })
     viewerChoices.value = result.items.map(user => ({ id: user.id, label: `${user.username || user.email} (#${user.id})` }))
+    for (const user of viewerChoices.value) viewerLabels.value[user.id] = user.label
   } catch (error) { appStore.showError(extractApiErrorMessage(error, t('common.error'))) }
 }
 
@@ -497,7 +550,7 @@ function apiModeButtonClass(mode: APIMode): string {
   if (active) {
     return 'border-primary-500 bg-white text-primary-700 shadow-sm dark:border-primary-400 dark:bg-primary-500/15 dark:text-primary-300'
   }
-  return 'border-blue-100 bg-white/70 text-gray-600 hover:border-primary-300 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400'
+  return 'border-gray-200 bg-white text-gray-600 hover:border-primary-300 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400'
 }
 
 function templateOptionLabel(tpl: ChannelMonitorTemplate): string {
@@ -577,7 +630,7 @@ function checkModeButtonClass(mode: CheckMode): string {
   if (active) {
     return 'border-primary-500 bg-white text-primary-700 shadow-sm dark:border-primary-400 dark:bg-primary-500/15 dark:text-primary-300'
   }
-  return 'border-blue-100 bg-white/70 text-gray-600 hover:border-primary-300 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400'
+  return 'border-gray-200 bg-white text-gray-600 hover:border-primary-300 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400'
 }
 
 function selectCheckMode(mode: CheckMode) {

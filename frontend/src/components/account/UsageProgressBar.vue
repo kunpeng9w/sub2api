@@ -33,8 +33,6 @@
       </div>
     </div>
 
-    <QuotaEstimateView :estimate="estimate" :resets-at="resetsAt" class="mb-0.5" />
-
     <!-- Progress bar row -->
     <div class="flex items-center gap-1">
       <!-- Label badge (label-width: fixed = 定宽居中, auto = 限宽截断左对齐) -->
@@ -67,8 +65,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
-import type { WindowStats, QuotaEstimate } from '@/types'
-import QuotaEstimateView from '@/components/common/QuotaEstimateView.vue'
+import type { WindowStats } from '@/types'
 import { formatCompactNumber } from '@/utils/format'
 
 const props = withDefaults(
@@ -79,7 +76,6 @@ const props = withDefaults(
     color: 'indigo' | 'emerald' | 'purple' | 'amber'
     windowStats?: WindowStats | null
     estimatedTotalCost?: number | null
-    estimate?: QuotaEstimate | null
     showNowWhenIdle?: boolean
     remainingCapacity?: boolean
     /** fixed: 定宽居中徽章（账号页纵向对齐）；auto: 限宽截断左对齐（监控页组合标签） */

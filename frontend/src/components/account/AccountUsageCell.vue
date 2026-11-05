@@ -46,7 +46,6 @@
           label="5h"
           :utilization="usageInfo.five_hour.utilization"
           :resets-at="usageInfo.five_hour.resets_at"
-          :estimate="usageInfo.five_hour.estimate"
           :window-stats="usageInfo.five_hour.window_stats"
           color="indigo"
         />
@@ -57,7 +56,6 @@
           label="7d"
           :utilization="usageInfo.seven_day.utilization"
           :resets-at="usageInfo.seven_day.resets_at"
-          :estimate="usageInfo.seven_day.estimate"
           color="emerald"
         />
 
@@ -67,7 +65,6 @@
           label="7d S"
           :utilization="usageInfo.seven_day_sonnet.utilization"
           :resets-at="usageInfo.seven_day_sonnet.resets_at"
-          :estimate="usageInfo.seven_day_sonnet.estimate"
           color="purple"
         />
 
@@ -77,7 +74,6 @@
           label="7d F"
           :utilization="usageInfo.seven_day_fable.utilization"
           :resets-at="usageInfo.seven_day_fable.resets_at"
-          :estimate="usageInfo.seven_day_fable.estimate"
           color="amber"
         />
 
@@ -145,7 +141,6 @@
           label="5h"
           :utilization="usageInfo.five_hour.utilization"
           :resets-at="usageInfo.five_hour.resets_at"
-          :estimate="usageInfo.five_hour.estimate"
           :window-stats="usageInfo.five_hour.window_stats"
           :show-now-when-idle="true"
           color="indigo"
@@ -155,8 +150,8 @@
           label="7d"
           :utilization="usageInfo.seven_day.utilization"
           :resets-at="usageInfo.seven_day.resets_at"
-          :estimate="usageInfo.seven_day.estimate"
           :window-stats="usageInfo.seven_day.window_stats"
+          :estimated-total-cost="openAISevenDayEstimatedTotalCost"
           :show-now-when-idle="true"
           color="emerald"
         />
@@ -871,6 +866,25 @@ const openAISnapshotTime = computed(() => {
   if (!hasOpenAIUsageFallback.value || !usageInfo.value?.updated_at) return ''
   const timestamp = new Date(usageInfo.value.updated_at)
   return Number.isNaN(timestamp.getTime()) ? '' : timestamp.toLocaleString()
+})
+
+const openAISevenDayEstimatedTotalCost = computed(() => {
+  const sevenDay = usageInfo.value?.seven_day
+  const utilization = sevenDay?.utilization
+  const currentCost = sevenDay?.window_stats?.cost
+  if (
+    typeof utilization !== 'number' ||
+    typeof currentCost !== 'number' ||
+    !Number.isFinite(utilization) ||
+    !Number.isFinite(currentCost) ||
+    utilization <= 0 ||
+    currentCost <= 0
+  ) {
+    return null
+  }
+
+  const estimate = (currentCost * 100) / utilization
+  return Number.isFinite(estimate) && estimate > 0 ? estimate : null
 })
 
 const openAIUsageRefreshKey = computed(() => buildOpenAIUsageRefreshKey(props.account))
