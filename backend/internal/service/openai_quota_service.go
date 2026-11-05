@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -219,7 +219,10 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 		return nil, infraerrors.Newf(http.StatusBadGateway, "OPENAI_QUOTA_CLIENT_ERROR", "failed to build upstream client: %v", err)
 	}
 
- client,err=monitorrequest.ReqClient(ctx,client,proxyURL);if err!=nil{return nil,err}
+	client, err = monitorrequest.ReqClient(ctx, client, proxyURL)
+	if err != nil {
+		return nil, err
+	}
 
 	callCtx, cancel := context.WithTimeout(ctx, openaiQuotaUpstreamTimeout)
 	defer cancel()
@@ -613,12 +616,18 @@ func (s *OpenAIQuotaService) prepareUpstreamCall(ctx context.Context, accountID 
 		return "", "", "", false, infraerrors.New(http.StatusBadRequest, "OPENAI_QUOTA_MISSING_ACCOUNT_ID", "chatgpt_account_id is missing; please re-authorize this account")
 	}
 
- if monitorrequest.Active(ctx){
-  currentRoute,routeErr:=ResolveAccountProxyFromRepository(ctx,s.proxyRepo,account)
-  if routeErr!=nil{return "","","",false,routeErr}
-  if err:=monitorrequest.Check(ctx,currentRoute);err!=nil{return "","","",false,err}
-  if account.IsOpenAIAgentIdentity(){return "","","",false,ErrChannelMonitorAccountNotSupportable}
- }
+	if monitorrequest.Active(ctx) {
+		currentRoute, routeErr := ResolveAccountProxyFromRepository(ctx, s.proxyRepo, account)
+		if routeErr != nil {
+			return "", "", "", false, routeErr
+		}
+		if err := monitorrequest.Check(ctx, currentRoute); err != nil {
+			return "", "", "", false, err
+		}
+		if account.IsOpenAIAgentIdentity() {
+			return "", "", "", false, ErrChannelMonitorAccountNotSupportable
+		}
+	}
 	if !account.IsOpenAIAgentIdentity() {
 		if s.tokenProvider == nil {
 			return "", "", "", false, infraerrors.New(http.StatusInternalServerError, "OPENAI_QUOTA_NOT_CONFIGURED", "openai quota token provider is not configured")

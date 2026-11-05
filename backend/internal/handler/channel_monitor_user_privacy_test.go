@@ -23,4 +23,6 @@ func TestMonitorUserQuotaVisibilityAndErrorRedaction(t *testing.T) {
 	require.NotContains(t, string(data), "private upstream body")
 	require.NotContains(t, string(data), "proxy_id")
 	require.NotContains(t, string(data), "account_id")
+	quota.Success = true
+	require.Empty(t, safeUserMonitorQuota(quota).Error, "successful snapshots must not leak provider warning bodies either")
 }

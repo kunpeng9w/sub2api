@@ -14,7 +14,7 @@ import (
 func TestUsageWindowStatsBatchUsesSampleCutoffAndUpstreamFamily(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer func(){_ = db.Close()}()
+	defer func() { _ = db.Close() }()
 	repo := &usageLogRepository{sql: db}
 	now := time.Now().UTC()
 	windows := []service.UsageWindowQuery{{Key: "7d-sonnet", AccountID: 3, Start: now.Add(-24 * time.Hour), End: now, Family: "sonnet"}}

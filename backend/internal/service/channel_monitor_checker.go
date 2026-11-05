@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	 "github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/tidwall/gjson"
 )
 
@@ -125,8 +125,11 @@ func pingEndpointOrigin(ctx context.Context, endpoint string) *int {
 		return nil
 	}
 	start := time.Now()
-	client,err:=monitorRequestClient(ctx,true);if err!=nil{return nil}
- resp, err := client.Do(req)
+	client, err := monitorRequestClient(ctx, true)
+	if err != nil {
+		return nil
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil
 	}
@@ -530,8 +533,11 @@ func postRawJSON(ctx context.Context, fullURL string, payload []byte, headers ma
 		req.Header.Set(k, v)
 	}
 
-	client,err:=monitorRequestClient(ctx,false);if err!=nil{return nil, 0,err}
- resp, err := client.Do(req)
+	client, err := monitorRequestClient(ctx, false)
+	if err != nil {
+		return nil, 0, err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("do request: %w", err)
 	}
@@ -678,13 +684,27 @@ func truncateForErrorBody(body string) string {
 }
 
 type monitorBlockedTransport struct{}
-func(monitorBlockedTransport)RoundTrip(*http.Request)(*http.Response,error){return nil,ErrChannelMonitorEgress}
-func monitorRequestClient(ctx context.Context,ping bool)(*http.Client,error){
- p,ok:=monitorrequest.From(ctx)
- if !ok{if ping{return monitorPingHTTPClient,nil};return monitorHTTPClient,nil}
- timeout:=monitorRequestTimeout;if ping{timeout=monitorPingTimeout}
- base,err:=monitorProxyClientFactory(httpclient.Options{IsolationKey:monitorrequest.CacheKey(ctx),ProxyURL:p.Route,Timeout:timeout,ResponseHeaderTimeout:monitorResponseHeaderTimeout,ValidateResolvedIP:true,MaxIdleConns:16})
- if err!=nil{return nil,err};return monitorrequest.Client(ctx,base,p.Route)
+
+func (monitorBlockedTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, ErrChannelMonitorEgress
+}
+func monitorRequestClient(ctx context.Context, ping bool) (*http.Client, error) {
+	p, ok := monitorrequest.From(ctx)
+	if !ok {
+		if ping {
+			return monitorPingHTTPClient, nil
+		}
+		return monitorHTTPClient, nil
+	}
+	timeout := monitorRequestTimeout
+	if ping {
+		timeout = monitorPingTimeout
+	}
+	base, err := monitorProxyClientFactory(httpclient.Options{IsolationKey: monitorrequest.CacheKey(ctx), ProxyURL: p.Route, Timeout: timeout, ResponseHeaderTimeout: monitorResponseHeaderTimeout, ValidateResolvedIP: true, MaxIdleConns: 16})
+	if err != nil {
+		return nil, err
+	}
+	return monitorrequest.Client(ctx, base, p.Route)
 }
 
 var monitorProxyClientFactory = httpclient.GetClient

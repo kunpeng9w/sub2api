@@ -219,6 +219,7 @@ func safeUserMonitorQuota(q *domain.MonitorQuotaSnapshot) *domain.MonitorQuotaSn
 		return nil
 	}
 	copy := *q
+	copy.Error = ""
 	if !copy.Success {
 		copy.Error = "Quota data unavailable"
 	}

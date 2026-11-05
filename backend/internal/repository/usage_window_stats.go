@@ -31,7 +31,7 @@ func (r *usageLogRepository) GetUsageWindowStatsBatch(ctx context.Context, windo
 	if err != nil {
 		return nil, err
 	}
-	defer func(){_ = rows.Close()}()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var key string
 		st := &usagestats.AccountStats{}

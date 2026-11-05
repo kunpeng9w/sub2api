@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"net/http"
 	"net/url"
 	"strings"
@@ -30,7 +30,10 @@ func (s *openaiOAuthService) ExchangeCode(ctx context.Context, code, codeVerifie
 		return nil, infraerrors.Newf(http.StatusBadGateway, "OPENAI_OAUTH_CLIENT_INIT_FAILED", "create HTTP client: %v", err)
 	}
 
- client,err=monitorrequest.ReqClient(ctx,client,proxyURL);if err!=nil{return nil,err}
+	client, err = monitorrequest.ReqClient(ctx, client, proxyURL)
+	if err != nil {
+		return nil, err
+	}
 
 	if redirectURI == "" {
 		redirectURI = openai.DefaultRedirectURI
@@ -91,7 +94,10 @@ func (s *openaiOAuthService) refreshTokenWithClientID(ctx context.Context, refre
 		return nil, infraerrors.Newf(http.StatusBadGateway, "OPENAI_OAUTH_CLIENT_INIT_FAILED", "create HTTP client: %v", err)
 	}
 
- client,err=monitorrequest.ReqClient(ctx,client,proxyURL);if err!=nil{return nil,err}
+	client, err = monitorrequest.ReqClient(ctx, client, proxyURL)
+	if err != nil {
+		return nil, err
+	}
 
 	formData := url.Values{}
 	formData.Set("grant_type", "refresh_token")

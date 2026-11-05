@@ -40,7 +40,7 @@ func TestMonitorProxyProtocolsAndNoRedirect(t *testing.T) {
 					if err != nil {
 						return
 					}
-					defer func(){_ = conn.Close()}()
+					defer func() { _ = conn.Close() }()
 					_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
 					hdr := make([]byte, 2)
 					if _, err := io.ReadFull(conn, hdr); err != nil {
@@ -103,9 +103,11 @@ func TestMonitorProxyProtocolsAndNoRedirect(t *testing.T) {
 					_ = transport
 					pool := x509.NewCertPool()
 					pool.AddCert(server.Certificate())
-					sourceTransport,ok := server.Client().Transport.(*http.Transport)
-                    if !ok {t.Fatal("fixture transport unavailable")}
-                    fixture := sourceTransport.Clone()
+					sourceTransport, ok := server.Client().Transport.(*http.Transport)
+					if !ok {
+						t.Fatal("fixture transport unavailable")
+					}
+					fixture := sourceTransport.Clone()
 					fixture.TLSClientConfig = &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}
 					parsed := server.URL
 					_ = parsed
