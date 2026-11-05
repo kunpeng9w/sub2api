@@ -17,6 +17,6 @@
 
 ## 验证方式
 
-优先使用现有 backend-ci.yml / ops-ci.yml，并增加 channel-monitor-ci.yml 跑专项回归、远程 Ent/Wire 生成和构建。测试使用假凭据、模拟 DNS、传输层和回环代理。测试阶段的网络包装器拒绝测试用户建立公网连接，只允许回环和 Docker 测试网络；构建依赖安装在隔离测试之前完成。
+优先使用现有 backend-ci.yml / ops-ci.yml，并增加 channel-monitor-ci.yml 跑专项回归、远程 Ent/Wire 生成和构建。测试使用假凭据、模拟 DNS、传输层和回环代理。测试阶段的网络包装器拒绝测试进程建立公网连接，只允许回环和 Docker 测试网络；构建依赖安装在隔离测试之前完成。
 
 所有编译、生成代码、测试、类型检查、Lint、构建均在 GitHub Actions 执行。本机只编辑、检查 diff 和读取远程日志。对应提交、Actions 结果及 artifacts 在 VALIDATION.md 记录；真实联调必须另按 LIVE-TEST-CHECKLIST.md 取得批准。
