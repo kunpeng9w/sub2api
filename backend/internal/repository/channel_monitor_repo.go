@@ -177,7 +177,7 @@ func (r *channelMonitorRepository) Delete(ctx context.Context, id int64) error {
 }
 
 func (r *channelMonitorRepository) List(ctx context.Context, params service.ChannelMonitorListParams) ([]*service.ChannelMonitor, int64, error) {
-	q := r.client.ChannelMonitor.Query()
+	q := r.client.ChannelMonitor.Query().WithViewers()
 	if params.Provider != "" {
 		q = q.Where(channelmonitor.ProviderEQ(channelmonitor.Provider(params.Provider)))
 	}

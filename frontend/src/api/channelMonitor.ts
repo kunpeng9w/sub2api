@@ -85,7 +85,8 @@ export async function status(id: number): Promise<UserMonitorDetail> {
 }
 
 export async function run(id: number): Promise<void> {
-  await apiClient.post(`/channel-monitors/${id}/run`)
+  // Allow the backend's 90-second execution budget and result persistence.
+  await apiClient.post(`/channel-monitors/${id}/run`, undefined, { timeout: 120000 })
 }
 
 export const channelMonitorUserAPI = {

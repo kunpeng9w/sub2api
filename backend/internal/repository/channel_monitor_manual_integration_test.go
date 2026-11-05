@@ -28,6 +28,18 @@ func TestChannelMonitorManualViewerProxyRoundTrip(t *testing.T) {
 	require.Equal(t, "selected", loaded.Visibility)
 	require.ElementsMatch(t, []int64{first.ID, second.ID}, loaded.AllowedUserIDs)
 	require.Equal(t, proxy.ID, *loaded.ProxyID)
+	// The admin edit dialog starts with a list row, not a GetByID response.
+	listed, total, err := repo.List(ctx, service.ChannelMonitorListParams{Search: m.Name, PageSize: 1})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Len(t, listed, 1)
+	require.ElementsMatch(t, []int64{first.ID, second.ID}, listed[0].AllowedUserIDs)
+	listed[0].Name = "renamed-private"
+	require.NoError(t, repo.Update(ctx, listed[0]))
+	loaded, err = repo.GetByID(ctx, m.ID)
+	require.NoError(t, err)
+	require.Equal(t, "renamed-private", loaded.Name)
+	require.ElementsMatch(t, []int64{first.ID, second.ID}, loaded.AllowedUserIDs)
 	loaded.AllowedUserIDs = []int64{second.ID}
 	loaded.AutoCheckEnabled = true
 	require.NoError(t, repo.Update(ctx, loaded))

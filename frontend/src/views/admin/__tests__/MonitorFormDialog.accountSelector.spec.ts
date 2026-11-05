@@ -189,6 +189,29 @@ describe('MonitorFormDialog linked account selector', () => {
     expect(monitorCreate).toHaveBeenCalledWith(expect.objectContaining({ auto_check_enabled: false, visibility: 'selected', allowed_user_ids: [7, 9] }))
   })
 
+  it('preserves every viewer from the list row when only the name is edited', async () => {
+    const wrapper = mountDialog(makeMonitor({
+      visibility: 'selected',
+      allowed_user_ids: [7, 9, 99],
+    }))
+    await flushPromises()
+    await wrapper.get('[data-testid="monitor-user-search-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('input[type="checkbox"]').map(box =>
+      (box.element as HTMLInputElement).checked,
+    )).toEqual([true, true])
+    await wrapper.findAll('input[type="text"]')[0].setValue('renamed monitor')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({
+      name: 'renamed monitor',
+      visibility: 'selected',
+      allowed_user_ids: [7, 9, 99],
+    }))
+  })
+
   it('loads provider accounts for both probe proxy binding and quota mode', async () => {
     accountsList.mockResolvedValue({ items: [{ id: 1, name: 'a', platform: 'anthropic' }] })
     const wrapper = mountDialog()

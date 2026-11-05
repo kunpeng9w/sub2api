@@ -663,7 +663,10 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 	default:
 		results = s.runChecksConcurrent(ctx, m)
 	}
-	s.persistCheckResults(ctx, m, results)
+	// 请求断开或执行超时后仍保存已完成的结果；写库有独立的短期限，且仍持有执行锁。
+	persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer persistCancel()
+	s.persistCheckResults(persistCtx, m, results)
 	return results, nil
 }
 

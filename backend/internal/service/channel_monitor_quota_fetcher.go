@@ -132,6 +132,9 @@ func (f *ChannelMonitorQuotaFetcher) Fetch(ctx context.Context, accountID int64)
 		// fail-closed：fetcher 未注入（存量测试构造）时不 panic，降级为错误快照。
 		return quotaErrorSnapshot("usage", "quota fetcher is not configured", time.Now())
 	}
+	if err := ctx.Err(); err != nil {
+		return quotaErrorSnapshot("usage", err.Error(), time.Now())
+	}
 
 	now := time.Now()
 
@@ -139,28 +142,23 @@ func (f *ChannelMonitorQuotaFetcher) Fetch(ctx context.Context, accountID int64)
 		return cached
 	}
 
-	// singleflight 合并同账号并发抓取；脱离调用方 ctx（仿 CN 配额服务），
-	// 避免某个监控的取消波及共享同一账号的其他监控。
+	// 已启动的共享查询必须等待完成，即使调用方取消也不能提前返回：
+	// runCheck 在 Fetch 返回后释放跨实例锁与并发槽，必须覆盖真实查询的生命周期。
 	key := "monitor-quota:" + strconv.FormatInt(accountID, 10) + ":" + monitorrequest.CacheKey(ctx)
-	ch := f.flight.DoChan(key, func() (any, error) {
+	value, err, _ := f.flight.Do(key, func() (any, error) {
 		return f.fetchShared(accountID, ctx), nil
 	})
-	select {
-	case <-ctx.Done():
-		return quotaErrorSnapshot("usage", "context canceled", now)
-	case res := <-ch:
-		snapshot, ok := res.Val.(*domain.MonitorQuotaSnapshot)
-		if res.Err != nil || !ok || snapshot == nil {
-			return quotaErrorSnapshot("usage", "quota fetch failed", now)
-		}
-		return snapshot
+	snapshot, ok := value.(*domain.MonitorQuotaSnapshot)
+	if err != nil || !ok || snapshot == nil {
+		return quotaErrorSnapshot("usage", "quota fetch failed", now)
 	}
+	return snapshot
 }
 
 // fetchShared 是 singleflight 的执行体：抓取一次并写入缓存，结果由同一 key 上
 // 所有等待者共享。
 //
-// 开头必须重查缓存。Fetch 顶部的 cachedSnapshot 与下面的 flight.DoChan 之间有一个
+// 开头必须重查缓存。Fetch 顶部的 cachedSnapshot 与下面的 flight.Do 之间有一个
 // 窗口：期间另一个 goroutine 的 flight 可能已经跑完、写好缓存，并且它的 singleflight
 // key 也已被摘掉，于是本 goroutine 不会并入那次飞行，而是另起一个新的、对同一账号
 // 再打一次上游——正是 singleflight 要消除的那种重复查询。
@@ -176,7 +174,12 @@ func (f *ChannelMonitorQuotaFetcher) fetchShared(accountID int64, contexts ...co
 	if cached, ok := f.cachedSnapshot(accountID, time.Now(), monitorrequest.CacheKey(ctx)); ok {
 		return cached
 	}
-	fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), monitorQuotaFetchTimeout)
+	deadline := time.Now().Add(monitorQuotaFetchTimeout)
+	if callerDeadline, ok := ctx.Deadline(); ok && callerDeadline.Before(deadline) {
+		deadline = callerDeadline
+	}
+	// 保留执行期限和代理策略；单个等待者的取消不终止共享查询。
+	fetchCtx, cancel := context.WithDeadline(context.WithoutCancel(ctx), deadline)
 	defer cancel()
 	snapshot := f.fetchUncached(fetchCtx, accountID, time.Now())
 	// 失败也进短 TTL 负缓存：凭据失效/故障期间不必每次调度都打上游。

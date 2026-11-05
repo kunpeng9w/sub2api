@@ -5,11 +5,11 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,6 +74,77 @@ func TestMonitorExecutionLocksAndCooldown(t *testing.T) {
 	_, err = one.acquireRun(context.Background(), 1, 30)
 	require.ErrorIs(t, err, ErrChannelMonitorCoordination)
 }
+
+// Reject canceled persistence contexts, just as the real database driver does.
+type monitorContextRepo struct {
+	*quotaModeRepoStub
+}
+
+func (r *monitorContextRepo) InsertHistoryBatch(ctx context.Context, rows []*ChannelMonitorHistoryRow) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return r.quotaModeRepoStub.InsertHistoryBatch(ctx, rows)
+}
+
+func (r *monitorContextRepo) MarkChecked(ctx context.Context, id int64, at time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return r.quotaModeRepoStub.MarkChecked(ctx, id, at)
+}
+
+func TestMonitorCanceledRunHoldsLockAndSlotUntilQuotaCompletes(t *testing.T) {
+	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{
+		ID: 1, Enabled: true, Visibility: "all", Provider: MonitorProviderOpenAI,
+		PrimaryModel: "quota", CheckMode: MonitorCheckModeQuota, AccountID: int64Ptr(9),
+	}}
+	one := newQuotaModeService(t, repo)
+	one.repo = &monitorContextRepo{repo}
+	one.runSlots = make(chan struct{}, 1)
+	locks := &monitorFixtureLocks{}
+	one.runLocks = locks
+	two := NewChannelMonitorService(nil, nil)
+	two.runLocks = locks // A separate instance shares only Redis, not singleflight.
+	usage := &stubMonitorUsageSource{usage: &UsageInfo{}, block: make(chan struct{})}
+	one.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{
+		9: {ID: 9, Platform: MonitorProviderOpenAI},
+	}, usage))
+	var unblock sync.Once
+	t.Cleanup(func() { unblock.Do(func() { close(usage.block) }) })
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := one.RunManual(ctx, 1, 10, false)
+		done <- err
+	}()
+	require.Eventually(t, func() bool { return usage.getCalls() == 1 }, time.Second, time.Millisecond)
+	cancel()
+	select {
+	case err := <-done:
+		t.Fatalf("run returned while quota query was still active: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	_, err := two.acquireRun(context.Background(), 1, 20)
+	require.ErrorIs(t, err, ErrChannelMonitorBusy, "another instance must not overlap the active query")
+	_, err = one.acquireRun(context.Background(), 2, 20)
+	require.ErrorIs(t, err, ErrChannelMonitorBusy, "the local execution slot must remain occupied")
+	unblock.Do(func() { close(usage.block) })
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("completed quota query did not release the run")
+	}
+	require.Len(t, repo.history, 1, "results must survive a client disconnect")
+	require.Equal(t, []int64{1}, repo.markedIDs)
+	require.Empty(t, one.runSlots)
+	release, err := two.acquireRun(context.Background(), 1, 20)
+	require.NoError(t, err)
+	release()
+}
+
 func TestMonitorVisibilityAndRevocation(t *testing.T) {
 	m := &ChannelMonitor{ID: 1, Enabled: true, Visibility: "selected", AllowedUserIDs: []int64{10, 20}}
 	require.True(t, monitorVisibleTo(m, 10))

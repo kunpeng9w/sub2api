@@ -112,6 +112,12 @@ func (s *CNProviderQuotaService) QueryUsageForAccount(ctx context.Context, accou
 	if err := validateCodingPlanAccount(account); err != nil {
 		return nil, err
 	}
+	if monitorrequest.Active(ctx) {
+		// 监控 fetcher 已合并请求并持有执行锁，不再启动可能脱离该期限的后台查询。
+		probeCtx, cancel := context.WithTimeout(ctx, cnQuotaUpstreamTimeout+5*time.Second)
+		defer cancel()
+		return s.queryUsageForAccount(probeCtx, account)
+	}
 	key := "cn_quota:" + strconv.FormatInt(account.ID, 10) + ":" + monitorrequest.CacheKey(ctx)
 	resultCh := s.flight.DoChan(key, func() (any, error) {
 		probeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cnQuotaUpstreamTimeout+5*time.Second)
