@@ -31,7 +31,8 @@ describe('channel monitor refresh interval', () => {
     expect(run).not.toHaveBeenCalled()
     wrapper.findComponent({ name: 'MonitorCardGrid' }).vm.$emit('run', { id: 7 })
     await flushPromises()
-    expect(run).toHaveBeenCalledExactlyOnceWith(7)
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run).toHaveBeenCalledWith(7)
   })
 
   it('keeps automatic refresh disabled after reopening the page', async () => {

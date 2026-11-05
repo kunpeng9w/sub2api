@@ -165,8 +165,8 @@
         </select>
         <div v-if="form.visibility === 'selected'" class="mt-2 space-y-2">
           <div class="flex gap-2">
-            <input v-model="viewerQuery" class="input" :placeholder="t('monitorCommon.controls.searchUsers')" @keydown.enter.prevent="searchViewers" />
-            <button type="button" class="btn btn-secondary" @click="searchViewers">{{ t('common.search') }}</button>
+            <input v-model="viewerQuery" data-testid="monitor-user-search" class="input" :placeholder="t('monitorCommon.controls.searchUsers')" @keydown.enter.prevent="searchViewers" />
+            <button type="button" class="btn btn-secondary" data-testid="monitor-user-search-submit" @click="searchViewers">{{ t('common.search') }}</button>
           </div>
           <label v-for="user in viewerChoices" :key="user.id" class="mr-3 inline-flex items-center gap-1">
             <input v-model="form.allowed_user_ids" type="checkbox" :value="user.id" />{{ user.label }}

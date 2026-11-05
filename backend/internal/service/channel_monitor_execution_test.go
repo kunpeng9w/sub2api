@@ -4,6 +4,7 @@ package service
 
 import(
  "context"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
  "fmt"
  "sync"
  "testing"
@@ -40,4 +41,13 @@ func TestMonitorMissingProxyAndUnauthorizedNeverReachQuota(t *testing.T){
  _,err:=svc.RunManual(context.Background(),1,20,false);require.ErrorIs(t,err,ErrChannelMonitorNotFound)
  _,err=svc.RunManual(context.Background(),1,10,false);require.ErrorIs(t,err,ErrChannelMonitorEgress)
  require.Empty(t,repo.history)
+}
+
+func TestMonitorRouteRevocationInvalidatesPinnedContext(t *testing.T){
+ repo:=&quotaModeRepoStub{monitor:&ChannelMonitor{ID:1,Enabled:true,ProxyID:int64Ptr(71),Provider:MonitorProviderOpenAI}}
+ proxies:=&monitorFixtureProxyRepo{};svc:=NewChannelMonitorService(repo,nil);svc.proxies=proxies
+ ctx,err:=svc.monitorContext(context.Background(),repo.monitor);require.NoError(t,err)
+ policy,ok:=monitorrequest.From(ctx);require.True(t,ok);require.NoError(t,monitorrequest.Check(ctx,policy.Route))
+ proxies.broken=true;require.Error(t,monitorrequest.Check(ctx,policy.Route))
+ proxies.broken=false;repo.monitor.ProxyID=nil;require.Error(t,monitorrequest.Check(ctx,policy.Route))
 }

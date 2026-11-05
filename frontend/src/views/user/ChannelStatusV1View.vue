@@ -99,6 +99,9 @@ async function reload(silent = false) {
     const res = await listChannelMonitorViews({ signal: ctrl.signal })
     if (ctrl.signal.aborted || abortController !== ctrl) return
     items.value = res.items || []
+    const visibleIDs = new Set(items.value.map(item => item.id))
+    for (const key of Object.keys(detailCache)) { if (!visibleIDs.has(Number(key))) delete detailCache[Number(key)] }
+    if (detailTarget.value && !visibleIDs.has(detailTarget.value.id)) closeDetail()
   } catch (err: unknown) {
     const e = err as { name?: string; code?: string }
     if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return

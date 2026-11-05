@@ -600,7 +600,7 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 		return nil, err
 	}
  if !m.Enabled { return nil,ErrChannelMonitorNotFound }
- ctx,err = s.monitorContext(ctx,m);if err!=nil{return nil,err}
+ ctx,err = s.monitorContext(ctx,m,actorID);if err!=nil{return nil,err}
  release,err:=s.acquireRun(ctx,id,actorID);if err!=nil{return nil,err};defer release()
  ctx,cancel:=context.WithTimeout(ctx,90*time.Second);defer cancel()
 	checkMode := defaultCheckMode(m.CheckMode)

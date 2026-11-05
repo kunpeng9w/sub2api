@@ -38,7 +38,7 @@ func (s *ChannelMonitorService) validateAccess(ctx context.Context, m *ChannelMo
  if m.Visibility != "selected" { m.AllowedUserIDs = nil; return nil }
  ids := make([]int64,0,len(m.AllowedUserIDs)); seen := map[int64]bool{}
  for _, id := range m.AllowedUserIDs { if id <= 0 { return ErrChannelMonitorInvalidVisibility }; if !seen[id] { seen[id]=true; ids=append(ids,id) } }
- if len(ids)==0 { return ErrChannelMonitorInvalidVisibility }
+ if len(ids)==0 || len(ids)>1000 { return ErrChannelMonitorInvalidVisibility }
  sort.Slice(ids,func(i,j int)bool{return ids[i]<ids[j]}); m.AllowedUserIDs=ids
  validator,ok := s.repo.(interface{ ValidateMonitorUsers(context.Context, []int64) error })
  if !ok { return ErrChannelMonitorInvalidVisibility }
@@ -67,11 +67,12 @@ func(s *ChannelMonitorService)monitorRouteSnapshot(ctx context.Context,m *Channe
  if err!=nil||route==""{return "","",ErrChannelMonitorEgress}
  return route,fmt.Sprintf("%d:%d:%d",accountID,*binding,proxy.UpdatedAt.UnixNano()),nil
 }
-func (s *ChannelMonitorService) monitorContext(ctx context.Context,m *ChannelMonitor)(context.Context,error){
+func (s *ChannelMonitorService) monitorContext(ctx context.Context,m *ChannelMonitor, actors ...int64)(context.Context,error){
  route,revision,err:=s.monitorRouteSnapshot(ctx,m); if err!=nil{return ctx,err}
  accountID:=int64(0); if m.AccountID!=nil{accountID=*m.AccountID}
+ actor:=int64(0);if len(actors)>0{actor=actors[0]};trigger:="scheduled";if actor>0{trigger="manual"}
  ctx=WithHTTPUpstreamPublicHostsOnly(WithHTTPUpstreamRedirectsDisabled(ctx))
- return monitorrequest.With(ctx,monitorrequest.Policy{Route:route,Revision:revision,AccountID:accountID,ValidateTarget:monitorTargetValidator,Validate:func(checkCtx context.Context)error{
+ return monitorrequest.With(ctx,monitorrequest.Policy{MonitorID:m.ID,ActorID:actor,Trigger:trigger,Route:route,Revision:revision,AccountID:accountID,ValidateTarget:monitorTargetValidator,Validate:func(checkCtx context.Context)error{
   current,err:=s.repo.GetByID(checkCtx,m.ID)
   if err!=nil || !current.Enabled { return ErrChannelMonitorEgress }
   fresh,currentRevision,err:=s.monitorRouteSnapshot(checkCtx,current)

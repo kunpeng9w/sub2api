@@ -29,6 +29,7 @@ import "time"
 // Grok requests/tokens），用 Label 区分：Label 是机器 token（requests/tokens/
 // shared/pro/flash 或模型名），前端已知 token 走 i18n，未知原样展示。
 type MonitorQuotaTier struct {
+ SampledAt *time.Time `json:"sampled_at,omitempty"`
  Estimate *QuotaEstimate `json:"estimate,omitempty"`
 	Window      string  `json:"window"`
 	Label       string  `json:"label,omitempty"`

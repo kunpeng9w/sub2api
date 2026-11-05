@@ -152,6 +152,8 @@ type WindowStats struct {
 
 // UsageProgress 使用量进度
 type UsageProgress struct {
+ SampledAt *time.Time `json:"sampled_at,omitempty"`
+ sampleTimeMissing bool
  Estimate *domain.QuotaEstimate `json:"estimate,omitempty"`
 	Utilization      float64      `json:"utilization"`            // 使用率百分比 (0-100+，100表示100%)
 	ResetsAt         *time.Time   `json:"resets_at"`              // 重置时间
@@ -465,6 +467,7 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
         sampled:=now
         if cached,ok:=s.cache.apiCache.Load(accountID);ok{if c,ok:=cached.(*apiUsageCache);ok&&!c.timestamp.IsZero(){sampled=c.timestamp}}
         usage.UpdatedAt=&sampled
+        stampUsageWindows(usage,&sampled)
 
 		// 4. 添加窗口统计（有独立缓存，1 分钟）
 		s.addWindowStats(ctx, account, usage)
@@ -476,6 +479,7 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
 		// （7d_oi 响应头）的数据，避免主动查询后 7d F 进度条丢失。
 		if usage.SevenDayFable == nil {
 			usage.SevenDayFable = buildPassiveUsageWindow(account.Extra, "passive_usage_7d_oi_utilization", "passive_usage_7d_oi_reset")
+            setPassiveWindowSample(usage.SevenDayFable,account.Extra,"7d_oi")
 		}
 
 		s.tryClearRecoverableAccountError(ctx, account)
@@ -633,7 +637,9 @@ func (s *AccountUsageService) getPassiveUsageForAccount(ctx context.Context, acc
 	// 构建 7d Fable 窗口（从被动采样的 7d_oi 响应头数据）
 	info.SevenDayFable = buildPassiveUsageWindow(account.Extra, "passive_usage_7d_oi_utilization", "passive_usage_7d_oi_reset")
 
-	// 添加窗口统计
+	info.SevenDaySonnet=buildPassiveUsageWindow(account.Extra,"passive_usage_7d_sonnet_utilization","passive_usage_7d_sonnet_reset")
+ setPassiveWindowSamples(info,account.Extra)
+ // 添加窗口统计
 	s.addWindowStats(ctx, account, info)
 	if account.IsSyntheticUITest() {
 		applySyntheticWindowStats(info, account.Extra)
@@ -705,8 +711,14 @@ func (s *AccountUsageService) syncActiveToPassive(ctx context.Context, accountID
 		}
 	}
 
-	if len(extraUpdates) > 0 {
-		extraUpdates["passive_usage_sampled_at"] = time.Now().UTC().Format(time.RFC3339)
+ if usage.SevenDaySonnet!=nil{
+  extraUpdates["passive_usage_7d_sonnet_utilization"]=usage.SevenDaySonnet.Utilization/100
+  if usage.SevenDaySonnet.ResetsAt!=nil{extraUpdates["passive_usage_7d_sonnet_reset"]=usage.SevenDaySonnet.ResetsAt.Unix()}
+ }
+ if len(extraUpdates)>0{
+  stamp:=usage.UpdatedAt;if stamp==nil{now:=time.Now();stamp=&now}
+  extraUpdates["passive_usage_sampled_at"]=stamp.UTC().Format(time.RFC3339Nano)
+  for _,w:=range []struct{p *UsageProgress;key string}{{usage.FiveHour,"5h"},{usage.SevenDay,"7d"},{usage.SevenDaySonnet,"7d_sonnet"},{usage.SevenDayFable,"7d_oi"}}{if w.p!=nil{extraUpdates["passive_usage_"+w.key+"_sampled_at"]=stamp.UTC().Format(time.RFC3339Nano)}}
 		if err := s.accountRepo.UpdateExtra(ctx, accountID, extraUpdates); err != nil {
 			slog.Warn("sync_active_to_passive_failed", "account_id", accountID, "error", err)
 		}
@@ -738,7 +750,8 @@ func openAIUsageFromExtra(extra map[string]any, now time.Time) *UsageInfo {
 			usage.UpdatedAt = &ts
 		}
 	}
-	return usage
+	stampUsageWindows(usage,usage.UpdatedAt)
+ return usage
 }
 
 func (s *AccountUsageService) cachedOpenAIUsage(accountID int64) *openAIUsageCacheEntry {
@@ -1686,7 +1699,8 @@ func (s *AccountUsageService) buildUsageInfo(resp *ClaudeUsageResponse, updatedA
 		}
 	}
 
-	return info
+	stampUsageWindows(info,updatedAt)
+ return info
 }
 
 // estimateSetupTokenUsage 根据session_window推算Setup Token账号的使用量

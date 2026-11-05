@@ -49,12 +49,13 @@ func(s *AccountUsageService) attachQuotaEstimates(ctx context.Context,account *A
  queries:=make([]UsageWindowQuery,0,len(windows));progress:=map[string]*UsageProgress{}
  for i,w:=range windows{
   if *w.p==nil{continue};p:=**w.p;*w.p=&p
+  windowSample:=sampled;if p.SampledAt!=nil{windowSample=*p.SampledAt};if p.sampleTimeMissing{windowSample=time.Time{}}
   end:=time.Time{};if p.ResetsAt!=nil{end=*p.ResetsAt};start:=end.Add(-w.duration)
-  p.Estimate=EstimateQuota(0,p.Utilization,start,end,sampled,now)
+  p.Estimate=EstimateQuota(0,p.Utilization,start,end,windowSample,now)
   // Validate the time range before touching local stats.
   if p.Estimate.UnavailableReason=="invalid_window"{continue}
-  key:=fmt.Sprintf("%d:%d:%d:%d:%s",account.ID,i,start.UnixNano(),sampled.UnixNano(),w.family)
-  queries=append(queries,UsageWindowQuery{Key:key,AccountID:account.ID,Start:start,End:sampled,Family:w.family});progress[key]=&p
+  key:=fmt.Sprintf("%d:%d:%d:%d:%s",account.ID,i,start.UnixNano(),windowSample.UnixNano(),w.family)
+  queries=append(queries,UsageWindowQuery{Key:key,AccountID:account.ID,Start:start,End:windowSample,Family:w.family});progress[key]=&p
  }
  if len(queries)==0{return usage}
  reader,ok:=s.usageLogRepo.(usageWindowBatchReader);if !ok{for _,p:=range progress{p.Estimate.UnavailableReason="stats_unavailable"};return usage}
@@ -68,7 +69,20 @@ func(s *AccountUsageService) attachQuotaEstimates(ctx context.Context,account *A
   if err!=nil{for _,p:=range progress{p.Estimate.UnavailableReason="stats_unavailable"};return usage}
   if s.cache!=nil{s.cache.windowStatsCache.Store(cacheKey,&quotaEstimateCache{signature:signature,stats:stats,at:now})}
  }
- for _,q:=range queries{p:=progress[q.Key];st:=stats[q.Key];if st==nil{p.Estimate.UnavailableReason="stats_unavailable";continue};p.WindowStats=windowStatsFromAccountStats(st);p.Estimate=EstimateQuota(st.Cost,p.Utilization,q.Start,p.ResetsAt.UTC(),sampled,now)}
+ for _,q:=range queries{p:=progress[q.Key];st:=stats[q.Key];if st==nil{p.Estimate.UnavailableReason="stats_unavailable";continue};p.WindowStats=windowStatsFromAccountStats(st);p.Estimate=EstimateQuota(st.Cost,p.Utilization,q.Start,p.ResetsAt.UTC(),q.End,now)}
  return usage
 }
 type quotaEstimateCache struct{signature string;stats map[string]*usagestats.AccountStats;at time.Time}
+
+func stampUsageWindows(usage *UsageInfo,sampled *time.Time){
+ for _,p:=range []*UsageProgress{usage.FiveHour,usage.SevenDay,usage.SevenDaySonnet,usage.SevenDayFable}{if p!=nil{p.SampledAt=sampled;p.sampleTimeMissing=sampled==nil}}
+}
+func setPassiveWindowSample(p *UsageProgress,extra map[string]any,window string){
+ if p==nil{return};sample:=time.Time{}
+ if raw,ok:=extra["passive_usage_"+window+"_sampled_at"].(string);ok{if parsed,err:=time.Parse(time.RFC3339Nano,raw);err==nil{sample=parsed}}
+ // Unknown historical sample times must not be replaced by the latest page-read time.
+ if sample.IsZero(){p.SampledAt=nil;p.sampleTimeMissing=true}else{p.SampledAt=&sample;p.sampleTimeMissing=false}
+}
+func setPassiveWindowSamples(usage *UsageInfo,extra map[string]any){
+ for _,w:=range []struct{p *UsageProgress;key string}{{usage.FiveHour,"5h"},{usage.SevenDay,"7d"},{usage.SevenDaySonnet,"7d_sonnet"},{usage.SevenDayFable,"7d_oi"}}{setPassiveWindowSample(w.p,extra,w.key)}
+}

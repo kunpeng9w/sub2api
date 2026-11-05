@@ -35,3 +35,15 @@ func TestQuotaEstimateAllWindowsAndSampleCutoff(t *testing.T){
   svc.attachQuotaEstimates(context.Background(),account,usage);require.Equal(t,1,repo.calls,"cached local stats reused")
  })}
 }
+
+func TestQuotaEstimateKeepsIndependentWindowSampleTimes(t *testing.T){
+ sample:=time.Now().Add(-time.Minute);older:=sample.Add(-time.Hour);reset:=sample.Add(time.Hour)
+ repo:=&estimateWindowRepo{};svc:=&AccountUsageService{usageLogRepo:repo}
+ usage:=&UsageInfo{UpdatedAt:&sample,FiveHour:&UsageProgress{Utilization:40,ResetsAt:&reset,SampledAt:&sample},SevenDayFable:&UsageProgress{Utilization:40,ResetsAt:&reset,SampledAt:&older}}
+ result:=svc.attachQuotaEstimates(context.Background(),&Account{ID:1,Platform:PlatformAnthropic},usage)
+ require.Equal(t,sample,repo.queries[0].End);require.Equal(t,older,repo.queries[1].End)
+ require.Equal(t,older,*result.SevenDayFable.Estimate.SampledAt)
+ usage.SevenDayFable.sampleTimeMissing=true;usage.SevenDayFable.SampledAt=nil
+ result=svc.attachQuotaEstimates(context.Background(),&Account{ID:1,Platform:PlatformAnthropic},usage)
+ require.Nil(t,result.SevenDayFable.Estimate.TotalCost,"missing historical sample time must not become page-load time")
+}

@@ -11,12 +11,14 @@ const {
   accountsGetById,
   monitorCreate,
   monitorUpdate,
+  usersList,
 } = vi.hoisted(() => ({
   listTemplates: vi.fn(),
   accountsList: vi.fn(),
   accountsGetById: vi.fn(),
   monitorCreate: vi.fn(),
   monitorUpdate: vi.fn(),
+  usersList: vi.fn(),
 }))
 
 
@@ -32,6 +34,7 @@ vi.mock('@/features/channel-monitor-v2/MonitorSettingsPanel.vue', () => ({
 
 vi.mock('@/api/admin', () => ({
   adminAPI: {
+    users: { list: usersList },
     channelMonitor: {
       create: monitorCreate,
       update: monitorUpdate,
@@ -163,11 +166,27 @@ afterEach(() => {
 
 describe('MonitorFormDialog linked account selector', () => {
   beforeEach(() => {
+    usersList.mockReset().mockResolvedValue({ items: [{id:7,username:'alpha',email:'alpha@example.invalid'}, {id:9,username:'beta',email:'beta@example.invalid'}] })
     listTemplates.mockReset().mockResolvedValue({ items: [] })
     accountsList.mockReset().mockResolvedValue({ items: [] })
     accountsGetById.mockReset()
     monitorCreate.mockReset().mockResolvedValue({})
     monitorUpdate.mockReset().mockResolvedValue({})
+  })
+
+  it('creates a manual monitor with multiple explicitly selected viewers', async () => {
+    const wrapper = mountDialog(); await flushPromises()
+    await wrapper.findAll('input[type="text"]')[0].setValue('private monitor')
+    await wrapper.get('[data-testid="monitor-primary-model"]').setValue('fixture-model')
+    await wrapper.get('[data-testid="monitor-visibility"]').setValue('selected')
+    await wrapper.get('#channel-monitor-form').trigger('submit'); await flushPromises()
+    expect(monitorCreate).not.toHaveBeenCalled()
+    await wrapper.get('[data-testid="monitor-user-search"]').setValue('alpha')
+    await wrapper.get('[data-testid="monitor-user-search-submit"]').trigger('click'); await flushPromises()
+    expect(usersList).toHaveBeenCalledWith(1, 20, { search: 'alpha' })
+    for (const box of wrapper.findAll('input[type="checkbox"]')) await box.setValue(true)
+    await wrapper.get('#channel-monitor-form').trigger('submit'); await flushPromises()
+    expect(monitorCreate).toHaveBeenCalledWith(expect.objectContaining({ auto_check_enabled: false, visibility: 'selected', allowed_user_ids: [7, 9] }))
   })
 
   it('loads provider accounts for both probe proxy binding and quota mode', async () => {

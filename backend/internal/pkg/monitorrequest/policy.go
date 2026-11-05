@@ -6,10 +6,14 @@ import (
  "crypto/sha256"
  "fmt"
  "net/http"
+ "log/slog"
 )
 
 type key struct{}
 type Policy struct {
+ MonitorID int64
+ ActorID int64
+ Trigger string
  Revision string
  Route string
  AccountID int64
@@ -41,9 +45,18 @@ func Client(ctx context.Context, base *http.Client, route string) (*http.Client,
 }
 type transport struct { base http.RoundTripper; route string }
 func (t *transport) RoundTrip(req *http.Request) (*http.Response,error) {
- if err := CheckRequest(req,t.route); err != nil { return nil, err }
- if t.base == nil { return nil, fmt.Errorf("monitor transport unavailable") }
- return t.base.RoundTrip(req)
+ return RoundTrip(req,t.route,t.base)
+}
+
+// RoundTrip records only routing identity and status; it never probes an exit IP.
+func RoundTrip(r *http.Request,route string,base http.RoundTripper)(*http.Response,error){
+ if err:=CheckRequest(r,route);err!=nil{return nil,err}
+ if base==nil{return nil,fmt.Errorf("monitor transport unavailable")}
+ p,active:=From(r.Context())
+ if active{slog.Info("channel_monitor_egress_started","monitor_id",p.MonitorID,"actor_id",p.ActorID,"trigger",p.Trigger,"route_revision",p.Revision,"target_host",r.URL.Host,"method",r.Method)}
+ response,err:=base.RoundTrip(r)
+ if active{status:=0;if response!=nil{status=response.StatusCode};slog.Info("channel_monitor_egress_finished","monitor_id",p.MonitorID,"actor_id",p.ActorID,"trigger",p.Trigger,"target_host",r.URL.Host,"status",status,"failed",err!=nil)}
+ return response,err
 }
 
 func CheckRequest(r *http.Request,route string)error{

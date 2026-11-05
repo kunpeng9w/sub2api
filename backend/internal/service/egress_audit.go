@@ -108,7 +108,8 @@ func (a *EgressAuditor) begin(ctx context.Context, account *Account, route, targ
 			fields = append(fields, labels[key], v)
 		}
 	}
-	fields = append(fields, extra...)
+	if p,ok:=monitorrequest.From(ctx);ok{fields=append(fields,"monitor_id",p.MonitorID,"actor_id",p.ActorID,"trigger",p.Trigger)}
+ fields = append(fields, extra...)
 	p := &EgressAuditAttempt{auditor: a, route: route, fields: fields, started: time.Now(), noProbe: noProbe || monitorrequest.Active(ctx)}
 	if noProbe {
 		p.log("upstream_egress_blocked")

@@ -120,6 +120,8 @@ var duplicateAccountDiscardedExtraKeys = map[string]struct{}{
 	"passive_usage_7d_oi_utilization":        {},
 	"passive_usage_7d_oi_reset":              {},
 	"passive_usage_sampled_at":               {},
+ "passive_usage_5h_sampled_at":{},"passive_usage_7d_sampled_at":{},"passive_usage_7d_oi_sampled_at":{},"passive_usage_7d_sonnet_sampled_at":{},
+ "passive_usage_7d_sonnet_utilization":{},"passive_usage_7d_sonnet_reset":{},
 	"grok_usage_snapshot":                    {},
 	"grok_billing_snapshot":                  {},
 	"openai_responses_supported":             {},
