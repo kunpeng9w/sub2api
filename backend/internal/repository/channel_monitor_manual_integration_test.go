@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/ent/schema/mixins"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +38,13 @@ func TestChannelMonitorManualViewerProxyRoundTrip(t *testing.T) {
 	require.NoError(t, client.Proxy.DeleteOneID(proxy.ID).Exec(ctx))
 	loaded, err = repo.GetByID(ctx, m.ID)
 	require.NoError(t, err)
-	require.Nil(t, loaded.ProxyID, "proxy deletion retains monitor without granting a direct route")
+	require.Equal(t, proxy.ID, *loaded.ProxyID, "soft deletion retains the binding for fail-closed resolution")
+	_, err = client.Proxy.Get(ctx, proxy.ID)
+	require.Error(t, err, "a soft-deleted proxy cannot be resolved")
+	require.NoError(t, client.Proxy.DeleteOneID(proxy.ID).Exec(mixins.SkipSoftDelete(ctx)))
+	loaded, err = repo.GetByID(ctx, m.ID)
+	require.NoError(t, err)
+	require.Nil(t, loaded.ProxyID, "physical deletion clears the FK without creating a direct route")
 	require.NoError(t, client.User.DeleteOneID(second.ID).Exec(ctx))
 	loaded, err = repo.GetByID(ctx, m.ID)
 	require.NoError(t, err)
