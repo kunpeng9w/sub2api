@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"errors"
+	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"time"
- "errors"
- "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/handler/admin"
@@ -54,9 +54,9 @@ func (h *ChannelMonitorUserHandler) quotaVisible(c *gin.Context) bool {
 // --- Response ---
 
 type channelMonitorUserListItem struct {
- AutoCheckEnabled bool `json:"auto_check_enabled"`
- LastCheckedAt *time.Time `json:"last_checked_at"`
- CanRun bool `json:"can_run"`
+	AutoCheckEnabled bool       `json:"auto_check_enabled"`
+	LastCheckedAt    *time.Time `json:"last_checked_at"`
+	CanRun           bool       `json:"can_run"`
 
 	ID                   int64                                `json:"id"`
 	Name                 string                               `json:"name"`
@@ -84,12 +84,12 @@ type channelMonitorUserTimelinePoint struct {
 }
 
 type channelMonitorUserDetailResponse struct {
- AutoCheckEnabled bool `json:"auto_check_enabled"`
-	ID        int64                         `json:"id"`
-	Name      string                        `json:"name"`
-	Provider  string                        `json:"provider"`
-	GroupName string                        `json:"group_name"`
-	Models    []channelMonitorUserModelStat `json:"models"`
+	AutoCheckEnabled bool                          `json:"auto_check_enabled"`
+	ID               int64                         `json:"id"`
+	Name             string                        `json:"name"`
+	Provider         string                        `json:"provider"`
+	GroupName        string                        `json:"group_name"`
+	Models           []channelMonitorUserModelStat `json:"models"`
 }
 
 type channelMonitorUserModelStat struct {
@@ -121,8 +121,8 @@ func userMonitorViewToItem(v *service.UserMonitorView, includeQuota bool) channe
 		})
 	}
 	item := channelMonitorUserListItem{
-		ID:                   v.ID,
- AutoCheckEnabled:v.AutoCheckEnabled,LastCheckedAt:v.LastCheckedAt,CanRun:v.CanRun,
+		ID:               v.ID,
+		AutoCheckEnabled: v.AutoCheckEnabled, LastCheckedAt: v.LastCheckedAt, CanRun: v.CanRun,
 		Name:                 v.Name,
 		Provider:             v.Provider,
 		GroupName:            v.GroupName,
@@ -154,12 +154,12 @@ func userMonitorDetailToResponse(d *service.UserMonitorDetail) *channelMonitorUs
 		})
 	}
 	return &channelMonitorUserDetailResponse{
- AutoCheckEnabled:d.AutoCheckEnabled,
-		ID:        d.ID,
-		Name:      d.Name,
-		Provider:  d.Provider,
-		GroupName: d.GroupName,
-		Models:    models,
+		AutoCheckEnabled: d.AutoCheckEnabled,
+		ID:               d.ID,
+		Name:             d.Name,
+		Provider:         d.Provider,
+		GroupName:        d.GroupName,
+		Models:           models,
 	}
 }
 
@@ -171,8 +171,12 @@ func (h *ChannelMonitorUserHandler) List(c *gin.Context) {
 		response.Success(c, gin.H{"items": []channelMonitorUserListItem{}})
 		return
 	}
-	subject,ok:=middleware.GetAuthSubjectFromContext(c);if !ok{response.Unauthorized(c,"user not found");return}
- views, err := h.monitorService.ListUserView(c.Request.Context(),subject.UserID)
+	subject, ok := middleware.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "user not found")
+		return
+	}
+	views, err := h.monitorService.ListUserView(c.Request.Context(), subject.UserID)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -196,8 +200,12 @@ func (h *ChannelMonitorUserHandler) GetStatus(c *gin.Context) {
 	if !ok {
 		return
 	}
-	subject,authenticated:=middleware.GetAuthSubjectFromContext(c);if !authenticated{response.Unauthorized(c,"user not found");return}
- detail, err := h.monitorService.GetUserDetail(c.Request.Context(), id,subject.UserID)
+	subject, authenticated := middleware.GetAuthSubjectFromContext(c)
+	if !authenticated {
+		response.Unauthorized(c, "user not found")
+		return
+	}
+	detail, err := h.monitorService.GetUserDetail(c.Request.Context(), id, subject.UserID)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -206,25 +214,53 @@ func (h *ChannelMonitorUserHandler) GetStatus(c *gin.Context) {
 }
 
 // safeUserMonitorQuota never forwards an upstream error body to users.
-func safeUserMonitorQuota(q *domain.MonitorQuotaSnapshot)*domain.MonitorQuotaSnapshot{
- if q==nil{return nil};copy:=*q
- if !copy.Success{copy.Error="Quota data unavailable"}
- return &copy
+func safeUserMonitorQuota(q *domain.MonitorQuotaSnapshot) *domain.MonitorQuotaSnapshot {
+	if q == nil {
+		return nil
+	}
+	copy := *q
+	if !copy.Success {
+		copy.Error = "Quota data unavailable"
+	}
+	return &copy
 }
-func(h *ChannelMonitorUserHandler) Run(c *gin.Context){
- if !h.featureEnabled(c){response.ErrorFrom(c,service.ErrChannelMonitorNotFound);return}
- id,ok:=admin.ParseChannelMonitorID(c);if !ok{return}
- subject,ok:=middleware.GetAuthSubjectFromContext(c);if !ok{response.Unauthorized(c,"user not found");return}
- results,err:=h.monitorService.RunManual(c.Request.Context(),id,subject.UserID,false)
- if err!=nil{if errors.Is(err,service.ErrChannelMonitorCooldown){c.Header("Retry-After","60")};response.ErrorFrom(c,err);return}
- type userResult struct{
-  Model string `json:"model"`
-  Status string `json:"status"`
-  LatencyMs *int `json:"latency_ms"`
-  CheckedAt time.Time `json:"checked_at"`
-  Quota *domain.MonitorQuotaSnapshot `json:"quota,omitempty"`
- }
- out:=make([]userResult,0,len(results));showQuota:=h.quotaVisible(c)
- for _,r:=range results{v:=userResult{Model:r.Model,Status:r.Status,LatencyMs:r.LatencyMs,CheckedAt:r.CheckedAt};if showQuota{v.Quota=safeUserMonitorQuota(r.Quota)};out=append(out,v)}
- response.Success(c,gin.H{"results":out})
+func (h *ChannelMonitorUserHandler) Run(c *gin.Context) {
+	if !h.featureEnabled(c) {
+		response.ErrorFrom(c, service.ErrChannelMonitorNotFound)
+		return
+	}
+	id, ok := admin.ParseChannelMonitorID(c)
+	if !ok {
+		return
+	}
+	subject, ok := middleware.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "user not found")
+		return
+	}
+	results, err := h.monitorService.RunManual(c.Request.Context(), id, subject.UserID, false)
+	if err != nil {
+		if errors.Is(err, service.ErrChannelMonitorCooldown) {
+			c.Header("Retry-After", "60")
+		}
+		response.ErrorFrom(c, err)
+		return
+	}
+	type userResult struct {
+		Model     string                       `json:"model"`
+		Status    string                       `json:"status"`
+		LatencyMs *int                         `json:"latency_ms"`
+		CheckedAt time.Time                    `json:"checked_at"`
+		Quota     *domain.MonitorQuotaSnapshot `json:"quota,omitempty"`
+	}
+	out := make([]userResult, 0, len(results))
+	showQuota := h.quotaVisible(c)
+	for _, r := range results {
+		v := userResult{Model: r.Model, Status: r.Status, LatencyMs: r.LatencyMs, CheckedAt: r.CheckedAt}
+		if showQuota {
+			v.Quota = safeUserMonitorQuota(r.Quota)
+		}
+		out = append(out, v)
+	}
+	response.Success(c, gin.H{"results": out})
 }

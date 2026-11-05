@@ -4,10 +4,10 @@ package antigravity
 import (
 	"bytes"
 	"context"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"io"
 	"log"
 	"net"
@@ -712,8 +712,10 @@ func (c *Client) fetchAvailableModels(ctx context.Context, availableURLs []strin
 		return nil, nil, fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	if monitorrequest.Active(ctx)&&len(availableURLs)>1{availableURLs=availableURLs[:1]}
- fetchClient := c.fetchAvailableModelsHTTPClient()
+	if monitorrequest.Active(ctx) && len(availableURLs) > 1 {
+		availableURLs = availableURLs[:1]
+	}
+	fetchClient := c.fetchAvailableModelsHTTPClient()
 	if fixedEndpoint || monitorrequest.Active(ctx) {
 		fetchClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	}
@@ -955,6 +957,11 @@ func (c *Client) FetchUserInfo(ctx context.Context, accessToken, projectID strin
 }
 
 // BindMonitor pins this dedicated SDK instance, including redirect behavior.
-func(c *Client)BindMonitor(ctx context.Context,route string)error{
- client,err:=monitorrequest.Client(ctx,c.httpClient,route);if err!=nil{return err};c.httpClient=client;return nil
+func (c *Client) BindMonitor(ctx context.Context, route string) error {
+	client, err := monitorrequest.Client(ctx, c.httpClient, route)
+	if err != nil {
+		return err
+	}
+	c.httpClient = client
+	return nil
 }

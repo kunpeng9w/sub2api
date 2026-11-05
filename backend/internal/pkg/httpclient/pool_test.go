@@ -113,3 +113,10 @@ func TestValidatedTransport_ValidationErrorStopsRoundTrip(t *testing.T) {
 	require.ErrorIs(t, err, expectedErr)
 	require.Equal(t, int32(0), atomic.LoadInt32(&baseCalls))
 }
+
+func TestMonitorClientIsolationKeySeparatesProxyRevisions(t *testing.T){
+ one,err:=GetClient(Options{ProxyURL:"http://proxy.invalid:8080",IsolationKey:"account:1:proxy:7:v1"});require.NoError(t,err)
+ two,err:=GetClient(Options{ProxyURL:"http://proxy.invalid:8080",IsolationKey:"account:1:proxy:7:v2"});require.NoError(t,err)
+ same,err:=GetClient(Options{ProxyURL:"http://proxy.invalid:8080",IsolationKey:"account:1:proxy:7:v1"});require.NoError(t,err)
+ require.NotSame(t,one,two);require.Same(t,one,same)
+}

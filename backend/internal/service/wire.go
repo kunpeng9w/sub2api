@@ -1052,7 +1052,7 @@ func ProvideChannelMonitorRunner(
 	svc *ChannelMonitorService,
 	settingService *SettingService,
 	quotaFetcher *ChannelMonitorQuotaFetcher,
- proxies ProxyRepository, locks LeaderLockCache,
+	proxies ProxyRepository, locks LeaderLockCache,
 ) *ChannelMonitorRunner {
 	r := NewChannelMonitorRunner(svc, settingService)
 	if svc != nil {
@@ -1061,7 +1061,7 @@ func ProvideChannelMonitorRunner(
 		svc.SetRuntimeReader(settingService)
 		svc.SetScheduler(r)
 		svc.SetQuotaFetcher(quotaFetcher)
-        svc.SetExecutionDependencies(proxies,locks)
+		svc.SetExecutionDependencies(proxies, locks)
 	}
 	r.Start()
 	return r

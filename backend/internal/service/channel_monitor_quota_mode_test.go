@@ -4,8 +4,8 @@ package service
 
 import (
 	"context"
- "net/http"
- "github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
+	"net/http"
 	"testing"
 	"time"
 
@@ -51,14 +51,16 @@ func (r *quotaModeRepoStub) Update(_ context.Context, m *ChannelMonitor) error {
 // newQuotaModeService 构造启用 V1 探活的 service（复用 retirement/duplicate 测试的 stub）。
 func newQuotaModeService(t *testing.T, repo *quotaModeRepoStub) *ChannelMonitorService {
 	svc := NewChannelMonitorService(repo, &duplicateChannelMonitorEncryptor{})
- originalTargetValidator:=monitorTargetValidator
- monitorTargetValidator=func(context.Context,string)error{return nil}
- t.Cleanup(func(){monitorTargetValidator=originalTargetValidator})
- originalFactory:=monitorProxyClientFactory
- monitorProxyClientFactory=func(_ httpclient.Options)(*http.Client,error){return monitorHTTPClient,nil}
- t.Cleanup(func(){monitorProxyClientFactory=originalFactory})
- if repo.monitor!=nil&&repo.monitor.AccountID==nil{repo.monitor.ProxyID=int64Ptr(71)}
- svc.SetExecutionDependencies(&monitorFixtureProxyRepo{},&monitorFixtureLocks{})
+	originalTargetValidator := monitorTargetValidator
+	monitorTargetValidator = func(context.Context, string) error { return nil }
+	t.Cleanup(func() { monitorTargetValidator = originalTargetValidator })
+	originalFactory := monitorProxyClientFactory
+	monitorProxyClientFactory = func(_ httpclient.Options) (*http.Client, error) { return monitorHTTPClient, nil }
+	t.Cleanup(func() { monitorProxyClientFactory = originalFactory })
+	if repo.monitor != nil && repo.monitor.AccountID == nil {
+		repo.monitor.ProxyID = int64Ptr(71)
+	}
+	svc.SetExecutionDependencies(&monitorFixtureProxyRepo{}, &monitorFixtureLocks{})
 	svc.SetRuntimeReader(channelMonitorRuntimeStub{rt: ChannelMonitorRuntime{
 		Enabled: true,
 		Mode:    ChannelMonitorModeV1,
@@ -70,7 +72,9 @@ func newQuotaModeFetcher(accounts map[int64]*Account, usage *stubMonitorUsageSou
 	if accounts == nil {
 		accounts = make(map[int64]*Account)
 	}
-	for _,account:=range accounts{account.ProxyID=int64Ptr(71)}
+	for _, account := range accounts {
+		account.ProxyID = int64Ptr(71)
+	}
 	if usage == nil {
 		usage = &stubMonitorUsageSource{}
 	}
@@ -95,7 +99,7 @@ func TestRunCheck_QuotaModeProducesSingleQuotaResult(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuota,
 		AccountID:       int64Ptr(9),
 	}}
-	svc := newQuotaModeService(t,repo)
+	svc := newQuotaModeService(t, repo)
 	fetcher := newQuotaModeFetcher(map[int64]*Account{
 		9: {ID: 9, Platform: domain.PlatformKimi, Credentials: map[string]any{"account_mode": AccountModeCoding}},
 	}, nil)
@@ -138,7 +142,7 @@ func TestRunCheck_QuotaModeUnlinkedAccountDegrades(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuota,
 		AccountID:       nil, // FK ON DELETE SET NULL 后的形态
 	}}
-	svc := newQuotaModeService(t,repo)
+	svc := newQuotaModeService(t, repo)
 	svc.SetQuotaFetcher(newQuotaModeFetcher(nil, nil))
 
 	results, err := svc.RunCheck(context.Background(), 2)
@@ -160,11 +164,11 @@ func TestRunCheck_QuotaModeNilFetcherFailsClosed(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuota,
 		AccountID:       int64Ptr(5),
 	}}
-	svc := newQuotaModeService(t,repo) // 不注入 fetcher
+	svc := newQuotaModeService(t, repo) // 不注入 fetcher
 
 	results, err := svc.RunCheck(context.Background(), 3)
- require.ErrorIs(t,err,ErrChannelMonitorEgress)
- require.Nil(t,results)
+	require.ErrorIs(t, err, ErrChannelMonitorEgress)
+	require.Nil(t, results)
 }
 
 func TestRunCheck_QuotaProbeAttachesSnapshotToPrimaryRowOnly(t *testing.T) {
@@ -183,7 +187,7 @@ func TestRunCheck_QuotaProbeAttachesSnapshotToPrimaryRowOnly(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuotaProbe,
 		AccountID:       int64Ptr(12),
 	}}
-	svc := newQuotaModeService(t,repo)
+	svc := newQuotaModeService(t, repo)
 	usage := &stubMonitorUsageSource{usage: &UsageInfo{
 		FiveHour: &UsageProgress{Utilization: 20},
 	}}
@@ -224,7 +228,7 @@ func TestRunCheck_QuotaProbeQuotaFailureKeepsProbeStatus(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuotaProbe,
 		AccountID:       nil, // 配额侧失效
 	}}
-	svc := newQuotaModeService(t,repo)
+	svc := newQuotaModeService(t, repo)
 	svc.SetQuotaFetcher(newQuotaModeFetcher(nil, nil))
 
 	results, err := svc.RunCheck(context.Background(), 5)
@@ -419,7 +423,7 @@ func TestRevalidateLinkedAccount_QuotaErrorsProbeUnbinds(t *testing.T) {
 	require.NotNil(t, quota.AccountID)
 
 	probe := &ChannelMonitor{Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeProbe, AccountID: int64Ptr(9)}
-	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), probe),ErrChannelMonitorAccountRequired)
+	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), probe), ErrChannelMonitorAccountRequired)
 	require.NotNil(t, probe.AccountID, "keep broken proxy source for admin repair")
 
 	quotaNoAccount := &ChannelMonitor{Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeQuota}
@@ -436,7 +440,7 @@ func TestRevalidateLinkedAccount_PlatformMismatch(t *testing.T) {
 	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), quota), ErrChannelMonitorProviderIncompatible)
 
 	probe := &ChannelMonitor{Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeProbe, AccountID: int64Ptr(2)}
-	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), probe),ErrChannelMonitorProviderIncompatible)
+	require.ErrorIs(t, svc.revalidateLinkedAccount(context.Background(), probe), ErrChannelMonitorProviderIncompatible)
 	require.NotNil(t, probe.AccountID)
 }
 

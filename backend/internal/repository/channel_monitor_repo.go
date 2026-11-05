@@ -11,7 +11,7 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitor"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
- "github.com/Wei-Shaw/sub2api/ent/user"
+	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
@@ -39,7 +39,9 @@ func NewChannelMonitorRepository(client *dbent.Client, db *sql.DB) service.Chann
 // ---------- CRUD ----------
 
 func (r *channelMonitorRepository) Create(ctx context.Context, m *service.ChannelMonitor) error {
- if m.Visibility==""{m.Visibility="all"}
+	if m.Visibility == "" {
+		m.Visibility = "all"
+	}
 	client := clientFromContext(ctx, r.client)
 	builder := client.ChannelMonitor.Create().
 		SetName(m.Name).
@@ -51,16 +53,18 @@ func (r *channelMonitorRepository) Create(ctx context.Context, m *service.Channe
 		SetExtraModels(emptySliceIfNil(m.ExtraModels)).
 		SetGroupName(m.GroupName).
 		SetAutoCheckEnabled(m.AutoCheckEnabled).
-        SetVisibility(m.Visibility).
-        SetEnabled(m.Enabled).
+		SetVisibility(m.Visibility).
+		SetEnabled(m.Enabled).
 		SetIntervalSeconds(m.IntervalSeconds).
 		SetJitterSeconds(m.JitterSeconds).
 		SetCreatedBy(m.CreatedBy).
 		SetExtraHeaders(channelMonitorHeadersForPersistence(m)).
 		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode)).
 		SetCheckMode(defaultCheckModeRepo(m.CheckMode))
-	if m.ProxyID != nil { builder = builder.SetProxyID(*m.ProxyID) }
-    builder.AddViewerIDs(m.AllowedUserIDs...)
+	if m.ProxyID != nil {
+		builder = builder.SetProxyID(*m.ProxyID)
+	}
+	builder.AddViewerIDs(m.AllowedUserIDs...)
 	if m.TemplateID != nil {
 		builder = builder.SetTemplateID(*m.TemplateID)
 	}
@@ -127,15 +131,19 @@ func (r *channelMonitorRepository) Update(ctx context.Context, m *service.Channe
 		SetExtraModels(emptySliceIfNil(m.ExtraModels)).
 		SetGroupName(m.GroupName).
 		SetAutoCheckEnabled(m.AutoCheckEnabled).
-        SetVisibility(m.Visibility).
-        SetEnabled(m.Enabled).
+		SetVisibility(m.Visibility).
+		SetEnabled(m.Enabled).
 		SetIntervalSeconds(m.IntervalSeconds).
 		SetJitterSeconds(m.JitterSeconds).
 		SetExtraHeaders(channelMonitorHeadersForPersistence(m)).
 		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode)).
 		SetCheckMode(defaultCheckModeRepo(m.CheckMode))
-	if m.ProxyID != nil { updater = updater.SetProxyID(*m.ProxyID) } else { updater = updater.ClearProxyID() }
-    updater.ClearViewers().AddViewerIDs(m.AllowedUserIDs...)
+	if m.ProxyID != nil {
+		updater = updater.SetProxyID(*m.ProxyID)
+	} else {
+		updater = updater.ClearProxyID()
+	}
+	updater.ClearViewers().AddViewerIDs(m.AllowedUserIDs...)
 	if m.TemplateID != nil {
 		updater = updater.SetTemplateID(*m.TemplateID)
 	} else {
@@ -781,9 +789,9 @@ func entToServiceMonitor(row *dbent.ChannelMonitor) *service.ChannelMonitor {
 	delete(headers, service.ChannelMonitorDuplicateOperationIDMetadataKey)
 	out := &service.ChannelMonitor{
 		ID:                   row.ID,
-        AutoCheckEnabled: row.AutoCheckEnabled,
-        Visibility: row.Visibility,
-        ProxyID: row.ProxyID,
+		AutoCheckEnabled:     row.AutoCheckEnabled,
+		Visibility:           row.Visibility,
+		ProxyID:              row.ProxyID,
 		Name:                 row.Name,
 		Provider:             string(row.Provider),
 		APIMode:              defaultAPIModeRepo(row.APIMode),
@@ -805,7 +813,9 @@ func entToServiceMonitor(row *dbent.ChannelMonitor) *service.ChannelMonitor {
 		CheckMode:            defaultCheckModeRepo(row.CheckMode),
 		DuplicateOperationID: duplicateOperationID,
 	}
-	for _, viewer := range row.Edges.Viewers { out.AllowedUserIDs = append(out.AllowedUserIDs, viewer.ID) }
+	for _, viewer := range row.Edges.Viewers {
+		out.AllowedUserIDs = append(out.AllowedUserIDs, viewer.ID)
+	}
 	if row.TemplateID != nil {
 		id := *row.TemplateID
 		out.TemplateID = &id
@@ -875,8 +885,12 @@ func emptySliceIfNil(in []string) []string {
 
 // ValidateMonitorUsers checks selected viewers before persistence, without upstream I/O.
 func (r *channelMonitorRepository) ValidateMonitorUsers(ctx context.Context, ids []int64) error {
-    n, err := r.client.User.Query().Where(user.IDIn(ids...), user.DeletedAtIsNil()).Count(ctx)
-    if err != nil { return err }
-    if n != len(ids) { return service.ErrChannelMonitorInvalidVisibility }
-    return nil
+	n, err := r.client.User.Query().Where(user.IDIn(ids...), user.DeletedAtIsNil()).Count(ctx)
+	if err != nil {
+		return err
+	}
+	if n != len(ids) {
+		return service.ErrChannelMonitorInvalidVisibility
+	}
+	return nil
 }

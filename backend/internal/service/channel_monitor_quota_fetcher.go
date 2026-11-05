@@ -12,8 +12,8 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -74,7 +74,7 @@ type ChannelMonitorQuotaFetcher struct {
 type monitorQuotaCacheEntry struct {
 	snapshot *domain.MonitorQuotaSnapshot
 	expiry   time.Time
- routeKey string
+	routeKey string
 }
 
 // NewChannelMonitorQuotaFetcher 构造配额抓取器。
@@ -135,15 +135,15 @@ func (f *ChannelMonitorQuotaFetcher) Fetch(ctx context.Context, accountID int64)
 
 	now := time.Now()
 
-	if cached, ok := f.cachedSnapshot(accountID, now,monitorrequest.CacheKey(ctx)); ok {
+	if cached, ok := f.cachedSnapshot(accountID, now, monitorrequest.CacheKey(ctx)); ok {
 		return cached
 	}
 
 	// singleflight 合并同账号并发抓取；脱离调用方 ctx（仿 CN 配额服务），
 	// 避免某个监控的取消波及共享同一账号的其他监控。
-	key := "monitor-quota:" + strconv.FormatInt(accountID, 10)+":"+monitorrequest.CacheKey(ctx)
+	key := "monitor-quota:" + strconv.FormatInt(accountID, 10) + ":" + monitorrequest.CacheKey(ctx)
 	ch := f.flight.DoChan(key, func() (any, error) {
-		return f.fetchShared(accountID,ctx), nil
+		return f.fetchShared(accountID, ctx), nil
 	})
 	select {
 	case <-ctx.Done():
@@ -169,8 +169,11 @@ func (f *ChannelMonitorQuotaFetcher) Fetch(ctx context.Context, accountID int64)
 // 返回之前，而 singleflight 删 key 发生在返回之后，因此「能新起一次飞行」必然蕴含
 // 「上一次的快照已经可见」。
 func (f *ChannelMonitorQuotaFetcher) fetchShared(accountID int64, contexts ...context.Context) *domain.MonitorQuotaSnapshot {
- ctx:=context.Background();if len(contexts)>0{ctx=contexts[0]}
-	if cached, ok := f.cachedSnapshot(accountID, time.Now(),monitorrequest.CacheKey(ctx)); ok {
+	ctx := context.Background()
+	if len(contexts) > 0 {
+		ctx = contexts[0]
+	}
+	if cached, ok := f.cachedSnapshot(accountID, time.Now(), monitorrequest.CacheKey(ctx)); ok {
 		return cached
 	}
 	fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), monitorQuotaFetchTimeout)
@@ -181,7 +184,7 @@ func (f *ChannelMonitorQuotaFetcher) fetchShared(accountID int64, contexts ...co
 	if !snapshot.Success {
 		ttl = monitorQuotaErrorCacheTTL
 	}
-	f.storeSnapshot(accountID, snapshot, time.Now().Add(ttl),monitorrequest.CacheKey(ctx))
+	f.storeSnapshot(accountID, snapshot, time.Now().Add(ttl), monitorrequest.CacheKey(ctx))
 	return snapshot
 }
 
@@ -189,8 +192,11 @@ func (f *ChannelMonitorQuotaFetcher) cachedSnapshot(accountID int64, now time.Ti
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	entry, ok := f.cache[accountID]
-	routeKey:="";if len(routeKeys)>0{routeKey=routeKeys[0]}
- if !ok || entry.routeKey!=routeKey || now.After(entry.expiry) {
+	routeKey := ""
+	if len(routeKeys) > 0 {
+		routeKey = routeKeys[0]
+	}
+	if !ok || entry.routeKey != routeKey || now.After(entry.expiry) {
 		return nil, false
 	}
 	return entry.snapshot, true
@@ -199,8 +205,11 @@ func (f *ChannelMonitorQuotaFetcher) cachedSnapshot(accountID int64, now time.Ti
 func (f *ChannelMonitorQuotaFetcher) storeSnapshot(accountID int64, snapshot *domain.MonitorQuotaSnapshot, expiry time.Time, routeKeys ...string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	routeKey:="";if len(routeKeys)>0{routeKey=routeKeys[0]}
- f.cache[accountID] = monitorQuotaCacheEntry{snapshot: snapshot, expiry: expiry,routeKey:routeKey}
+	routeKey := ""
+	if len(routeKeys) > 0 {
+		routeKey = routeKeys[0]
+	}
+	f.cache[accountID] = monitorQuotaCacheEntry{snapshot: snapshot, expiry: expiry, routeKey: routeKey}
 }
 
 func (f *ChannelMonitorQuotaFetcher) fetchUncached(ctx context.Context, accountID int64, now time.Time) *domain.MonitorQuotaSnapshot {
@@ -321,7 +330,7 @@ func appendProgressTier(tiers *[]domain.MonitorQuotaTier, window, label string, 
 		Window:      window,
 		Label:       label,
 		UsedPercent: p.Utilization,
- Estimate: p.Estimate,SampledAt:p.SampledAt,
+		Estimate:    p.Estimate, SampledAt: p.SampledAt,
 	}
 	if p.ResetsAt != nil {
 		tier.ResetAt = p.ResetsAt.UTC().Format(time.RFC3339)

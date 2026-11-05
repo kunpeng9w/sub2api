@@ -254,9 +254,17 @@ func defaultAPIMode(apiMode string) string {
 }
 
 // Runtime targets may contain provider query parameters, unlike configured base endpoints.
-func validateMonitorTarget(ctx context.Context, target string)error{
- u,err:=url.Parse(target)
- if err!=nil||u.Scheme!="https"||u.Host==""||u.User!=nil{return ErrChannelMonitorInvalidEndpoint}
- blocked,err:=isPrivateOrLoopbackHost(ctx,u.Hostname())
- if err!=nil{return ErrChannelMonitorEndpointUnreachable};if blocked{return ErrChannelMonitorEndpointPrivate};return nil
+func validateMonitorTarget(ctx context.Context, target string) error {
+	u, err := url.Parse(target)
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
+		return ErrChannelMonitorInvalidEndpoint
+	}
+	blocked, err := isPrivateOrLoopbackHost(ctx, u.Hostname())
+	if err != nil {
+		return ErrChannelMonitorEndpointUnreachable
+	}
+	if blocked {
+		return ErrChannelMonitorEndpointPrivate
+	}
+	return nil
 }

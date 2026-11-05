@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
- "github.com/Wei-Shaw/sub2api/internal/domain"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"encoding/json"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"log"
 	"log/slog"
 	"math"
@@ -152,15 +152,15 @@ type WindowStats struct {
 
 // UsageProgress 使用量进度
 type UsageProgress struct {
- SampledAt *time.Time `json:"sampled_at,omitempty"`
- sampleTimeMissing bool
- Estimate *domain.QuotaEstimate `json:"estimate,omitempty"`
-	Utilization      float64      `json:"utilization"`            // 使用率百分比 (0-100+，100表示100%)
-	ResetsAt         *time.Time   `json:"resets_at"`              // 重置时间
-	RemainingSeconds int          `json:"remaining_seconds"`      // 距重置剩余秒数
-	WindowStats      *WindowStats `json:"window_stats,omitempty"` // 窗口期统计（从窗口开始到当前的使用量）
-	UsedRequests     int64        `json:"used_requests,omitempty"`
-	LimitRequests    int64        `json:"limit_requests,omitempty"`
+	SampledAt         *time.Time `json:"sampled_at,omitempty"`
+	sampleTimeMissing bool
+	Estimate          *domain.QuotaEstimate `json:"estimate,omitempty"`
+	Utilization       float64               `json:"utilization"`            // 使用率百分比 (0-100+，100表示100%)
+	ResetsAt          *time.Time            `json:"resets_at"`              // 重置时间
+	RemainingSeconds  int                   `json:"remaining_seconds"`      // 距重置剩余秒数
+	WindowStats       *WindowStats          `json:"window_stats,omitempty"` // 窗口期统计（从窗口开始到当前的使用量）
+	UsedRequests      int64                 `json:"used_requests,omitempty"`
+	LimitRequests     int64                 `json:"limit_requests,omitempty"`
 }
 
 // AntigravityModelQuota Antigravity 单个模型的配额信息
@@ -464,10 +464,14 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
 		// 3. 构建 UsageInfo（每次都重新计算 RemainingSeconds）
 		now := time.Now()
 		usage := s.buildUsageInfo(apiResp, &now)
-        sampled:=now
-        if cached,ok:=s.cache.apiCache.Load(accountID);ok{if c,ok:=cached.(*apiUsageCache);ok&&!c.timestamp.IsZero(){sampled=c.timestamp}}
-        usage.UpdatedAt=&sampled
-        stampUsageWindows(usage,&sampled)
+		sampled := now
+		if cached, ok := s.cache.apiCache.Load(accountID); ok {
+			if c, ok := cached.(*apiUsageCache); ok && !c.timestamp.IsZero() {
+				sampled = c.timestamp
+			}
+		}
+		usage.UpdatedAt = &sampled
+		stampUsageWindows(usage, &sampled)
 
 		// 4. 添加窗口统计（有独立缓存，1 分钟）
 		s.addWindowStats(ctx, account, usage)
@@ -479,7 +483,7 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
 		// （7d_oi 响应头）的数据，避免主动查询后 7d F 进度条丢失。
 		if usage.SevenDayFable == nil {
 			usage.SevenDayFable = buildPassiveUsageWindow(account.Extra, "passive_usage_7d_oi_utilization", "passive_usage_7d_oi_reset")
-            setPassiveWindowSample(usage.SevenDayFable,account.Extra,"7d_oi")
+			setPassiveWindowSample(usage.SevenDayFable, account.Extra, "7d_oi")
 		}
 
 		s.tryClearRecoverableAccountError(ctx, account)
@@ -487,7 +491,9 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
 	}
 
 	// Setup Token accounts use the stored response-header sample, without an upstream query.
- if account.Type==AccountTypeSetupToken{return s.getPassiveUsageForAccount(ctx,account)}
+	if account.Type == AccountTypeSetupToken {
+		return s.getPassiveUsageForAccount(ctx, account)
+	}
 
 	// API Key账号不支持usage查询
 	return nil, fmt.Errorf("account type %s does not support usage query", account.Type)
@@ -505,17 +511,20 @@ func (s *AccountUsageService) GetUsage(ctx context.Context, accountID int64, for
 		return nil, fmt.Errorf("get account failed: %w", err)
 	}
 
-	usage,err:=s.getUsageForAccount(ctx, account, forceProbe)
- return s.attachQuotaEstimates(ctx,account,usage),err
+	usage, err := s.getUsageForAccount(ctx, account, forceProbe)
+	return s.attachQuotaEstimates(ctx, account, usage), err
 }
 
 // GetUsageForAccount 已加载账号的使用量直通入口（配额监控 fetcher 复用，
 // 避免缓存未命中时账号被加载两次——每次 GetByID 含 proxies/groups 联查）。
 func (s *AccountUsageService) GetUsageForAccount(ctx context.Context, account *Account, force ...bool) (*UsageInfo, error) {
- if account!=nil&&monitorDedicatedUsage(ctx,account){usage,err:=s.getMonitorUsage(ctx,account);return s.attachQuotaEstimates(ctx,account,usage),err}
+	if account != nil && monitorDedicatedUsage(ctx, account) {
+		usage, err := s.getMonitorUsage(ctx, account)
+		return s.attachQuotaEstimates(ctx, account, usage), err
+	}
 	forceProbe := len(force) > 0 && force[0]
-	usage,err:=s.getUsageForAccount(ctx, account, forceProbe)
- return s.attachQuotaEstimates(ctx,account,usage),err
+	usage, err := s.getUsageForAccount(ctx, account, forceProbe)
+	return s.attachQuotaEstimates(ctx, account, usage), err
 }
 
 // GetUsageBatch 批量获取账号使用量。
@@ -581,7 +590,7 @@ func (s *AccountUsageService) GetUsageBatch(ctx context.Context, accountIDs []in
 				errorsByAccount[id] = batchUsageErrorMessage(usageErr)
 				return nil
 			}
-			usageByAccount[id] = s.attachQuotaEstimates(gctx,account,usage)
+			usageByAccount[id] = s.attachQuotaEstimates(gctx, account, usage)
 			return nil
 		})
 	}
@@ -601,8 +610,8 @@ func (s *AccountUsageService) GetPassiveUsage(ctx context.Context, accountID int
 		return nil, fmt.Errorf("get account failed: %w", err)
 	}
 
-	usage,err:=s.getPassiveUsageForAccount(ctx, account)
- return s.attachQuotaEstimates(ctx,account,usage),err
+	usage, err := s.getPassiveUsageForAccount(ctx, account)
+	return s.attachQuotaEstimates(ctx, account, usage), err
 }
 
 func (s *AccountUsageService) getPassiveUsageForAccount(ctx context.Context, account *Account) (*UsageInfo, error) {
@@ -637,9 +646,9 @@ func (s *AccountUsageService) getPassiveUsageForAccount(ctx context.Context, acc
 	// 构建 7d Fable 窗口（从被动采样的 7d_oi 响应头数据）
 	info.SevenDayFable = buildPassiveUsageWindow(account.Extra, "passive_usage_7d_oi_utilization", "passive_usage_7d_oi_reset")
 
-	info.SevenDaySonnet=buildPassiveUsageWindow(account.Extra,"passive_usage_7d_sonnet_utilization","passive_usage_7d_sonnet_reset")
- setPassiveWindowSamples(info,account.Extra)
- // 添加窗口统计
+	info.SevenDaySonnet = buildPassiveUsageWindow(account.Extra, "passive_usage_7d_sonnet_utilization", "passive_usage_7d_sonnet_reset")
+	setPassiveWindowSamples(info, account.Extra)
+	// 添加窗口统计
 	s.addWindowStats(ctx, account, info)
 	if account.IsSyntheticUITest() {
 		applySyntheticWindowStats(info, account.Extra)
@@ -711,14 +720,27 @@ func (s *AccountUsageService) syncActiveToPassive(ctx context.Context, accountID
 		}
 	}
 
- if usage.SevenDaySonnet!=nil{
-  extraUpdates["passive_usage_7d_sonnet_utilization"]=usage.SevenDaySonnet.Utilization/100
-  if usage.SevenDaySonnet.ResetsAt!=nil{extraUpdates["passive_usage_7d_sonnet_reset"]=usage.SevenDaySonnet.ResetsAt.Unix()}
- }
- if len(extraUpdates)>0{
-  stamp:=usage.UpdatedAt;if stamp==nil{now:=time.Now();stamp=&now}
-  extraUpdates["passive_usage_sampled_at"]=stamp.UTC().Format(time.RFC3339Nano)
-  for _,w:=range []struct{p *UsageProgress;key string}{{usage.FiveHour,"5h"},{usage.SevenDay,"7d"},{usage.SevenDaySonnet,"7d_sonnet"},{usage.SevenDayFable,"7d_oi"}}{if w.p!=nil{extraUpdates["passive_usage_"+w.key+"_sampled_at"]=stamp.UTC().Format(time.RFC3339Nano)}}
+	if usage.SevenDaySonnet != nil {
+		extraUpdates["passive_usage_7d_sonnet_utilization"] = usage.SevenDaySonnet.Utilization / 100
+		if usage.SevenDaySonnet.ResetsAt != nil {
+			extraUpdates["passive_usage_7d_sonnet_reset"] = usage.SevenDaySonnet.ResetsAt.Unix()
+		}
+	}
+	if len(extraUpdates) > 0 {
+		stamp := usage.UpdatedAt
+		if stamp == nil {
+			now := time.Now()
+			stamp = &now
+		}
+		extraUpdates["passive_usage_sampled_at"] = stamp.UTC().Format(time.RFC3339Nano)
+		for _, w := range []struct {
+			p   *UsageProgress
+			key string
+		}{{usage.FiveHour, "5h"}, {usage.SevenDay, "7d"}, {usage.SevenDaySonnet, "7d_sonnet"}, {usage.SevenDayFable, "7d_oi"}} {
+			if w.p != nil {
+				extraUpdates["passive_usage_"+w.key+"_sampled_at"] = stamp.UTC().Format(time.RFC3339Nano)
+			}
+		}
 		if err := s.accountRepo.UpdateExtra(ctx, accountID, extraUpdates); err != nil {
 			slog.Warn("sync_active_to_passive_failed", "account_id", accountID, "error", err)
 		}
@@ -750,8 +772,8 @@ func openAIUsageFromExtra(extra map[string]any, now time.Time) *UsageInfo {
 			usage.UpdatedAt = &ts
 		}
 	}
-	stampUsageWindows(usage,usage.UpdatedAt)
- return usage
+	stampUsageWindows(usage, usage.UpdatedAt)
+	return usage
 }
 
 func (s *AccountUsageService) cachedOpenAIUsage(accountID int64) *openAIUsageCacheEntry {
@@ -1699,8 +1721,8 @@ func (s *AccountUsageService) buildUsageInfo(resp *ClaudeUsageResponse, updatedA
 		}
 	}
 
-	stampUsageWindows(info,updatedAt)
- return info
+	stampUsageWindows(info, updatedAt)
+	return info
 }
 
 // estimateSetupTokenUsage 根据session_window推算Setup Token账号的使用量

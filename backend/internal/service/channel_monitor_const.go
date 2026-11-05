@@ -135,7 +135,6 @@ const (
 	monitorResponseHeaderTimeout = 30 * time.Second
 	// monitorPingDiscardMaxBytes ping 时丢弃响应体的最大字节数。
 	monitorPingDiscardMaxBytes = 1024
-
 )
 
 // 业务错误（统一在此声明，避免散落）。

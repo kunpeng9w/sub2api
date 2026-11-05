@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"io"
 	"log/slog"
 	"net"
@@ -108,8 +108,10 @@ func (a *EgressAuditor) begin(ctx context.Context, account *Account, route, targ
 			fields = append(fields, labels[key], v)
 		}
 	}
-	if p,ok:=monitorrequest.From(ctx);ok{fields=append(fields,"monitor_id",p.MonitorID,"actor_id",p.ActorID,"trigger",p.Trigger)}
- fields = append(fields, extra...)
+	if p, ok := monitorrequest.From(ctx); ok {
+		fields = append(fields, "monitor_id", p.MonitorID, "actor_id", p.ActorID, "trigger", p.Trigger)
+	}
+	fields = append(fields, extra...)
 	p := &EgressAuditAttempt{auditor: a, route: route, fields: fields, started: time.Now(), noProbe: noProbe || monitorrequest.Active(ctx)}
 	if noProbe {
 		p.log("upstream_egress_blocked")

@@ -1,8 +1,8 @@
 package admin
 
 import (
- "errors"
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -40,10 +40,10 @@ func NewChannelMonitorHandler(monitorService *service.ChannelMonitorService) *Ch
 // --- Request / Response ---
 
 type channelMonitorCreateRequest struct {
- AutoCheckEnabled bool `json:"auto_check_enabled"`
- Visibility string `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
- AllowedUserIDs []int64 `json:"allowed_user_ids" binding:"max=1000,dive,gt=0"`
- ProxyID *int64 `json:"proxy_id" binding:"omitempty,gt=0"`
+	AutoCheckEnabled bool              `json:"auto_check_enabled"`
+	Visibility       string            `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
+	AllowedUserIDs   []int64           `json:"allowed_user_ids" binding:"max=1000,dive,gt=0"`
+	ProxyID          *int64            `json:"proxy_id" binding:"omitempty,gt=0"`
 	Name             string            `json:"name" binding:"required,max=100"`
 	Provider         string            `json:"provider" binding:"required,oneof=openai anthropic gemini grok antigravity kimi zhipu deepseek minimax opencode_go"`
 	APIMode          string            `json:"api_mode" binding:"omitempty,oneof=chat_completions responses"`
@@ -68,10 +68,10 @@ type channelMonitorCreateRequest struct {
 }
 
 type channelMonitorUpdateRequest struct {
- AutoCheckEnabled *bool `json:"auto_check_enabled"`
- Visibility *string `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
- AllowedUserIDs *[]int64 `json:"allowed_user_ids"`
- ProxyID *int64 `json:"proxy_id" binding:"omitempty,min=0"`
+	AutoCheckEnabled *bool              `json:"auto_check_enabled"`
+	Visibility       *string            `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
+	AllowedUserIDs   *[]int64           `json:"allowed_user_ids"`
+	ProxyID          *int64             `json:"proxy_id" binding:"omitempty,min=0"`
 	Name             *string            `json:"name" binding:"omitempty,max=100"`
 	Provider         *string            `json:"provider" binding:"omitempty,oneof=openai anthropic gemini grok antigravity kimi zhipu deepseek minimax opencode_go"`
 	APIMode          *string            `json:"api_mode" binding:"omitempty,oneof=chat_completions responses"`
@@ -95,11 +95,11 @@ type channelMonitorUpdateRequest struct {
 }
 
 type channelMonitorResponse struct {
- EgressConfigured bool `json:"egress_configured"`
- AutoCheckEnabled bool `json:"auto_check_enabled"`
- Visibility string `json:"visibility"`
- AllowedUserIDs []int64 `json:"allowed_user_ids"`
- ProxyID *int64 `json:"proxy_id"`
+	EgressConfigured bool    `json:"egress_configured"`
+	AutoCheckEnabled bool    `json:"auto_check_enabled"`
+	Visibility       string  `json:"visibility"`
+	AllowedUserIDs   []int64 `json:"allowed_user_ids"`
+	ProxyID          *int64  `json:"proxy_id"`
 
 	ID                  int64                                `json:"id"`
 	Name                string                               `json:"name"`
@@ -177,8 +177,8 @@ func channelMonitorToResponse(m *service.ChannelMonitor) *channelMonitorResponse
 		headers = map[string]string{}
 	}
 	resp := &channelMonitorResponse{
-		ID:                  m.ID,
- EgressConfigured:m.EgressConfigured,AutoCheckEnabled: m.AutoCheckEnabled, Visibility:m.Visibility, AllowedUserIDs:m.AllowedUserIDs,ProxyID:m.ProxyID,
+		ID:               m.ID,
+		EgressConfigured: m.EgressConfigured, AutoCheckEnabled: m.AutoCheckEnabled, Visibility: m.Visibility, AllowedUserIDs: m.AllowedUserIDs, ProxyID: m.ProxyID,
 		Name:                m.Name,
 		Provider:            m.Provider,
 		APIMode:             m.APIMode,
@@ -352,7 +352,7 @@ func (h *ChannelMonitorHandler) Create(c *gin.Context) {
 	}
 
 	m, err := h.monitorService.Create(c.Request.Context(), service.ChannelMonitorCreateParams{
- AutoCheckEnabled:req.AutoCheckEnabled,Visibility:req.Visibility,AllowedUserIDs:req.AllowedUserIDs,ProxyID:req.ProxyID,
+		AutoCheckEnabled: req.AutoCheckEnabled, Visibility: req.Visibility, AllowedUserIDs: req.AllowedUserIDs, ProxyID: req.ProxyID,
 		Name:             req.Name,
 		Provider:         req.Provider,
 		APIMode:          req.APIMode,
@@ -449,7 +449,7 @@ func (h *ChannelMonitorHandler) Update(c *gin.Context) {
 	}
 
 	m, err := h.monitorService.Update(c.Request.Context(), id, service.ChannelMonitorUpdateParams{
- AutoCheckEnabled:req.AutoCheckEnabled,Visibility:req.Visibility,AllowedUserIDs:req.AllowedUserIDs,ProxyID:req.ProxyID,
+		AutoCheckEnabled: req.AutoCheckEnabled, Visibility: req.Visibility, AllowedUserIDs: req.AllowedUserIDs, ProxyID: req.ProxyID,
 		Name:             req.Name,
 		Provider:         req.Provider,
 		APIMode:          req.APIMode,
@@ -495,10 +495,12 @@ func (h *ChannelMonitorHandler) Run(c *gin.Context) {
 	if !ok {
 		return
 	}
-	subject,_:=middleware2.GetAuthSubjectFromContext(c)
- results, err := h.monitorService.RunManual(c.Request.Context(), id,subject.UserID,true)
+	subject, _ := middleware2.GetAuthSubjectFromContext(c)
+	results, err := h.monitorService.RunManual(c.Request.Context(), id, subject.UserID, true)
 	if err != nil {
-        if errors.Is(err,service.ErrChannelMonitorCooldown) { c.Header("Retry-After","60") }
+		if errors.Is(err, service.ErrChannelMonitorCooldown) {
+			c.Header("Retry-After", "60")
+		}
 		response.ErrorFrom(c, err)
 		return
 	}

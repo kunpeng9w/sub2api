@@ -73,7 +73,7 @@ func getSharedReqClient(opts reqClientOptions) (*req.Client, error) {
  client.GetClient().CheckRedirect=func(next *http.Request,via []*http.Request)error{
   if monitorrequest.Active(next.Context()){return http.ErrUseLastResponse}
   if previousRedirect!=nil{return previousRedirect(next,via)}
-  if len(via)>=10{return fmt.Errorf("too many redirects")};return nil
+  if len(via)>=10{return fmt.Errorf("stopped after 10 redirects")};return nil
  }
 
 

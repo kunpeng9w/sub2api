@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -71,9 +71,9 @@ type channelMonitorRuntimeReader interface {
 
 // ChannelMonitorService 渠道监控管理服务。
 type ChannelMonitorService struct {
- proxies ProxyRepository
- runLocks LeaderLockCache
- runSlots chan struct{}
+	proxies   ProxyRepository
+	runLocks  LeaderLockCache
+	runSlots  chan struct{}
 	repo      ChannelMonitorRepository
 	encryptor SecretEncryptor
 	// settings is optional; when nil, RunCheck fails closed for active probes
@@ -134,7 +134,8 @@ func (s *ChannelMonitorService) List(ctx context.Context, params ChannelMonitorL
 	}
 	for _, it := range items {
 		s.decryptInPlace(it)
-        _,routeErr:=s.resolveMonitorRoute(ctx,it);it.EgressConfigured=routeErr==nil
+		_, routeErr := s.resolveMonitorRoute(ctx, it)
+		it.EgressConfigured = routeErr == nil
 	}
 	return items, total, nil
 }
@@ -151,7 +152,9 @@ func (s *ChannelMonitorService) Get(ctx context.Context, id int64) (*ChannelMoni
 
 // Create 创建监控（内部加密 api_key）。
 func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCreateParams) (*ChannelMonitor, error) {
-	if p.IntervalSeconds == 0 && !p.AutoCheckEnabled { p.IntervalSeconds = 60 }
+	if p.IntervalSeconds == 0 && !p.AutoCheckEnabled {
+		p.IntervalSeconds = 60
+	}
 	if err := validateCreateParams(p); err != nil {
 		return nil, err
 	}
@@ -171,8 +174,8 @@ func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCrea
 	}
 	m := &ChannelMonitor{
 		AutoCheckEnabled: p.AutoCheckEnabled,
- Visibility: p.Visibility, AllowedUserIDs: append([]int64{},p.AllowedUserIDs...), ProxyID: cloneInt64Pointer(p.ProxyID),
- Name:             strings.TrimSpace(p.Name),
+		Visibility:       p.Visibility, AllowedUserIDs: append([]int64{}, p.AllowedUserIDs...), ProxyID: cloneInt64Pointer(p.ProxyID),
+		Name:             strings.TrimSpace(p.Name),
 		Provider:         p.Provider,
 		APIMode:          defaultAPIMode(p.APIMode),
 		Endpoint:         normalizeEndpoint(p.Endpoint),
@@ -191,8 +194,12 @@ func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCrea
 		CheckMode:        checkMode,
 		AccountID:        cloneInt64Pointer(p.AccountID),
 	}
-	if m.AccountID != nil { m.ProxyID = nil }
- if err := s.validateAccess(ctx,m); err != nil { return nil,err }
+	if m.AccountID != nil {
+		m.ProxyID = nil
+	}
+	if err := s.validateAccess(ctx, m); err != nil {
+		return nil, err
+	}
 	if err := s.repo.Create(ctx, m); err != nil {
 		return nil, fmt.Errorf("create channel monitor: %w", err)
 	}
@@ -241,16 +248,16 @@ func (s *ChannelMonitorService) Duplicate(
 	}
 
 	duplicate := &ChannelMonitor{
-		Name:                 duplicateChannelMonitorName(source.Name),
-		Provider:             source.Provider,
-		APIMode:              source.APIMode,
-		Endpoint:             source.Endpoint,
-		APIKey:               encryptedAPIKey,
-		PrimaryModel:         source.PrimaryModel,
-		ExtraModels:          append([]string{}, source.ExtraModels...),
-		GroupName:            source.GroupName,
-		Enabled:              false,
- AutoCheckEnabled: false, Visibility: "admin_only", ProxyID: cloneInt64Pointer(source.ProxyID),
+		Name:             duplicateChannelMonitorName(source.Name),
+		Provider:         source.Provider,
+		APIMode:          source.APIMode,
+		Endpoint:         source.Endpoint,
+		APIKey:           encryptedAPIKey,
+		PrimaryModel:     source.PrimaryModel,
+		ExtraModels:      append([]string{}, source.ExtraModels...),
+		GroupName:        source.GroupName,
+		Enabled:          false,
+		AutoCheckEnabled: false, Visibility: "admin_only", ProxyID: cloneInt64Pointer(source.ProxyID),
 		IntervalSeconds:      source.IntervalSeconds,
 		JitterSeconds:        source.JitterSeconds,
 		CreatedBy:            createdBy,
@@ -421,7 +428,10 @@ func validateCreateParams(p ChannelMonitorCreateParams) error {
 // 配额数据源（能力拦截，见 monitorAccountQuotaCapability）。
 // fetcher 未注入时 fail-closed（拒绝创建配额监控，而不是创建后静默坏）。
 func (s *ChannelMonitorService) validateLinkedAccount(ctx context.Context, provider string, accountID *int64, quotaModes ...bool) error {
- usesQuota:=true;if len(quotaModes)>0{usesQuota=quotaModes[0]}
+	usesQuota := true
+	if len(quotaModes) > 0 {
+		usesQuota = quotaModes[0]
+	}
 	if accountID == nil || *accountID <= 0 {
 		return nil
 	}
@@ -435,7 +445,10 @@ func (s *ChannelMonitorService) validateLinkedAccount(ctx context.Context, provi
 	if account.Platform != provider {
 		return ErrChannelMonitorProviderIncompatible
 	}
-	if usesQuota { return monitorAccountQuotaCapability(account) }; return nil
+	if usesQuota {
+		return monitorAccountQuotaCapability(account)
+	}
+	return nil
 }
 
 // Update 更新监控。APIKey 字段：nil 或空字符串 = 不修改；非空 = 加密后覆盖。
@@ -461,8 +474,12 @@ func (s *ChannelMonitorService) Update(ctx context.Context, id int64, p ChannelM
 		}
 	}
 
-	if existing.AccountID != nil { existing.ProxyID = nil }
- if err := s.validateAccess(ctx,existing); err != nil { return nil,err }
+	if existing.AccountID != nil {
+		existing.ProxyID = nil
+	}
+	if err := s.validateAccess(ctx, existing); err != nil {
+		return nil, err
+	}
 	if err := s.repo.Update(ctx, existing); err != nil {
 		return nil, fmt.Errorf("update channel monitor: %w", err)
 	}
@@ -523,9 +540,14 @@ func (s *ChannelMonitorService) validateProbeAPIKey(m *ChannelMonitor, newPlainK
 //   - 账号已被删除或平台失配：probe 模式自动解绑（静默修复），
 //     quota 模式显式报错（配额监控必须有可用数据源）
 func (s *ChannelMonitorService) revalidateLinkedAccount(ctx context.Context, m *ChannelMonitor) error {
- usesQuota:=monitorCheckModeUsesQuota(defaultCheckMode(m.CheckMode))
- if m.AccountID==nil{if usesQuota{return ErrChannelMonitorAccountRequired};return nil}
- return s.validateLinkedAccount(ctx,m.Provider,m.AccountID,usesQuota)
+	usesQuota := monitorCheckModeUsesQuota(defaultCheckMode(m.CheckMode))
+	if m.AccountID == nil {
+		if usesQuota {
+			return ErrChannelMonitorAccountRequired
+		}
+		return nil
+	}
+	return s.validateLinkedAccount(ctx, m.Provider, m.AccountID, usesQuota)
 }
 
 // applyAPIKeyUpdate 处理 Update 中的 APIKey 字段：
@@ -585,7 +607,7 @@ func (s *ChannelMonitorService) ListHistory(ctx context.Context, id int64, model
 // 按 check_mode 分派：probe（默认，现状探活）/ quota（仅查关联账号配额，
 // 零 LLM 成本）/ quota_probe（探活 + 配额快照挂主模型行）。
 func (s *ChannelMonitorService) RunCheck(ctx context.Context, id int64) ([]*CheckResult, error) {
- return s.runCheck(ctx,id,0)
+	return s.runCheck(ctx, id, 0)
 }
 func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64) ([]*CheckResult, error) {
 	rt := s.probeRuntime(ctx)
@@ -599,21 +621,34 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 	if err != nil {
 		return nil, err
 	}
- if !m.Enabled { return nil,ErrChannelMonitorNotFound }
- ctx,err = s.monitorContext(ctx,m,actorID);if err!=nil{return nil,err}
- release,err:=s.acquireRun(ctx,id,actorID);if err!=nil{return nil,err};defer release()
- ctx,cancel:=context.WithTimeout(ctx,90*time.Second);defer cancel()
+	if !m.Enabled {
+		return nil, ErrChannelMonitorNotFound
+	}
+	ctx, err = s.monitorContext(ctx, m, actorID)
+	if err != nil {
+		return nil, err
+	}
+	release, err := s.acquireRun(ctx, id, actorID)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+	defer cancel()
 	checkMode := defaultCheckMode(m.CheckMode)
 	if checkMode != MonitorCheckModeQuota && m.APIKeyDecryptFailed {
 		return nil, ErrChannelMonitorAPIKeyDecryptFailed
 	}
 
- policy,_:=monitorrequest.From(ctx)
- trigger:="scheduled";if actorID>0{trigger="manual"}
- slog.Info("channel_monitor_check_started","monitor_id",id,"actor_id",actorID,"trigger",trigger,"route_revision",policy.Revision)
- defer slog.Info("channel_monitor_check_finished","monitor_id",id,"actor_id",actorID,"trigger",trigger)
- var results []*CheckResult
- switch checkMode {
+	policy, _ := monitorrequest.From(ctx)
+	trigger := "scheduled"
+	if actorID > 0 {
+		trigger = "manual"
+	}
+	slog.Info("channel_monitor_check_started", "monitor_id", id, "actor_id", actorID, "trigger", trigger, "route_revision", policy.Revision)
+	defer slog.Info("channel_monitor_check_finished", "monitor_id", id, "actor_id", actorID, "trigger", trigger)
+	var results []*CheckResult
+	switch checkMode {
 	case MonitorCheckModeQuota:
 		results = s.runQuotaOnlyCheck(ctx, m)
 	case MonitorCheckModeQuotaProbe:
@@ -877,10 +912,22 @@ func (s *ChannelMonitorService) decryptInPlace(m *ChannelMonitor) {
 // 行数稍超过 30：这是逐字段平铺的 dispatcher，每个 if 都是 1-3 行的"非 nil 则覆盖"模式，
 // 拆分反而会增加跳转噪音、影响可读性，故保留为单函数。
 func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) error {
- if p.AutoCheckEnabled!=nil {existing.AutoCheckEnabled=*p.AutoCheckEnabled}
- if p.Visibility!=nil {existing.Visibility=*p.Visibility}
- if p.AllowedUserIDs!=nil {existing.AllowedUserIDs=append([]int64{},(*p.AllowedUserIDs)...)}
- if p.ProxyID!=nil { if *p.ProxyID>0 {existing.ProxyID=cloneInt64Pointer(p.ProxyID)} else {existing.ProxyID=nil} }
+	if p.AutoCheckEnabled != nil {
+		existing.AutoCheckEnabled = *p.AutoCheckEnabled
+	}
+	if p.Visibility != nil {
+		existing.Visibility = *p.Visibility
+	}
+	if p.AllowedUserIDs != nil {
+		existing.AllowedUserIDs = append([]int64{}, (*p.AllowedUserIDs)...)
+	}
+	if p.ProxyID != nil {
+		if *p.ProxyID > 0 {
+			existing.ProxyID = cloneInt64Pointer(p.ProxyID)
+		} else {
+			existing.ProxyID = nil
+		}
+	}
 
 	providerChanged := false
 	if p.Name != nil {

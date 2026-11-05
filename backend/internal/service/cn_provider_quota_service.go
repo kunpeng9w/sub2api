@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
- "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"encoding/json"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"io"
 	"log/slog"
 	"net/http"
@@ -112,7 +112,7 @@ func (s *CNProviderQuotaService) QueryUsageForAccount(ctx context.Context, accou
 	if err := validateCodingPlanAccount(account); err != nil {
 		return nil, err
 	}
-	key := "cn_quota:" + strconv.FormatInt(account.ID, 10)+":"+monitorrequest.CacheKey(ctx)
+	key := "cn_quota:" + strconv.FormatInt(account.ID, 10) + ":" + monitorrequest.CacheKey(ctx)
 	resultCh := s.flight.DoChan(key, func() (any, error) {
 		probeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cnQuotaUpstreamTimeout+5*time.Second)
 		defer cancel()

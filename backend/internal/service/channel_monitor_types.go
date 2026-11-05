@@ -32,11 +32,11 @@ const (
 
 // ChannelMonitor 渠道监控配置（service 层模型，不直接暴露 ent 类型）。
 type ChannelMonitor struct {
- EgressConfigured bool
-    AutoCheckEnabled bool
-    Visibility string
-    AllowedUserIDs []int64
-    ProxyID *int64
+	EgressConfigured bool
+	AutoCheckEnabled bool
+	Visibility       string
+	AllowedUserIDs   []int64
+	ProxyID          *int64
 
 	ID              int64
 	Name            string
@@ -88,10 +88,10 @@ type ChannelMonitorListParams struct {
 
 // ChannelMonitorCreateParams 创建参数。
 type ChannelMonitorCreateParams struct {
-    AutoCheckEnabled bool
-    Visibility string
-    AllowedUserIDs []int64
-    ProxyID *int64
+	AutoCheckEnabled bool
+	Visibility       string
+	AllowedUserIDs   []int64
+	ProxyID          *int64
 
 	Name             string
 	Provider         string
@@ -117,10 +117,10 @@ type ChannelMonitorCreateParams struct {
 
 // ChannelMonitorUpdateParams 更新参数（指针字段表示"未提供则不更新"）。
 type ChannelMonitorUpdateParams struct {
-    AutoCheckEnabled *bool
-    Visibility *string
-    AllowedUserIDs *[]int64
-    ProxyID *int64 // zero clears the independent proxy
+	AutoCheckEnabled *bool
+	Visibility       *string
+	AllowedUserIDs   *[]int64
+	ProxyID          *int64 // zero clears the independent proxy
 
 	Name            *string
 	Provider        *string
@@ -162,9 +162,9 @@ type CheckResult struct {
 
 // UserMonitorView 用户只读视图：监控概览（含主模型最近状态 + 7d 可用率 + 附加模型最近状态）。
 type UserMonitorView struct {
-    AutoCheckEnabled bool
-    LastCheckedAt *time.Time
-    CanRun bool
+	AutoCheckEnabled bool
+	LastCheckedAt    *time.Time
+	CanRun           bool
 
 	ID                   int64
 	Name                 string
@@ -199,12 +199,12 @@ type ExtraModelStatus struct {
 
 // UserMonitorDetail 用户只读视图：监控详情（含全部模型 7d/15d/30d 可用率与平均延迟）。
 type UserMonitorDetail struct {
- AutoCheckEnabled bool
-	ID        int64
-	Name      string
-	Provider  string
-	GroupName string
-	Models    []ModelDetail
+	AutoCheckEnabled bool
+	ID               int64
+	Name             string
+	Provider         string
+	GroupName        string
+	Models           []ModelDetail
 }
 
 // ModelDetail 单个模型的可用率/延迟统计。

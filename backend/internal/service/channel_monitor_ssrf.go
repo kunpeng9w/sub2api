@@ -102,6 +102,5 @@ func isPrivateOrLoopbackHost(ctx context.Context, hostname string) (bool, error)
 	return false, nil
 }
 
-
 // Injectable only for deterministic DNS fixtures in unit tests.
 var monitorLookupIPAddr = net.DefaultResolver.LookupIPAddr

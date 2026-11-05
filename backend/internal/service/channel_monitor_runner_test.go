@@ -82,7 +82,11 @@ func TestSchedule_AddsTaskAndFiresOnce(t *testing.T) {
 	r.Start() // svc.enabled 为空，Start 立即完成
 
 	r.Schedule(&ChannelMonitor{ID: 1, Name: "m1", Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
- select{case <-svc.runCalled:t.Fatal("schedule must not fire after its interval");case <-time.After(50*time.Millisecond):}
+	select {
+	case <-svc.runCalled:
+		t.Fatal("schedule must not fire after its interval")
+	case <-time.After(50 * time.Millisecond):
+	}
 
 	if got := runnerTaskCount(r); got != 1 {
 		t.Fatalf("expected 1 scheduled task, got %d", got)
@@ -360,12 +364,22 @@ func stoppedWithin(t *testing.T, r *ChannelMonitorRunner, timeout time.Duration)
 	}
 }
 
-func TestMonitorManualNeverRegistersTimer(t *testing.T){
- svc:=&stubMonitorSvc{enabled:[]*ChannelMonitor{{ID:1,Enabled:true,AutoCheckEnabled:false,IntervalSeconds:1}},runCalled:make(chan int64,1)}
- r:=newRunnerForTest(svc);r.Start();defer r.Stop()
- if got:=runnerTaskCount(r);got!=0{t.Fatalf("manual monitor scheduled: %d",got)}
- r.Schedule(&ChannelMonitor{ID:2,Enabled:true,AutoCheckEnabled:true,IntervalSeconds:1})
- r.Schedule(&ChannelMonitor{ID:2,Enabled:true,AutoCheckEnabled:false,IntervalSeconds:1})
- if got:=runnerTaskCount(r);got!=0{t.Fatalf("turning auto off must unschedule: %d",got)}
- select{case <-svc.runCalled:t.Fatal("manual monitor executed");case <-time.After(50*time.Millisecond):}
+func TestMonitorManualNeverRegistersTimer(t *testing.T) {
+	svc := &stubMonitorSvc{enabled: []*ChannelMonitor{{ID: 1, Enabled: true, AutoCheckEnabled: false, IntervalSeconds: 1}}, runCalled: make(chan int64, 1)}
+	r := newRunnerForTest(svc)
+	r.Start()
+	defer r.Stop()
+	if got := runnerTaskCount(r); got != 0 {
+		t.Fatalf("manual monitor scheduled: %d", got)
+	}
+	r.Schedule(&ChannelMonitor{ID: 2, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
+	r.Schedule(&ChannelMonitor{ID: 2, Enabled: true, AutoCheckEnabled: false, IntervalSeconds: 1})
+	if got := runnerTaskCount(r); got != 0 {
+		t.Fatalf("turning auto off must unschedule: %d", got)
+	}
+	select {
+	case <-svc.runCalled:
+		t.Fatal("manual monitor executed")
+	case <-time.After(50 * time.Millisecond):
+	}
 }

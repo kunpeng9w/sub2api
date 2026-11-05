@@ -60,7 +60,15 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context, userIDs ...int
 	if err != nil {
 		return nil, fmt.Errorf("list enabled monitors: %w", err)
 	}
- if len(userIDs)>0 { filtered:=make([]*ChannelMonitor,0,len(monitors));for _,m:=range monitors{if monitorVisibleTo(m,userIDs[0]){filtered=append(filtered,m)}};monitors=filtered }
+	if len(userIDs) > 0 {
+		filtered := make([]*ChannelMonitor, 0, len(monitors))
+		for _, m := range monitors {
+			if monitorVisibleTo(m, userIDs[0]) {
+				filtered = append(filtered, m)
+			}
+		}
+		monitors = filtered
+	}
 	if len(monitors) == 0 {
 		return []*UserMonitorView{}, nil
 	}
@@ -73,9 +81,10 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context, userIDs ...int
 	views := make([]*UserMonitorView, 0, len(monitors))
 	for _, m := range monitors {
 		primaryLatest := pickLatest(latestMap[m.ID], m.PrimaryModel)
-		view:=buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID])
-        _,routeErr:=s.resolveMonitorRoute(ctx,m);view.CanRun=routeErr==nil
-        views = append(views,view)
+		view := buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID])
+		_, routeErr := s.resolveMonitorRoute(ctx, m)
+		view.CanRun = routeErr == nil
+		views = append(views, view)
 	}
 	return views, nil
 }
@@ -137,7 +146,7 @@ func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64, use
 	if err != nil {
 		return nil, err
 	}
-	if !m.Enabled || (len(userIDs)>0 && !monitorVisibleTo(m,userIDs[0])) {
+	if !m.Enabled || (len(userIDs) > 0 && !monitorVisibleTo(m, userIDs[0])) {
 		return nil, ErrChannelMonitorNotFound
 	}
 
@@ -152,12 +161,12 @@ func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64, use
 
 	models := mergeModelDetails(m, latest, availMap)
 	return &UserMonitorDetail{
- AutoCheckEnabled:m.AutoCheckEnabled,
-		ID:        m.ID,
-		Name:      m.Name,
-		Provider:  m.Provider,
-		GroupName: m.GroupName,
-		Models:    models,
+		AutoCheckEnabled: m.AutoCheckEnabled,
+		ID:               m.ID,
+		Name:             m.Name,
+		Provider:         m.Provider,
+		GroupName:        m.GroupName,
+		Models:           models,
 	}, nil
 }
 
@@ -235,7 +244,7 @@ func buildUserViewFromSummary(
 	timelineEntries []*ChannelMonitorHistoryEntry,
 ) *UserMonitorView {
 	view := &UserMonitorView{
- AutoCheckEnabled: m.AutoCheckEnabled, LastCheckedAt: m.LastCheckedAt, CanRun: m.Enabled,
+		AutoCheckEnabled: m.AutoCheckEnabled, LastCheckedAt: m.LastCheckedAt, CanRun: m.Enabled,
 		ID:               m.ID,
 		Name:             m.Name,
 		Provider:         m.Provider,

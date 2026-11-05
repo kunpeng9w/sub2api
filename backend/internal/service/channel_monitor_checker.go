@@ -683,7 +683,7 @@ func monitorRequestClient(ctx context.Context,ping bool)(*http.Client,error){
  p,ok:=monitorrequest.From(ctx)
  if !ok{if ping{return monitorPingHTTPClient,nil};return monitorHTTPClient,nil}
  timeout:=monitorRequestTimeout;if ping{timeout=monitorPingTimeout}
- base,err:=monitorProxyClientFactory(httpclient.Options{ProxyURL:p.Route,Timeout:timeout,ResponseHeaderTimeout:monitorResponseHeaderTimeout,ValidateResolvedIP:true,MaxIdleConns:16})
+ base,err:=monitorProxyClientFactory(httpclient.Options{IsolationKey:monitorrequest.CacheKey(ctx),ProxyURL:p.Route,Timeout:timeout,ResponseHeaderTimeout:monitorResponseHeaderTimeout,ValidateResolvedIP:true,MaxIdleConns:16})
  if err!=nil{return nil,err};return monitorrequest.Client(ctx,base,p.Route)
 }
 
