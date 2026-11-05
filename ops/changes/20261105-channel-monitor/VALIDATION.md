@@ -24,3 +24,17 @@
 - `sub2api-linux-amd64-<SHA>`：现有 ops 工作流构建的内嵌前端程序，含来源和校验信息。
 
 未执行真实上游/真实代理联调，未部署或重启生产服务。模拟测试证明应用路由约束，不能单独证明代理服务后的公网 NAT IP；真实联调严格使用 [单独确认清单](LIVE-TEST-CHECKLIST.md)。
+
+## 2026-11-05 本次执行结果
+
+业务代码及测试提交：`5e1d8402b3c47d197a28dd561cf9ab6925514ca7`；随后 `a31c84f743ab368877d62669cf57affc0e5458ec` 仅修复 CI 隔离进程缺失 Docker 附加组的问题，并增加快速预检。此修复尚未得到远程执行验证。
+
+- [专项检查（5e1d8402b）](https://github.com/kunpeng9w/sub2api/actions/runs/42041633909)：前端组件回归、类型检查、Lint 和构建通过；后端专项单元回归通过；Ent/Wire 生成差异为空。数据库专项因隔离进程无法访问 Docker 而未执行，不能视为集成测试通过。
+- [完整 CI（5e1d8402b）](https://github.com/kunpeng9w/sub2api/actions/runs/42041633752)：后端完整单元测试、golangci-lint、前端关键回归及脚本检查通过；完整数据库集成未通过最终验收。
+- [源码/运维检查（5e1d8402b）](https://github.com/kunpeng9w/sub2api/actions/runs/42041633699)：全部通过，包括出口回归、DNS 隔离夹具、内嵌 Linux amd64 构建。
+- 已取回 `5e1d8402b` 的前端及内嵌后端产物，校验内嵌包 SHA256 成功；产物来源信息包含提交 SHA 和 Actions URL。未执行产物、未部署、未触发真实检测。
+- [最终修复复验（a31c84f74）](https://github.com/kunpeng9w/sub2api/actions/runs/42043394901)：GitHub 在分配 runner 前拒绝启动所有 job，没有执行任何测试。check annotation 原因：`The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings`。
+
+**待完成项**：GitHub 账号付款/Actions spending limit 恢复后，对最终提交重新执行专项、完整 CI 和源码/运维工作流，确认 Docker 预检、监控关联集成及窗口费用 SQL 集成通过，再获取该最终提交的 artifacts。不得用旧提交的产物或结果冒充最终提交验收。
+
+真实上游与真实代理联调继续保持未执行，须另经用户确认。
