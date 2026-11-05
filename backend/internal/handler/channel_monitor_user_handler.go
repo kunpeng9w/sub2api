@@ -55,6 +55,7 @@ func (h *ChannelMonitorUserHandler) quotaVisible(c *gin.Context) bool {
 
 type channelMonitorUserListItem struct {
 	AutoCheckEnabled bool       `json:"auto_check_enabled"`
+	IntervalSeconds  int        `json:"interval_seconds"`
 	LastCheckedAt    *time.Time `json:"last_checked_at"`
 	CanRun           bool       `json:"can_run"`
 
@@ -123,6 +124,7 @@ func userMonitorViewToItem(v *service.UserMonitorView, includeQuota bool) channe
 	item := channelMonitorUserListItem{
 		ID:               v.ID,
 		AutoCheckEnabled: v.AutoCheckEnabled, LastCheckedAt: v.LastCheckedAt, CanRun: v.CanRun,
+		IntervalSeconds:      v.IntervalSeconds,
 		Name:                 v.Name,
 		Provider:             v.Provider,
 		GroupName:            v.GroupName,

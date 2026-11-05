@@ -245,6 +245,7 @@ func buildUserViewFromSummary(
 ) *UserMonitorView {
 	view := &UserMonitorView{
 		AutoCheckEnabled: m.AutoCheckEnabled, LastCheckedAt: m.LastCheckedAt, CanRun: m.Enabled,
+		IntervalSeconds:  m.IntervalSeconds,
 		ID:               m.ID,
 		Name:             m.Name,
 		Provider:         m.Provider,

@@ -77,8 +77,16 @@
       :countdown-seconds="countdownSeconds"
     />
     <div class="mt-3 flex w-full items-center justify-between gap-2 text-xs">
-      <span class="text-gray-400">{{ item.last_checked_at ? new Date(item.last_checked_at).toLocaleString() : t('monitorCommon.controls.neverChecked') }}</span>
-      <button v-if="item.can_run" type="button" class="btn btn-secondary !px-2 !py-1" :disabled="running" @click.stop="emit('run')">
+      <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-gray-400">
+        <span>{{ item.last_checked_at ? new Date(item.last_checked_at).toLocaleString() : t('monitorCommon.controls.neverChecked') }}</span>
+        <span
+          class="inline-flex shrink-0 items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700 dark:text-gray-400"
+          :title="checkScheduleHint"
+        >
+          {{ checkScheduleLabel }}
+        </span>
+      </div>
+      <button v-if="item.can_run" type="button" class="btn btn-secondary shrink-0 !px-2 !py-1" :disabled="running" @click.stop="emit('run')">
         {{ t(running ? 'monitorCommon.controls.running' : 'monitorCommon.controls.runNow') }}
       </button>
     </div>
@@ -143,6 +151,26 @@ const providerTintClass = computed(() =>
 const quotaVisible = computed(
   () => isChannelMonitorQuotaVisible() && !!props.item.latest_quota
 )
+
+const checkInterval = computed(() => {
+  const seconds = props.item.interval_seconds
+  if (!seconds || seconds <= 0) return ''
+  return seconds % 60 === 0 ? `${seconds / 60}min` : `${seconds}s`
+})
+
+const checkScheduleLabel = computed(() => {
+  if (props.item.auto_check_enabled === false) return t('monitorCommon.checkSchedule.manual')
+  return checkInterval.value
+    ? t('monitorCommon.checkSchedule.automaticInterval', { interval: checkInterval.value })
+    : t('monitorCommon.checkSchedule.automatic')
+})
+
+const checkScheduleHint = computed(() => {
+  if (props.item.auto_check_enabled === false) return t('monitorCommon.checkSchedule.manualHint')
+  return checkInterval.value
+    ? t('monitorCommon.checkSchedule.automaticHint', { interval: checkInterval.value })
+    : t('monitorCommon.controls.autoCheck')
+})
 
 const availabilityLabel = computed(() => {
   const win = t(`channelStatus.windowTab.${props.window}`)

@@ -23,6 +23,7 @@ export interface MonitorTimelinePoint {
 
 export interface UserMonitorView {
   auto_check_enabled?: boolean
+  interval_seconds?: number
   can_run?: boolean
   last_checked_at?: string | null
   id: number
