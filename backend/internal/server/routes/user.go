@@ -140,6 +140,7 @@ func RegisterUserRoutes(
 		{
 			monitors.GET("", h.ChannelMonitor.List)
 			monitors.GET("/:id/status", h.ChannelMonitor.GetStatus)
+            monitors.POST("/:id/run", panelRateLimiter.Heavy(), h.ChannelMonitor.Run)
 		}
 
 		// V2 passive views require feature on + mode=v2.

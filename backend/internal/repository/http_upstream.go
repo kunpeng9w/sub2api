@@ -29,6 +29,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claudedomain"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyurl"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyutil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/servertiming"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
@@ -214,7 +215,8 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
-	proxyURL = route
+	if err:=monitorrequest.Check(req.Context(),route);err!=nil{return nil,err}
+ proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
 	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)
 	defer func() { attempt.FinishHTTP(resp, err) }()
@@ -236,7 +238,7 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 
 	// 执行请求
 	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
-	client = httpClientWithGrokAccessDeniedFallback(client)
+	if !monitorrequest.Active(req.Context()){client = httpClientWithGrokAccessDeniedFallback(client)}
 	resp, err = doUpstreamRequest(client, req)
 	if err != nil {
 		s.recordOpenAIHTTP2Failure(profile, entry.protocolMode, entry.proxyKey, err)
@@ -273,7 +275,8 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
-	proxyURL = route
+	if err:=monitorrequest.Check(req.Context(),route);err!=nil{return nil,err}
+ proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
 	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)
 	defer func() { attempt.FinishHTTP(resp, err) }()
@@ -305,7 +308,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	}
 
 	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
-	client = httpClientWithGrokAccessDeniedFallback(client)
+	if !monitorrequest.Active(req.Context()){client = httpClientWithGrokAccessDeniedFallback(client)}
 	resp, err = doUpstreamRequest(client, req)
 	if err != nil {
 		atomic.AddInt64(&entry.inFlight, -1)
@@ -379,6 +382,7 @@ func (s *httpUpstreamService) httpClientForUpstreamRequest(client *http.Client, 
 		return client
 	}
 	ctx := req.Context()
+ if monitorrequest.Active(ctx){clone:=*client;clone.CheckRedirect=func(*http.Request,[]*http.Request)error{return http.ErrUseLastResponse};return &clone}
 	if s.cfg != nil && s.cfg.Gateway.ClaudeEgress.Enabled && len(routes) > 0 && !service.HTTPUpstreamRedirectsDisabled(ctx) {
 		clone := *client
 		selected := routes[0]

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -86,7 +87,9 @@ func (s *claudeUsageService) FetchUsageWithOptions(ctx context.Context, opts *se
 			return nil, fmt.Errorf("create http client failed: %w", err)
 		}
 
-		resp, err = client.Do(req)
+		client,err=monitorrequest.Client(ctx,client,opts.ProxyURL)
+        if err!=nil{return nil,err}
+        resp, err = client.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("request failed: %w", err)
 		}

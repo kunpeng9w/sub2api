@@ -4,6 +4,7 @@ package antigravity
 import (
 	"bytes"
 	"context"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -950,4 +951,9 @@ func (c *Client) FetchUserInfo(ctx context.Context, accessToken, projectID strin
 	}
 
 	return &result, nil
+}
+
+// BindMonitor pins this dedicated SDK instance, including redirect behavior.
+func(c *Client)BindMonitor(ctx context.Context,route string)error{
+ client,err:=monitorrequest.Client(ctx,c.httpClient,route);if err!=nil{return err};c.httpClient=client;return nil
 }

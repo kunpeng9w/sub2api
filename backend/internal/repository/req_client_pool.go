@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyurl"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/servertiming"
 
 	"github.com/imroc/req/v3"
@@ -65,6 +66,16 @@ func getSharedReqClient(opts reqClientOptions) (*req.Client, error) {
 		client.SetProxyURL(trimmed)
 	}
 	client = instrumentReqClient(client)
+ client.GetTransport().WrapRoundTripFunc(func(rt http.RoundTripper) req.HttpRoundTripFunc {
+  return func(r *http.Request)(*http.Response,error){if err:=monitorrequest.Check(r.Context(),trimmed);err!=nil{return nil,err};return rt.RoundTrip(r)}
+ })
+ previousRedirect:=client.GetClient().CheckRedirect
+ client.GetClient().CheckRedirect=func(next *http.Request,via []*http.Request)error{
+  if monitorrequest.Active(next.Context()){return http.ErrUseLastResponse}
+  if previousRedirect!=nil{return previousRedirect(next,via)}
+  if len(via)>=10{return fmt.Errorf("too many redirects")};return nil
+ }
+
 
 	actual, _ := sharedReqClients.LoadOrStore(key, client)
 	if c, ok := actual.(*req.Client); ok {

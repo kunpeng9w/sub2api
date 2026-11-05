@@ -1,0 +1,77 @@
+name: Channel monitor isolated verification
+on:
+  push:
+    branches: ['codex/channel-monitor-manual-access-quota']
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'ops/changes/20261105-channel-monitor/**'
+      - '.github/workflows/channel-monitor-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: channel-monitor-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Download build dependencies
+        working-directory: backend
+        run: go mod download
+      - name: Generate Ent and Wire, format source
+        working-directory: backend
+        run: |
+          go generate ./ent
+          go generate ./cmd/server
+          git ls-files -z '*.go' | xargs -0 gofmt -w
+      - name: Preserve generated source for review
+        if: always()
+        run: git diff --binary > "$RUNNER_TEMP/generated.patch"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: monitor-generated-${{ github.sha }}
+          path: ${{ runner.temp }}/generated.patch
+      - name: Unit regression without public network
+        working-directory: backend
+        run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -tags=unit -p 2 ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m
+      - name: Backend build
+        working-directory: backend
+        run: go build -o "$RUNNER_TEMP/sub2api" ./cmd/server
+      - uses: actions/upload-artifact@v7
+        with:
+          name: monitor-backend-${{ github.sha }}
+          path: ${{ runner.temp }}/sub2api
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --dir frontend typecheck
+      - name: Component regression with mocked APIs
+        run: bash ops/changes/20261105-channel-monitor/test-isolated.sh pnpm --dir frontend exec vitest run src/components/common/__tests__/MonitorQuotaView.spec.ts src/components/account/__tests__/AccountUsageCell.spec.ts src/components/account/__tests__/UsageProgressBar.spec.ts src/components/user/__tests__/MonitorCard.quota.spec.ts src/views/user/__tests__/ChannelStatusV1View.refresh.spec.ts src/views/admin/__tests__/MonitorFormDialog.accountSelector.spec.ts src/views/admin/__tests__/ChannelMonitorView.duplicate.spec.ts src/components/common/__tests__/QuotaEstimateView.spec.ts
+      - name: Frontend build
+        run: pnpm --dir frontend build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: monitor-frontend-${{ github.sha }}
+          path: frontend/dist/

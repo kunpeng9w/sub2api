@@ -150,6 +150,7 @@ type WindowStats struct {
 
 // UsageProgress 使用量进度
 type UsageProgress struct {
+ Estimate *domain.QuotaEstimate `json:"estimate,omitempty"`
 	Utilization      float64      `json:"utilization"`            // 使用率百分比 (0-100+，100表示100%)
 	ResetsAt         *time.Time   `json:"resets_at"`              // 重置时间
 	RemainingSeconds int          `json:"remaining_seconds"`      // 距重置剩余秒数
@@ -459,6 +460,9 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
 		// 3. 构建 UsageInfo（每次都重新计算 RemainingSeconds）
 		now := time.Now()
 		usage := s.buildUsageInfo(apiResp, &now)
+        sampled:=now
+        if cached,ok:=s.cache.apiCache.Load(accountID);ok{if c,ok:=cached.(*apiUsageCache);ok&&!c.timestamp.IsZero(){sampled=c.timestamp}}
+        usage.UpdatedAt=&sampled
 
 		// 4. 添加窗口统计（有独立缓存，1 分钟）
 		s.addWindowStats(ctx, account, usage)
@@ -500,14 +504,17 @@ func (s *AccountUsageService) GetUsage(ctx context.Context, accountID int64, for
 		return nil, fmt.Errorf("get account failed: %w", err)
 	}
 
-	return s.getUsageForAccount(ctx, account, forceProbe)
+	usage,err:=s.getUsageForAccount(ctx, account, forceProbe)
+ return s.attachQuotaEstimates(ctx,account,usage),err
 }
 
 // GetUsageForAccount 已加载账号的使用量直通入口（配额监控 fetcher 复用，
 // 避免缓存未命中时账号被加载两次——每次 GetByID 含 proxies/groups 联查）。
 func (s *AccountUsageService) GetUsageForAccount(ctx context.Context, account *Account, force ...bool) (*UsageInfo, error) {
+ if account!=nil&&monitorDedicatedUsage(ctx,account){usage,err:=s.getMonitorUsage(ctx,account);return s.attachQuotaEstimates(ctx,account,usage),err}
 	forceProbe := len(force) > 0 && force[0]
-	return s.getUsageForAccount(ctx, account, forceProbe)
+	usage,err:=s.getUsageForAccount(ctx, account, forceProbe)
+ return s.attachQuotaEstimates(ctx,account,usage),err
 }
 
 // GetUsageBatch 批量获取账号使用量。
@@ -573,7 +580,7 @@ func (s *AccountUsageService) GetUsageBatch(ctx context.Context, accountIDs []in
 				errorsByAccount[id] = batchUsageErrorMessage(usageErr)
 				return nil
 			}
-			usageByAccount[id] = usage
+			usageByAccount[id] = s.attachQuotaEstimates(gctx,account,usage)
 			return nil
 		})
 	}
@@ -593,7 +600,8 @@ func (s *AccountUsageService) GetPassiveUsage(ctx context.Context, accountID int
 		return nil, fmt.Errorf("get account failed: %w", err)
 	}
 
-	return s.getPassiveUsageForAccount(ctx, account)
+	usage,err:=s.getPassiveUsageForAccount(ctx, account)
+ return s.attachQuotaEstimates(ctx,account,usage),err
 }
 
 func (s *AccountUsageService) getPassiveUsageForAccount(ctx context.Context, account *Account) (*UsageInfo, error) {
@@ -1054,7 +1062,7 @@ func (s *AccountUsageService) getAntigravityUsage(ctx context.Context, account *
 		}
 
 		// 使用独立 context，避免调用方 cancel 导致所有共享 flight 的请求失败
-		fetchCtx, fetchCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		fetchCtx, fetchCancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer fetchCancel()
 
 		proxyURL := accountEgressURL
@@ -1094,7 +1102,7 @@ func (s *AccountUsageService) getGrokUsage(ctx context.Context, account *Account
 		return &UsageInfo{UpdatedAt: &now}, nil
 	}
 	var billingProbeResult *GrokQuotaProbeResult
-	if account != nil && account.IsGrokOAuth() && s.grokQuotaService != nil && (force || grokBillingSnapshotNeedsRefresh(account, time.Now())) && s.shouldProbeGrokBilling(account.ID, time.Now(), force) {
+	if !monitorrequest.Active(ctx) && account != nil && account.IsGrokOAuth() && s.grokQuotaService != nil && (force || grokBillingSnapshotNeedsRefresh(account, time.Now())) && s.shouldProbeGrokBilling(account.ID, time.Now(), force) {
 		result, err := s.grokQuotaService.ProbeBilling(ctx, account.ID)
 		if err == nil && result != nil && result.Billing != nil {
 			billingProbeResult = result

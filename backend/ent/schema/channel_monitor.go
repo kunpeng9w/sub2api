@@ -75,6 +75,9 @@ func (ChannelMonitor) Fields() []ent.Field {
 			Optional().
 			Default("").
 			MaxLen(100),
+		field.Bool("auto_check_enabled").Default(false),
+		field.String("visibility").Default("all"),
+		field.Int64("proxy_id").Optional().Nillable(),
 		field.Bool("enabled").
 			Default(true),
 		field.Int("interval_seconds").
@@ -112,6 +115,7 @@ func (ChannelMonitor) Fields() []ent.Field {
 
 func (ChannelMonitor) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.To("viewers", User.Type).StorageKey(edge.Table("channel_monitor_users"), edge.Columns("monitor_id", "user_id")),
 		edge.To("history", ChannelMonitorHistory.Type).
 			Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("daily_rollups", ChannelMonitorDailyRollup.Type).

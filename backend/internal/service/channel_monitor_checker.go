@@ -14,15 +14,17 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/servertiming"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/tidwall/gjson"
 )
 
 // monitorHTTPClient 共享一个 http.Client，避免每次检测重建 transport。
 // 自定义 Transport 在 dial 时强制再次校验 IP，防止 DNS rebinding 绕过 validateEndpoint。
-var monitorHTTPClient = newSSRFSafeHTTPClient(monitorRequestTimeout)
+var monitorHTTPClient = &http.Client{Transport: monitorBlockedTransport{}}
 
 // monitorPingHTTPClient 用于 endpoint origin 的 HEAD ping，超时更短。
-var monitorPingHTTPClient = newSSRFSafeHTTPClient(monitorPingTimeout)
+var monitorPingHTTPClient = &http.Client{Transport: monitorBlockedTransport{}}
 
 // newSSRFSafeHTTPClient 返回一个使用 safeDialContext 的 http.Client。
 // 仅供监控模块对外发起请求使用——所有目标都应是公网 endpoint。
@@ -139,7 +141,8 @@ func pingEndpointOrigin(ctx context.Context, endpoint string) *int {
 		return nil
 	}
 	start := time.Now()
-	resp, err := monitorPingHTTPClient.Do(req)
+	client,err:=monitorRequestClient(ctx,true);if err!=nil{return nil}
+ resp, err := client.Do(req)
 	if err != nil {
 		return nil
 	}
@@ -543,7 +546,8 @@ func postRawJSON(ctx context.Context, fullURL string, payload []byte, headers ma
 		req.Header.Set(k, v)
 	}
 
-	resp, err := monitorHTTPClient.Do(req)
+	client,err:=monitorRequestClient(ctx,false);if err!=nil{return nil, 0,err}
+ resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("do request: %w", err)
 	}
@@ -687,4 +691,14 @@ func truncateForErrorBody(body string) string {
 		cutoff = 0
 	}
 	return body[:cutoff] + ellipsis
+}
+
+type monitorBlockedTransport struct{}
+func(monitorBlockedTransport)RoundTrip(*http.Request)(*http.Response,error){return nil,ErrChannelMonitorEgress}
+func monitorRequestClient(ctx context.Context,ping bool)(*http.Client,error){
+ p,ok:=monitorrequest.From(ctx)
+ if !ok{if ping{return monitorPingHTTPClient,nil};return monitorHTTPClient,nil}
+ timeout:=monitorRequestTimeout;if ping{timeout=monitorPingTimeout}
+ base,err:=httpclient.GetClient(httpclient.Options{ProxyURL:p.Route,Timeout:timeout,ValidateResolvedIP:true,MaxIdleConns:16})
+ if err!=nil{return nil,err};return monitorrequest.Client(ctx,base,p.Route)
 }

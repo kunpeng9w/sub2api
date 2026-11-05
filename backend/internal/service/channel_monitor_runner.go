@@ -147,7 +147,7 @@ func (r *ChannelMonitorRunner) Schedule(m *ChannelMonitor) {
 	if r == nil || m == nil {
 		return
 	}
-	if !m.Enabled || m.APIKeyDecryptFailed {
+	if !m.Enabled || !m.AutoCheckEnabled || m.APIKeyDecryptFailed {
 		r.Unschedule(m.ID)
 		return
 	}
@@ -238,8 +238,6 @@ func (r *ChannelMonitorRunner) Stop() {
 // 用 timer 而非 ticker：jitter > 0 时每轮等待时长都需要重新随机化。
 func (r *ChannelMonitorRunner) runScheduled(ctx context.Context, task *scheduledMonitor) {
 	defer r.wg.Done()
-
-	r.fire(ctx, task)
 
 	timer := time.NewTimer(task.nextDelay())
 	defer timer.Stop()

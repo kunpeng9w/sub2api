@@ -38,10 +38,12 @@ jobs:
           go version | grep -q 'go1.27.3'
       - name: Unit tests
         working-directory: backend
-        run: make test-unit
+        run: |
+          go mod download
+          bash ../ops/changes/20261105-channel-monitor/test-isolated.sh make test-unit
       - name: Integration tests
         working-directory: backend
-        run: make test-integration
+        run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh make test-integration
 
   frontend:
     runs-on: ubuntu-latest
@@ -61,7 +63,7 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
       - name: Frontend typecheck and critical vitest
-        run: make test-frontend
+        run: bash ops/changes/20261105-channel-monitor/test-isolated.sh make test-frontend
 
   golangci-lint:
     runs-on: ubuntu-latest

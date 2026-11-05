@@ -55,11 +55,12 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 //	1 次批量 latest（含 ping_latency_ms）；
 //	1 次批量 7d availability；
 //	1 次批量 timeline（主模型最近 N 条）。
-func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonitorView, error) {
+func (s *ChannelMonitorService) ListUserView(ctx context.Context, userIDs ...int64) ([]*UserMonitorView, error) {
 	monitors, err := s.repo.ListEnabled(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list enabled monitors: %w", err)
 	}
+ if len(userIDs)>0 { filtered:=make([]*ChannelMonitor,0,len(monitors));for _,m:=range monitors{if monitorVisibleTo(m,userIDs[0]){filtered=append(filtered,m)}};monitors=filtered }
 	if len(monitors) == 0 {
 		return []*UserMonitorView{}, nil
 	}
@@ -129,12 +130,12 @@ func pickLatest(rows []*ChannelMonitorLatest, model string) *ChannelMonitorLates
 
 // GetUserDetail 用户只读视图：单个监控详情（每个模型 7d/15d/30d 可用率与平均延迟）。
 // 不暴露 api_key。
-func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64) (*UserMonitorDetail, error) {
+func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64, userIDs ...int64) (*UserMonitorDetail, error) {
 	m, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if !m.Enabled {
+	if !m.Enabled || (len(userIDs)>0 && !monitorVisibleTo(m,userIDs[0])) {
 		return nil, ErrChannelMonitorNotFound
 	}
 
@@ -231,6 +232,7 @@ func buildUserViewFromSummary(
 	timelineEntries []*ChannelMonitorHistoryEntry,
 ) *UserMonitorView {
 	view := &UserMonitorView{
+ AutoCheckEnabled: m.AutoCheckEnabled, LastCheckedAt: m.LastCheckedAt, CanRun: m.Enabled,
 		ID:               m.ID,
 		Name:             m.Name,
 		Provider:         m.Provider,
