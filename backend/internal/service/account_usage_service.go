@@ -750,22 +750,30 @@ func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Accou
 	usage := openAIUsageFromExtra(account.Extra, now)
 	entry := s.cachedOpenAIUsage(account.ID)
 	if force || shouldRefreshOpenAICodexSnapshot(account, usage, now) || (entry != nil && entry.message != "") {
-		refresh := func() (any, error) {
+		refresh := func() *openAIUsageCacheEntry {
 			if cached := s.cachedOpenAIUsage(account.ID); !force && cached != nil && time.Since(cached.timestamp) < openAIUsageCacheTTL {
-				return cached, nil
+				return cached
 			}
 			result := s.queryOpenAIUsageSnapshot(ctx, account)
 			if s.cache != nil {
 				s.cache.openAIUsageCache.Store(account.ID, result)
 			}
-			return result, nil
+			return result
 		}
 		if s.cache != nil {
-			value, _, _ := s.cache.openAIUsageFlight.Do(fmt.Sprintf("usage:%d", account.ID), refresh)
-			entry = value.(*openAIUsageCacheEntry)
+			value, err, _ := s.cache.openAIUsageFlight.Do(fmt.Sprintf("usage:%d", account.ID), func() (any, error) {
+				return refresh(), nil
+			})
+			if err != nil {
+				return nil, err
+			}
+			result, ok := value.(*openAIUsageCacheEntry)
+			if !ok || result == nil {
+				return nil, fmt.Errorf("invalid OpenAI usage refresh result")
+			}
+			entry = result
 		} else {
-			value, _ := refresh()
-			entry = value.(*openAIUsageCacheEntry)
+			entry = refresh()
 		}
 	}
 	if entry != nil {
