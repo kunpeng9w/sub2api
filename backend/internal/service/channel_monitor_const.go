@@ -166,6 +166,9 @@ var (
 	ErrChannelMonitorInvalidInterval = infraerrors.BadRequest(
 		"CHANNEL_MONITOR_INVALID_INTERVAL", "interval_seconds must be in [15, 3600]",
 	)
+	ErrChannelMonitorInvalidSortOrder = infraerrors.BadRequest(
+		"CHANNEL_MONITOR_INVALID_SORT_ORDER", "sort_order must be an integer in [0, 2147483647]",
+	)
 	ErrChannelMonitorInvalidJitter = infraerrors.BadRequest(
 		"CHANNEL_MONITOR_INVALID_JITTER", "jitter_seconds must be >= 0 and interval_seconds - jitter_seconds must be >= 15",
 	)

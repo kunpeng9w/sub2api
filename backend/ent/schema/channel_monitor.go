@@ -71,6 +71,11 @@ func (ChannelMonitor) Fields() []ent.Field {
 		field.JSON("extra_models", []string{}).
 			Default([]string{}).
 			Comment("Additional model names to test alongside primary_model"),
+		field.Int("sort_order").
+			Default(0).
+			NonNegative().
+			Max(2147483647).
+			Comment("Display order, lower values first; ties use ID ascending"),
 		field.String("group_name").
 			Optional().
 			Default("").

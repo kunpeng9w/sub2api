@@ -174,6 +174,26 @@ describe('MonitorFormDialog linked account selector', () => {
     monitorUpdate.mockReset().mockResolvedValue({})
   })
 
+  it('loads display order and sends an explicit zero when reset', async () => {
+    const wrapper = mountDialog(makeMonitor({ sort_order: 20, visibility: 'all' }))
+    await flushPromises()
+    const input = wrapper.get<HTMLInputElement>('#monitor-sort-order')
+    expect(input.element.value).toBe('20')
+    await input.setValue('0')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ sort_order: 0 }))
+  })
+
+  it.each(['-1', '1.5', '2147483648', ''])('rejects invalid display order %s', async (value) => {
+    const wrapper = mountDialog(makeMonitor({ visibility: 'all' }))
+    await flushPromises()
+    await wrapper.get('#monitor-sort-order').setValue(value)
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).not.toHaveBeenCalled()
+  })
+
   it('creates a manual monitor with multiple explicitly selected viewers', async () => {
     const wrapper = mountDialog(); await flushPromises()
     await wrapper.findAll('input[type="text"]')[0].setValue('private monitor')
@@ -190,7 +210,7 @@ describe('MonitorFormDialog linked account selector', () => {
     expect(usersList).toHaveBeenCalledWith(1, 20, { search: 'alpha' })
     for (const box of wrapper.findAll('input[type="checkbox"]')) await box.setValue(true)
     await wrapper.get('#channel-monitor-form').trigger('submit'); await flushPromises()
-    expect(monitorCreate).toHaveBeenCalledWith(expect.objectContaining({ auto_check_enabled: false, visibility: 'selected', allowed_user_ids: [7, 9] }))
+    expect(monitorCreate).toHaveBeenCalledWith(expect.objectContaining({ auto_check_enabled: false, visibility: 'selected', allowed_user_ids: [7, 9], sort_order: 0 }))
   })
 
   it('preserves every viewer from the list row when only the name is edited', async () => {

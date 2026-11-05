@@ -40,6 +40,25 @@ function mountView() {
 }
 
 describe('channel monitor automatic detail refresh', () => {
+  it('preserves API card order across windows and refreshed status changes', async () => {
+    const items = [9, 2, 7].map(id => ({ id, name: String(id), primary_model: 'model', primary_status: 'operational', availability_7d: 99 }))
+    mocks.list.mockResolvedValue({ items })
+    const wrapper = mountView()
+    await flushPromises()
+    const ids = () => wrapper.findAllComponents({ name: 'MonitorCard' }).map(card => card.props('item').id)
+    expect(ids()).toEqual([9, 2, 7])
+    await wrapper.get('.fifteen').trigger('click')
+    await flushPromises()
+    expect(ids()).toEqual([9, 2, 7])
+    mocks.list.mockResolvedValue({ items: items.map(item => ({ ...item, primary_status: 'failed' })) })
+    await wrapper.get('.refresh').trigger('click')
+    await flushPromises()
+    expect(ids()).toEqual([9, 2, 7])
+    await wrapper.get('.thirty').trigger('click')
+    await flushPromises()
+    expect(ids()).toEqual([9, 2, 7])
+  })
+
   it.each(['fifteen', 'thirty'])('refreshes the cached %s-day availability on timer ticks', async (tab) => {
     const wrapper = mountView()
     await flushPromises()

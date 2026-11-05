@@ -47,6 +47,7 @@ type ChannelMonitor struct {
 	PrimaryModel    string
 	ExtraModels     []string
 	GroupName       string
+	SortOrder       int
 	Enabled         bool
 	IntervalSeconds int
 	JitterSeconds   int // 每次调度 ± [0, jitter] 的随机偏移（秒），0 = 固定间隔
@@ -101,6 +102,7 @@ type ChannelMonitorCreateParams struct {
 	PrimaryModel     string
 	ExtraModels      []string
 	GroupName        string
+	SortOrder        int
 	Enabled          bool
 	IntervalSeconds  int
 	JitterSeconds    int
@@ -130,6 +132,7 @@ type ChannelMonitorUpdateParams struct {
 	PrimaryModel    *string
 	ExtraModels     *[]string
 	GroupName       *string
+	SortOrder       *int
 	Enabled         *bool
 	IntervalSeconds *int
 	JitterSeconds   *int
