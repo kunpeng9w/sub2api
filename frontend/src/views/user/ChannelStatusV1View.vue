@@ -12,6 +12,8 @@
 
     <MonitorCardGrid
       :items="items"
+      :running-i-ds="runningIDs"
+      @run="runMonitor"
       :window="currentWindow"
       :countdown-seconds="countdown"
       :loading="loading"
@@ -35,6 +37,7 @@ import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import {
   list as listChannelMonitorViews,
+  run as runChannelMonitor,
   status as fetchChannelMonitorDetail,
   type UserMonitorView,
   type UserMonitorDetail,
@@ -130,6 +133,15 @@ async function loadDetail(id: number, force = false) {
 async function ensureDetailsForWindow() {
   if (currentWindow.value === '7d') return
   await Promise.all(items.value.map(it => loadDetail(it.id)))
+}
+
+const runningIDs = reactive(new Set<number>())
+async function runMonitor(item: UserMonitorView) {
+  if (runningIDs.has(item.id)) return
+  runningIDs.add(item.id)
+  try { await runChannelMonitor(item.id); await refresh(true) }
+  catch (error) { appStore.showError(extractApiErrorMessage(error, t('common.error'))) }
+  finally { runningIDs.delete(item.id) }
 }
 
 // ── Handlers ──

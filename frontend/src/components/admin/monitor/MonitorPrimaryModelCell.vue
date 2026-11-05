@@ -1,5 +1,6 @@
 <template>
   <div class="flex flex-col gap-0.5">
+    <span v-if="row.egress_configured === false" class="text-xs text-amber-600">{{ t('monitorCommon.controls.egressMissing') }}</span>
     <div class="flex items-center gap-2">
       <!-- 纯配额模式主模型是占位符 "quota"（数据源是账号不是模型），展示层替换为本地化标签 -->
       <span class="text-sm text-gray-900 dark:text-gray-100">{{ formatMonitorModel(row.primary_model) }}</span>

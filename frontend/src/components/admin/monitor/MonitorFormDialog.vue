@@ -52,7 +52,7 @@
       </div>
 
       <!-- 配额模式数据源：关联账号（复用账号侧用量/余额服务） -->
-      <div v-if="usesQuotaMode">
+      <div>
         <label class="input-label">
           {{ t('admin.channelMonitor.form.linkedAccount') }} <span class="text-red-500">*</span>
         </label>
@@ -148,18 +148,48 @@
         />
       </div>
 
+      <div v-if="form.account_id == null">
+        <label class="input-label">{{ t('monitorCommon.controls.proxy') }}</label>
+        <select v-model="form.proxy_id" class="input" data-testid="monitor-proxy">
+          <option :value="null">{{ t('monitorCommon.controls.chooseProxy') }}</option>
+          <option v-for="p in proxyChoices" :key="p.id" :value="p.id">{{ p.name }} (#{{ p.id }})</option>
+        </select>
+      </div>
+      <p v-else class="text-xs text-gray-500">{{ t('monitorCommon.controls.accountProxy') }}</p>
+      <div>
+        <label class="input-label">{{ t('monitorCommon.controls.visibility') }}</label>
+        <select v-model="form.visibility" class="input" data-testid="monitor-visibility">
+          <option value="admin_only">{{ t('monitorCommon.controls.adminOnly') }}</option>
+          <option value="selected">{{ t('monitorCommon.controls.selected') }}</option>
+          <option value="all">{{ t('monitorCommon.controls.allUsers') }}</option>
+        </select>
+        <div v-if="form.visibility === 'selected'" class="mt-2 space-y-2">
+          <div class="flex gap-2">
+            <input v-model="viewerQuery" class="input" :placeholder="t('monitorCommon.controls.searchUsers')" @keydown.enter.prevent="searchViewers" />
+            <button type="button" class="btn btn-secondary" @click="searchViewers">{{ t('common.search') }}</button>
+          </div>
+          <label v-for="user in viewerChoices" :key="user.id" class="mr-3 inline-flex items-center gap-1">
+            <input v-model="form.allowed_user_ids" type="checkbox" :value="user.id" />{{ user.label }}
+          </label>
+          <button v-for="id in form.allowed_user_ids" :key="id" type="button" class="mr-2 text-xs" @click="form.allowed_user_ids = form.allowed_user_ids.filter(value => value !== id)">#{{ id }} ×</button>
+        </div>
+      </div>
+      <div class="flex items-center justify-between">
+        <label class="input-label mb-0">{{ t('monitorCommon.controls.autoCheck') }}</label>
+        <Toggle v-model="form.auto_check_enabled" data-testid="monitor-auto-check" />
+      </div>
       <div>
         <label class="input-label">{{ t('admin.channelMonitor.form.groupName') }}</label>
         <input v-model="form.group_name" type="text" class="input" :placeholder="t('admin.channelMonitor.form.groupNamePlaceholder')" />
       </div>
 
-      <div>
+      <div v-if="form.auto_check_enabled">
         <label class="input-label">{{ t('admin.channelMonitor.form.intervalSeconds') }} <span class="text-red-500">*</span></label>
         <input v-model.number="form.interval_seconds" type="number" min="15" max="3600" required class="input" />
         <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.intervalSecondsHint') }}</p>
       </div>
 
-      <div>
+      <div v-if="form.auto_check_enabled">
         <label class="input-label">{{ t('admin.channelMonitor.form.jitterSeconds') }}</label>
         <input v-model.number="form.jitter_seconds" type="number" min="0" :max="maxJitterSeconds" class="input" />
         <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.jitterSecondsHint') }}</p>
@@ -319,6 +349,10 @@ const myActiveKeys = ref<ApiKey[]>([])
 const userGroupRates = ref<Record<number, number>>({})
 
 interface MonitorForm {
+  auto_check_enabled: boolean
+  visibility: 'all' | 'selected' | 'admin_only'
+  allowed_user_ids: number[]
+  proxy_id: number | null
   name: string
   provider: Provider
   api_mode: APIMode
@@ -340,6 +374,10 @@ interface MonitorForm {
 }
 
 const form = reactive<MonitorForm>({
+  auto_check_enabled: false,
+  visibility: 'admin_only',
+  allowed_user_ids: [],
+  proxy_id: null,
   name: '',
   provider: PROVIDER_ANTHROPIC,
   api_mode: API_MODE_CHAT_COMPLETIONS,
@@ -358,6 +396,20 @@ const form = reactive<MonitorForm>({
   body_override_mode: 'off',
   body_override: null,
 })
+
+const proxyChoices = ref<{ id: number; name: string }[]>([])
+const viewerQuery = ref('')
+const viewerChoices = ref<{ id: number; label: string }[]>([])
+async function loadProxyChoices() {
+  try { proxyChoices.value = await adminAPI.proxies?.getAll?.() || [] }
+  catch { proxyChoices.value = [] }
+}
+async function searchViewers() {
+  try {
+    const result = await adminAPI.users.list(1, 20, { search: viewerQuery.value.trim() })
+    viewerChoices.value = result.items.map(user => ({ id: user.id, label: `${user.username || user.email} (#${user.id})` }))
+  } catch (error) { appStore.showError(extractApiErrorMessage(error, t('common.error'))) }
+}
 
 // quota / quota_probe 需要关联账号；probe / quota_probe 需要探活字段。
 const usesQuotaMode = computed(() => form.check_mode !== CHECK_MODE_PROBE)
@@ -587,7 +639,7 @@ const accountSelectValue = computed<string>({
 // seq + abort 防止快速切换 provider / 连续输入时乱序响应覆盖新结果。
 // 失败不阻塞表单：下拉为空 + 空态提示。
 async function loadLinkedAccounts(search = '') {
-  if (!usesQuotaMode.value || !props.show) return
+  if (!props.show) return
   accountSearchQuery.value = search
   const seq = ++accountSearchSeq
   accountSearchAbort?.abort()
@@ -618,7 +670,7 @@ async function loadLinkedAccounts(search = '') {
 // 失配时才清空绑定（带可见提示），否则绑定只在用户显式切换 provider 时清空。
 async function ensureSelectedAccountHydrated() {
   const id = form.account_id
-  if (id == null || !usesQuotaMode.value) return
+  if (id == null) return
   if (linkedAccounts.value.some((a) => a.id === id) || pinnedAccount.value?.id === id) return
   if (hydrationAttempted.has(id)) return
   hydrationAttempted.add(id)
@@ -626,16 +678,12 @@ async function ensureSelectedAccountHydrated() {
     const account = await adminAPI.accounts.getById(id)
     if (form.account_id !== id) return
     if (String(account.platform) !== form.provider) {
-      form.account_id = null
-      pinnedAccount.value = null
       accountHydrationFailed.value = true
       return
     }
     pinnedAccount.value = { id: account.id, name: account.name }
   } catch {
     if (form.account_id === id) {
-      form.account_id = null
-      pinnedAccount.value = null
       accountHydrationFailed.value = true
     }
   }
@@ -725,6 +773,10 @@ watch(() => form.api_mode, () => {
 
 function resetForm() {
   suppressFormWatchers = true
+  form.auto_check_enabled = false
+  form.visibility = 'admin_only'
+  form.allowed_user_ids = []
+  form.proxy_id = null
   form.name = ''
   form.provider = PROVIDER_ANTHROPIC
   form.api_mode = API_MODE_CHAT_COMPLETIONS
@@ -748,6 +800,10 @@ function resetForm() {
 }
 
 function loadFromMonitor(m: ChannelMonitor) {
+  form.auto_check_enabled = m.auto_check_enabled ?? true
+  form.visibility = m.visibility ?? 'all'
+  form.allowed_user_ids = [...(m.allowed_user_ids || [])]
+  form.proxy_id = m.proxy_id ?? null
   suppressFormWatchers = true
   form.name = m.name
   form.provider = m.provider
@@ -776,6 +832,7 @@ watch(
   ([show, m]) => {
     if (!show) return
     void loadTemplates()
+    void loadProxyChoices()
     if (m) loadFromMonitor(m)
     else resetForm()
   },
@@ -821,7 +878,11 @@ function buildPayload(): CreateParams {
     provider: form.provider,
     api_mode: form.provider === PROVIDER_OPENAI ? form.api_mode : API_MODE_CHAT_COMPLETIONS,
     check_mode: form.check_mode,
-    account_id: usesQuotaMode.value ? form.account_id : null,
+    account_id: form.account_id,
+    proxy_id: form.account_id == null ? form.proxy_id : null,
+    auto_check_enabled: form.auto_check_enabled,
+    visibility: form.visibility,
+    allowed_user_ids: form.visibility === 'selected' ? form.allowed_user_ids : [],
     endpoint: usesProbePart.value ? form.endpoint.trim() : '',
     api_key: usesProbePart.value ? form.api_key.trim() : '',
     primary_model: usesProbePart.value ? form.primary_model.trim() : 'quota',
@@ -852,6 +913,9 @@ async function handleSubmit() {
     return
   }
 
+  if (form.visibility === 'selected' && form.allowed_user_ids.length === 0) {
+    appStore.showError(t('monitorCommon.controls.viewersRequired')); return
+  }
   submitting.value = true
   try {
     const target = editing.value
@@ -867,7 +931,8 @@ async function handleSubmit() {
       }
       // account_id 同理：probe 模式不带账号，update 发 0 显式解绑存量关联
       // （后端 0=清空、null=不动）。仅 update——create 发 0 会落 &0 触发 FK 违约。
-      if (!usesQuotaMode.value) req.account_id = 0
+      if (form.account_id == null) req.account_id = 0
+      if (form.proxy_id == null || form.account_id != null) req.proxy_id = 0
       await adminAPI.channelMonitor.update(target.id, req)
       appStore.showSuccess(t('admin.channelMonitor.updateSuccess'))
     } else {

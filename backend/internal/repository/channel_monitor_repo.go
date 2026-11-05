@@ -39,6 +39,7 @@ func NewChannelMonitorRepository(client *dbent.Client, db *sql.DB) service.Chann
 // ---------- CRUD ----------
 
 func (r *channelMonitorRepository) Create(ctx context.Context, m *service.ChannelMonitor) error {
+ if m.Visibility==""{m.Visibility="all"}
 	client := clientFromContext(ctx, r.client)
 	builder := client.ChannelMonitor.Create().
 		SetName(m.Name).

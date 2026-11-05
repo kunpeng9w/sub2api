@@ -32,6 +32,7 @@ const (
 
 // ChannelMonitor 渠道监控配置（service 层模型，不直接暴露 ent 类型）。
 type ChannelMonitor struct {
+ EgressConfigured bool
     AutoCheckEnabled bool
     Visibility string
     AllowedUserIDs []int64

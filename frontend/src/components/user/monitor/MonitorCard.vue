@@ -1,8 +1,11 @@
 <template>
-  <button
-    type="button"
+  <article
+    tabindex="0"
+    role="button"
     class="group text-left p-5 rounded-2xl min-h-[280px] w-full bg-white/70 backdrop-blur-xl border border-gray-200/80 shadow-card dark:bg-dark-800/60 dark:border-dark-700/70 hover:-translate-y-1 hover:shadow-card-hover dark:hover:border-primary-500/30 hover:border-gray-300 transition-all duration-300 ease-out flex flex-col"
     @click="emit('click')"
+    @keydown.enter.self="emit('click')"
+    @keydown.space.self.prevent="emit('click')"
   >
     <!-- Header: icon + name/model + status chip -->
     <div class="flex items-start gap-3">
@@ -73,7 +76,13 @@
       :buckets="item.timeline"
       :countdown-seconds="countdownSeconds"
     />
-  </button>
+    <div class="mt-3 flex w-full items-center justify-between gap-2 text-xs">
+      <span class="text-gray-400">{{ item.last_checked_at ? new Date(item.last_checked_at).toLocaleString() : t('monitorCommon.controls.neverChecked') }}</span>
+      <button v-if="item.can_run" type="button" class="btn btn-secondary !px-2 !py-1" :disabled="running" @click.stop="emit('run')">
+        {{ t(running ? 'monitorCommon.controls.running' : 'monitorCommon.controls.runNow') }}
+      </button>
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -105,6 +114,7 @@ const PROVIDER_TINT: Record<string, string> = {
 }
 
 const props = defineProps<{
+  running?: boolean
   item: UserMonitorView
   window: '7d' | '15d' | '30d'
   availabilityValue: number | null
@@ -113,6 +123,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'click'): void
+  (e: 'run'): void
 }>()
 
 const { t } = useI18n()
@@ -135,7 +146,7 @@ const quotaVisible = computed(
 
 const availabilityLabel = computed(() => {
   const win = t(`channelStatus.windowTab.${props.window}`)
-  return `${t('monitorCommon.availabilityPrefix')} · ${win}`
+  return `${t(props.item.auto_check_enabled === false ? 'monitorCommon.controls.sampleAvailability' : 'monitorCommon.availabilityPrefix')} · ${win}`
 })
 
 const extraModelsCountLabel = computed(() => {

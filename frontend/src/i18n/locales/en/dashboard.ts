@@ -496,6 +496,8 @@ export default {
 
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
+    controls: {"proxy": "Egress proxy", "chooseProxy": "Select a proxy (required to run)", "accountProxy": "Uses the linked account’s current proxy. Requests stop if it is unavailable.", "visibility": "Visibility", "adminOnly": "Administrators only", "selected": "Selected users", "allUsers": "All users", "searchUsers": "Search username or email", "viewersRequired": "Select at least one user", "autoCheck": "Automatic checks", "neverChecked": "Never checked", "running": "Checking…", "runNow": "Run check", "sampleAvailability": "Check sample availability", "egressMissing": "Proxy missing or unavailable"},
+    estimate: {"total": "Estimated total ${value}", "remaining": "Estimated remaining ${value}", "unavailable": "Estimate unavailable", "sampled": "Sampled {time}", "note": "Estimated from usage recorded by this system"},
     status: {
       operational: 'Operational',
       degraded: 'Degraded',

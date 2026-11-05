@@ -73,7 +73,9 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context, userIDs ...int
 	views := make([]*UserMonitorView, 0, len(monitors))
 	for _, m := range monitors {
 		primaryLatest := pickLatest(latestMap[m.ID], m.PrimaryModel)
-		views = append(views, buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID]))
+		view:=buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID])
+        _,routeErr:=s.resolveMonitorRoute(ctx,m);view.CanRun=routeErr==nil
+        views = append(views,view)
 	}
 	return views, nil
 }

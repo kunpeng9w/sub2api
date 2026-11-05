@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '../client'
+import type { QuotaEstimate } from '@/types'
 
 export type Provider =
   | 'openai'
@@ -27,6 +28,7 @@ export type CheckMode = 'probe' | 'quota' | 'quota_probe'
 
 /** 配额快照中的单个用量窗口（与后端 domain.MonitorQuotaTier 一致）。 */
 export interface MonitorQuotaTier {
+  estimate?: QuotaEstimate | null
   /** 5h | 7d | 7d-sonnet | 7d-fable | 30d | daily | weekly | total */
   window: string
   /** 同窗口多档时的机器标识（gemini shared/pro/flash、grok requests/tokens、antigravity 模型名） */
@@ -60,6 +62,11 @@ export interface MonitorQuotaSnapshot {
 }
 
 export interface ChannelMonitor {
+  auto_check_enabled?: boolean
+  visibility?: 'all' | 'selected' | 'admin_only'
+  allowed_user_ids?: number[]
+  proxy_id?: number | null
+  egress_configured?: boolean
   id: number
   name: string
   provider: Provider
@@ -127,6 +134,10 @@ export interface ListResponse {
 }
 
 export interface CreateParams {
+  auto_check_enabled?: boolean
+  visibility?: 'all' | 'selected' | 'admin_only'
+  allowed_user_ids?: number[]
+  proxy_id?: number | null
   name: string
   provider: Provider
   api_mode?: APIMode

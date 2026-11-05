@@ -133,6 +133,7 @@ func (s *ChannelMonitorService) List(ctx context.Context, params ChannelMonitorL
 	}
 	for _, it := range items {
 		s.decryptInPlace(it)
+        _,routeErr:=s.resolveMonitorRoute(ctx,it);it.EgressConfigured=routeErr==nil
 	}
 	return items, total, nil
 }

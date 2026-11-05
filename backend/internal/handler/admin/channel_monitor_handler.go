@@ -95,6 +95,7 @@ type channelMonitorUpdateRequest struct {
 }
 
 type channelMonitorResponse struct {
+ EgressConfigured bool `json:"egress_configured"`
  AutoCheckEnabled bool `json:"auto_check_enabled"`
  Visibility string `json:"visibility"`
  AllowedUserIDs []int64 `json:"allowed_user_ids"`
@@ -177,7 +178,7 @@ func channelMonitorToResponse(m *service.ChannelMonitor) *channelMonitorResponse
 	}
 	resp := &channelMonitorResponse{
 		ID:                  m.ID,
- AutoCheckEnabled: m.AutoCheckEnabled, Visibility:m.Visibility, AllowedUserIDs:m.AllowedUserIDs,ProxyID:m.ProxyID,
+ EgressConfigured:m.EgressConfigured,AutoCheckEnabled: m.AutoCheckEnabled, Visibility:m.Visibility, AllowedUserIDs:m.AllowedUserIDs,ProxyID:m.ProxyID,
 		Name:                m.Name,
 		Provider:            m.Provider,
 		APIMode:             m.APIMode,

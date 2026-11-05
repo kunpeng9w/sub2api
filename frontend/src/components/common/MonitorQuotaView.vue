@@ -19,6 +19,7 @@
         :color="row.color"
         :utilization="row.tier.used_percent"
         :resets-at="row.tier.reset_at ?? null"
+        :estimate="row.tier.estimate"
       />
     </div>
 

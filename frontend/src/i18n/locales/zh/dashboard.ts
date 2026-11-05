@@ -501,6 +501,8 @@ export default {
 
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
+    controls: {"proxy": "出口代理", "chooseProxy": "请选择代理（未配置时无法检测）", "accountProxy": "出口严格使用关联账号当前绑定的代理；不可用时停止请求。", "visibility": "可见范围", "adminOnly": "仅管理员", "selected": "指定用户", "allUsers": "所有用户", "searchUsers": "搜索用户名或邮箱", "viewersRequired": "请至少选择一名用户", "autoCheck": "自动检测", "neverChecked": "尚未检测", "running": "检测中…", "runNow": "立即检测", "sampleAvailability": "检测样本可用率", "egressMissing": "出口未配置或不可用"},
+    estimate: {"total": "预计总额度 ${value}", "remaining": "预计剩余 ${value}", "unavailable": "暂无法估算", "sampled": "采样于 {time}", "note": "按本系统记录用量估算"},
     status: {
       operational: '正常',
       degraded: '降级',

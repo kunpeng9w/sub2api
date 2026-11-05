@@ -22,6 +22,9 @@ export interface MonitorTimelinePoint {
 }
 
 export interface UserMonitorView {
+  auto_check_enabled?: boolean
+  can_run?: boolean
+  last_checked_at?: string | null
   id: number
   name: string
   provider: Provider
@@ -80,7 +83,12 @@ export async function status(id: number): Promise<UserMonitorDetail> {
   return data
 }
 
+export async function run(id: number): Promise<void> {
+  await apiClient.post(`/channel-monitors/${id}/run`)
+}
+
 export const channelMonitorUserAPI = {
+  run,
   list,
   status,
 }
