@@ -8,7 +8,7 @@
 
 - `mihomo_dns.py on` 是 Mihomo 的 `ExecStartPost`，最多等待 8 秒确认本机 DNS 可回答，再原子替换 `/run/mihomo-dns/servers.conf` 并向 dnsmasq 发 SIGHUP。未就绪则保留普通解析并使启动失败。
 - `off` 是 `ExecStopPost`，正常停止、崩溃和启动失败均移除转发；它不依赖主进程仍然存在。
-- dnsmasq 的 `ExecStartPre=... prepare` 根据运行中的 Mihomo 及 DNS 就绪状态重建运行文件，覆盖开机和 dnsmasq 单独重启；不等待另一个 systemd 启动任务，避免启动顺序死锁。
+- dnsmasq 的 `ExecStartPre=... prepare` 根据 Mihomo 的服务状态重建运行文件，覆盖开机和 dnsmasq 单独重启。只有 `active` 且主进程存在时保留转发：此时 `ExecStartPost=... on` 已完成首次 DNS 就绪检查。不再因一次探测超时清空规则，Mihomo 恢复响应后无需重启即可继续解析；启动中、停止中、已停止或失败状态使用普通上游。不等待另一个 systemd 启动任务，避免启动顺序死锁。
 - Mihomo 在 dnsmasq 之后启动。后续 DNS 切换仅发 SIGHUP，不反复重启 dnsmasq。运行目录不归 Mihomo 的 RuntimeDirectory 所有，不会随其停止而删除。
 - 独立文件由 root 管理，目录 0755、文件 0644，使 dnsmasq 降权后仍可重读；flock 串行化更新。主配置的静态域名转发必须删除，否则清空运行文件仍会继续使用旧上游。
 
@@ -16,7 +16,7 @@
 
 此处只切换 DNS。账号绑定代理、绑定失效即报错、应用 `claude_egress` 默认显式代理和 Fake-IP 保护不变。未绑定官方 Claude 账号的应用默认出口仍指向 Mihomo，停止后仍报错；不会因 DNS 切换悄悄把该应用请求变成直连。普通系统程序在 Mihomo 停止后可解析到真实官方地址，符合本次 DNS 生命周期要求。
 
-dnsmasq 的缓存随 SIGHUP 清理；其他进程已缓存的 Fake-IP 或现存连接不能由 DNS helper 强制清除，必要时等待 TTL 或重建客户端连接。这里跟随 systemd 生命周期，未对仍存活进程内部的持续 DNS 故障实现额外健康监视。
+dnsmasq 的缓存随 SIGHUP 清理；其他进程已缓存的 Fake-IP 或现存连接不能由 DNS helper 强制清除，必要时等待 TTL 或重建客户端连接。这里跟随 systemd 生命周期，未对仍存活进程内部的持续 DNS 故障实现额外健康监视。Mihomo 成功启动后若 DNS 暂时失去响应，官方域名解析暂时失败，保留定向规则并在其恢复响应后自然恢复；不会因重启 dnsmasq 而持续切到普通上游。其他域名仍使用独立普通上游。
 
 ## 安装位置与恢复
 
@@ -34,5 +34,7 @@ dnsmasq 的缓存随 SIGHUP 清理；其他进程已缓存的 Fake-IP 或现存�
 ## 验证
 
 `.github/workflows/ops-ci.yml` 的 `mihomo-dns` job 在 GitHub runner 安装 dnsmasq-base，运行单元测试和真实 systemd/dnsmasq 集成测试。测试仅使用本地假 DNS、临时目录、独立命名的临时服务；覆盖停止状态启动 DNS、启动/停止/重启 Mihomo、DNS 单独重启、Mihomo 崩溃、启动失败、降权后的 SIGHUP 重读及缓存切换。不会联系公网 DNS 或操作已安装的线上服务。
+
+超时恢复回归在 runner 暂停假 Mihomo DNS 进程、确认查询超时后重启 dnsmasq，验证普通域名可解析、官方域名不会切到普通上游；恢复假 DNS 进程后验证 Fake-IP 解析恢复，Mihomo 和 dnsmasq 均无需再次重启，最后确认停止 Mihomo 仍会恢复普通解析。
 
 生产只做授权的安装与正常状态验收，不运行这些测试，也不为验证注入线上崩溃。检查当前停止状态的官方域名已恢复真实解析、普通域名仍正常、保护一致且应用健康；完整启动/停止/故障场景由 Actions 验证。

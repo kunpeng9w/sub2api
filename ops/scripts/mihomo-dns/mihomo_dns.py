@@ -89,7 +89,10 @@ class Controller:
         with os.fdopen(fd, 'a') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             if command == 'prepare':
-                return self.publish(self.running() and self.ready(), reload=False)
+                # active means ExecStartPost=on already passed the readiness
+                # check. A transient DNS timeout must not revoke forwarding:
+                # no new on hook runs when that same process recovers.
+                return self.publish(self.running(), reload=False)
             if command == 'off':
                 return self.publish(False, reload=True)
             deadline = time.monotonic() + 8

@@ -19,9 +19,10 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 
-def query(port):
+def query(port, domain='api.anthropic.com'):
     identifier = os.urandom(2)
-    question = b'\x03api\x09anthropic\x03com\x00\x00\x01\x00\x01'
+    question = b''.join(bytes([len(label)]) + label.encode('ascii')
+                        for label in domain.split('.')) + b'\x00\x00\x01\x00\x01'
     message = identifier + struct.pack('!HHHHH', 0x0100, 1, 0, 0, 0) + question
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client:
         client.settimeout(0.3)
@@ -82,8 +83,9 @@ class ControllerTests(unittest.TestCase):
         self.assertFalse(any('restart' in event or 'stop' in event for event in self.events))
 
     def test_boot_and_resolver_restart_reconstruct_current_state_without_signalling(self):
-        for state, ready, expected in [('inactive', True, 'ordinary'), ('active', False, 'ordinary'),
-                                       ('active', True, 'mihomo'), ('deactivating', True, 'ordinary')]:
+        for state, ready, expected in [('inactive', True, 'ordinary'), ('active', False, 'mihomo'),
+                                       ('active', True, 'mihomo'), ('activating', True, 'ordinary'),
+                                       ('deactivating', True, 'ordinary'), ('failed', True, 'ordinary')]:
             self.state, self.ready = state, ready
             self.assertEqual(self.controller.change('prepare'), expected)
         self.assertFalse(any('kill' in event for event in self.events))
@@ -193,12 +195,12 @@ class SystemdIntegrationTests(unittest.TestCase):
         subprocess.run(['systemctl', 'daemon-reload'], capture_output=True, timeout=25)
         subprocess.run(['systemctl', 'reset-failed', self.mihomo, self.resolver], capture_output=True)
 
-    def answer(self, expected):
+    def answer(self, expected, domain='api.anthropic.com'):
         deadline = time.monotonic() + 6
         actual = None
         while time.monotonic() < deadline:
             try:
-                actual = query(self.resolver_port)
+                actual = query(self.resolver_port, domain)
                 if actual == expected:
                     return
             except (OSError, ValueError):
@@ -208,6 +210,33 @@ class SystemdIntegrationTests(unittest.TestCase):
 
     def resolver_pid(self):
         return self.command('systemctl', 'show', self.resolver, '-p', 'MainPID', '--value').stdout.strip()
+
+    def test_resolver_restart_during_dns_timeout_recovers_without_mihomo_restart(self):
+        self.command('systemctl', 'start', self.mihomo)
+        self.answer('198.18.0.4')
+        mihomo_pid = self.command('systemctl', 'show', self.mihomo,
+                                  '-p', 'MainPID', '--value').stdout.strip()
+        # Pause only the fixture's DNS worker. systemd still considers the
+        # successfully started service active, as during a temporary stall.
+        self.command('systemctl', 'kill', '--kill-whom=main', '--signal=STOP', self.mihomo)
+        try:
+            with self.assertRaises(TimeoutError):
+                query(self.fake_port)
+            self.command('systemctl', 'restart', self.resolver)
+            self.answer('203.0.113.8', 'example.com')
+            # A resolver restart must not silently route Claude to the ordinary
+            # upstream while Mihomo is still active but temporarily unavailable.
+            with self.assertRaises(TimeoutError):
+                query(self.resolver_port)
+            resolver_pid = self.resolver_pid()
+        finally:
+            self.command('systemctl', 'kill', '--kill-whom=main', '--signal=CONT', self.mihomo)
+        self.answer('198.18.0.4')
+        self.assertEqual(self.command('systemctl', 'show', self.mihomo,
+                                     '-p', 'MainPID', '--value').stdout.strip(), mihomo_pid)
+        self.assertEqual(self.resolver_pid(), resolver_pid)
+        self.command('systemctl', 'stop', self.mihomo)
+        self.answer('203.0.113.8')
 
     def test_real_lifecycle_start_stop_restart_crash_and_failed_start(self):
         self.command('systemctl', 'start', self.resolver)
