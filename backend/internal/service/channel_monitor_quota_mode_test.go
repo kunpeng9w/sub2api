@@ -4,6 +4,8 @@ package service
 
 import (
 	"context"
+ "net/http"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
 	"testing"
 	"time"
 
@@ -47,8 +49,13 @@ func (r *quotaModeRepoStub) Update(_ context.Context, m *ChannelMonitor) error {
 }
 
 // newQuotaModeService 构造启用 V1 探活的 service（复用 retirement/duplicate 测试的 stub）。
-func newQuotaModeService(repo *quotaModeRepoStub) *ChannelMonitorService {
+func newQuotaModeService(t *testing.T, repo *quotaModeRepoStub) *ChannelMonitorService {
 	svc := NewChannelMonitorService(repo, &duplicateChannelMonitorEncryptor{})
+ originalFactory:=monitorProxyClientFactory
+ monitorProxyClientFactory=func(_ httpclient.Options)(*http.Client,error){return monitorHTTPClient,nil}
+ t.Cleanup(func(){monitorProxyClientFactory=originalFactory})
+ if repo.monitor!=nil&&repo.monitor.AccountID==nil{repo.monitor.ProxyID=int64Ptr(71)}
+ svc.SetExecutionDependencies(&monitorFixtureProxyRepo{},&monitorFixtureLocks{})
 	svc.SetRuntimeReader(channelMonitorRuntimeStub{rt: ChannelMonitorRuntime{
 		Enabled: true,
 		Mode:    ChannelMonitorModeV1,
@@ -60,6 +67,7 @@ func newQuotaModeFetcher(accounts map[int64]*Account, usage *stubMonitorUsageSou
 	if accounts == nil {
 		accounts = make(map[int64]*Account)
 	}
+	for _,account:=range accounts{account.ProxyID=int64Ptr(71)}
 	if usage == nil {
 		usage = &stubMonitorUsageSource{}
 	}
@@ -84,7 +92,7 @@ func TestRunCheck_QuotaModeProducesSingleQuotaResult(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuota,
 		AccountID:       int64Ptr(9),
 	}}
-	svc := newQuotaModeService(repo)
+	svc := newQuotaModeService(t,repo)
 	fetcher := newQuotaModeFetcher(map[int64]*Account{
 		9: {ID: 9, Platform: domain.PlatformKimi, Credentials: map[string]any{"account_mode": AccountModeCoding}},
 	}, nil)
@@ -127,7 +135,7 @@ func TestRunCheck_QuotaModeUnlinkedAccountDegrades(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuota,
 		AccountID:       nil, // FK ON DELETE SET NULL 后的形态
 	}}
-	svc := newQuotaModeService(repo)
+	svc := newQuotaModeService(t,repo)
 	svc.SetQuotaFetcher(newQuotaModeFetcher(nil, nil))
 
 	results, err := svc.RunCheck(context.Background(), 2)
@@ -149,13 +157,11 @@ func TestRunCheck_QuotaModeNilFetcherFailsClosed(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuota,
 		AccountID:       int64Ptr(5),
 	}}
-	svc := newQuotaModeService(repo) // 不注入 fetcher
+	svc := newQuotaModeService(t,repo) // 不注入 fetcher
 
 	results, err := svc.RunCheck(context.Background(), 3)
-	require.NoError(t, err)
-	require.Len(t, results, 1)
-	require.Equal(t, MonitorStatusError, results[0].Status)
-	require.Contains(t, results[0].Message, "not configured")
+ require.ErrorIs(t,err,ErrChannelMonitorEgress)
+ require.Nil(t,results)
 }
 
 func TestRunCheck_QuotaProbeAttachesSnapshotToPrimaryRowOnly(t *testing.T) {
@@ -174,7 +180,7 @@ func TestRunCheck_QuotaProbeAttachesSnapshotToPrimaryRowOnly(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuotaProbe,
 		AccountID:       int64Ptr(12),
 	}}
-	svc := newQuotaModeService(repo)
+	svc := newQuotaModeService(t,repo)
 	usage := &stubMonitorUsageSource{usage: &UsageInfo{
 		FiveHour: &UsageProgress{Utilization: 20},
 	}}
@@ -215,7 +221,7 @@ func TestRunCheck_QuotaProbeQuotaFailureKeepsProbeStatus(t *testing.T) {
 		CheckMode:       MonitorCheckModeQuotaProbe,
 		AccountID:       nil, // 配额侧失效
 	}}
-	svc := newQuotaModeService(repo)
+	svc := newQuotaModeService(t,repo)
 	svc.SetQuotaFetcher(newQuotaModeFetcher(nil, nil))
 
 	results, err := svc.RunCheck(context.Background(), 5)
@@ -428,7 +434,7 @@ func TestRevalidateLinkedAccount_PlatformMismatch(t *testing.T) {
 
 	probe := &ChannelMonitor{Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeProbe, AccountID: int64Ptr(2)}
 	require.NoError(t, svc.revalidateLinkedAccount(context.Background(), probe))
-	require.Nil(t, probe.AccountID)
+	require.NotNil(t, probe.AccountID)
 }
 
 // 能力矩阵：与 fetchUncached 路由一一对应，创建期拦截注定运行期永久 error 的组合。

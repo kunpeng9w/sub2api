@@ -608,7 +608,7 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).toContain('7d|36|900')
   })
 
-  it('仅为 OpenAI OAuth 7d 窗口计算预计总费用', async () => {
+  it('显示后端统一计算的 OpenAI OAuth 7d 额度', async () => {
     getUsage.mockResolvedValue({
       five_hour: {
         utilization: 25,
@@ -620,7 +620,8 @@ describe('AccountUsageCell', () => {
         utilization: 40,
         resets_at: null,
         remaining_seconds: 0,
-        window_stats: { requests: 2, tokens: 200, cost: 12 }
+        window_stats: { requests: 2, tokens: 200, cost: 12 },
+        estimate: { total_cost: 30, remaining_cost: 18 }
       }
     })
 
@@ -631,8 +632,8 @@ describe('AccountUsageCell', () => {
       global: {
         stubs: {
           UsageProgressBar: {
-            props: ['label', 'estimatedTotalCost'],
-            template: '<div class="usage-bar">{{ label }}|{{ estimatedTotalCost ?? "none" }}</div>'
+            props: ['label', 'estimate'],
+            template: '<div class="usage-bar">{{ label }}|{{ estimate?.total_cost ?? "none" }}</div>'
           },
           AccountQuotaInfo: true
         }
@@ -651,7 +652,7 @@ describe('AccountUsageCell', () => {
     { id: 6803, utilization: Number.NaN, cost: 12 },
     { id: 6804, utilization: 40, cost: 0 },
     { id: 6805, utilization: 40, cost: Number.POSITIVE_INFINITY }
-  ])('OpenAI OAuth 7d 输入无效时不显示预计总费用 (%o)', async ({ id, utilization, cost }) => {
+  ])('后端未返回估算时不在前端推算预计总费用 (%o)', async ({ id, utilization, cost }) => {
     getUsage.mockResolvedValue({
       seven_day: {
         utilization,
@@ -672,8 +673,8 @@ describe('AccountUsageCell', () => {
       global: {
         stubs: {
           UsageProgressBar: {
-            props: ['label', 'estimatedTotalCost'],
-            template: '<div class="usage-bar">{{ label }}|{{ estimatedTotalCost ?? "none" }}</div>'
+            props: ['label', 'estimate'],
+            template: '<div class="usage-bar">{{ label }}|{{ estimate?.total_cost ?? "none" }}</div>'
           },
           AccountQuotaInfo: true
         }
