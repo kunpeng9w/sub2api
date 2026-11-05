@@ -158,11 +158,15 @@ func stampUsageWindows(usage *UsageInfo, sampled *time.Time) {
 	}
 }
 func setPassiveWindowSample(p *UsageProgress, extra map[string]any, window string) {
+	setUsageWindowSample(p, extra["passive_usage_"+window+"_sampled_at"])
+}
+
+func setUsageWindowSample(p *UsageProgress, value any) {
 	if p == nil {
 		return
 	}
 	sample := time.Time{}
-	if raw, ok := extra["passive_usage_"+window+"_sampled_at"].(string); ok {
+	if raw, ok := value.(string); ok {
 		if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
 			sample = parsed
 		}

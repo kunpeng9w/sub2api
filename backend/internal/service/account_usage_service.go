@@ -772,7 +772,6 @@ func openAIUsageFromExtra(extra map[string]any, now time.Time) *UsageInfo {
 			usage.UpdatedAt = &ts
 		}
 	}
-	stampUsageWindows(usage, usage.UpdatedAt)
 	return usage
 }
 
@@ -904,7 +903,7 @@ func (s *AccountUsageService) queryOpenAIUsageSnapshot(ctx context.Context, acco
 	// Replace the displayed snapshot as a whole. Null absent windows so that an
 	// old window is never presented under the new snapshot's acquisition time.
 	for _, prefix := range []string{"codex_5h_", "codex_7d_", "codex_primary_", "codex_secondary_"} {
-		for _, suffix := range []string{"used_percent", "reset_at", "reset_after_seconds", "window_minutes"} {
+		for _, suffix := range []string{"used_percent", "reset_at", "reset_after_seconds", "window_minutes", "sampled_at"} {
 			key := prefix + suffix
 			if _, ok := updates[key]; !ok {
 				updates[key] = nil
@@ -1539,6 +1538,9 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 	}
 
 	progress := &UsageProgress{Utilization: parseExtraFloat64(usedRaw)}
+	// Partial gateway observations update the account timestamp even when this
+	// window is absent. Only its own percentage sample can bound an estimate.
+	setUsageWindowSample(progress, extra["codex_"+window+"_sampled_at"])
 	if resetAtRaw, ok := extra[resetAtKey]; ok {
 		if resetAt, err := parseTime(fmt.Sprint(resetAtRaw)); err == nil {
 			progress.ResetsAt = &resetAt
@@ -1552,6 +1554,9 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 		// Relative resets need a trusted acquisition time. Reading an old
 		// snapshot must not start its reset countdown again.
 		base, err := parseTime(fmt.Sprint(extra["codex_usage_updated_at"]))
+		if progress.SampledAt != nil {
+			base, err = *progress.SampledAt, nil
+		}
 		if resetAfterSeconds := parseExtraInt(extra[resetAfterKey]); resetAfterSeconds > 0 && err == nil && !base.IsZero() {
 			resetAt := base.Add(time.Duration(resetAfterSeconds) * time.Second)
 			progress.ResetsAt = &resetAt
