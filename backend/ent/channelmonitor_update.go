@@ -176,6 +176,27 @@ func (_u *ChannelMonitorUpdate) AppendExtraModels(v []string) *ChannelMonitorUpd
 	return _u
 }
 
+// SetSortOrder sets the "sort_order" field.
+func (_u *ChannelMonitorUpdate) SetSortOrder(v int) *ChannelMonitorUpdate {
+	_u.mutation.ResetSortOrder()
+	_u.mutation.SetSortOrder(v)
+	return _u
+}
+
+// SetNillableSortOrder sets the "sort_order" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableSortOrder(v *int) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetSortOrder(*v)
+	}
+	return _u
+}
+
+// AddSortOrder adds value to the "sort_order" field.
+func (_u *ChannelMonitorUpdate) AddSortOrder(v int) *ChannelMonitorUpdate {
+	_u.mutation.AddSortOrder(v)
+	return _u
+}
+
 // SetGroupName sets the "group_name" field.
 func (_u *ChannelMonitorUpdate) SetGroupName(v string) *ChannelMonitorUpdate {
 	_u.mutation.SetGroupName(v)
@@ -611,6 +632,11 @@ func (_u *ChannelMonitorUpdate) check() error {
 			return &ValidationError{Name: "primary_model", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.primary_model": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SortOrder(); ok {
+		if err := channelmonitor.SortOrderValidator(v); err != nil {
+			return &ValidationError{Name: "sort_order", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.sort_order": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.GroupName(); ok {
 		if err := channelmonitor.GroupNameValidator(v); err != nil {
 			return &ValidationError{Name: "group_name", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.group_name": %w`, err)}
@@ -686,6 +712,12 @@ func (_u *ChannelMonitorUpdate) sqlSave(ctx context.Context) (_node int, err err
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, channelmonitor.FieldExtraModels, value)
 		})
+	}
+	if value, ok := _u.mutation.SortOrder(); ok {
+		_spec.SetField(channelmonitor.FieldSortOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSortOrder(); ok {
+		_spec.AddField(channelmonitor.FieldSortOrder, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.GroupName(); ok {
 		_spec.SetField(channelmonitor.FieldGroupName, field.TypeString, value)
@@ -1071,6 +1103,27 @@ func (_u *ChannelMonitorUpdateOne) SetExtraModels(v []string) *ChannelMonitorUpd
 // AppendExtraModels appends value to the "extra_models" field.
 func (_u *ChannelMonitorUpdateOne) AppendExtraModels(v []string) *ChannelMonitorUpdateOne {
 	_u.mutation.AppendExtraModels(v)
+	return _u
+}
+
+// SetSortOrder sets the "sort_order" field.
+func (_u *ChannelMonitorUpdateOne) SetSortOrder(v int) *ChannelMonitorUpdateOne {
+	_u.mutation.ResetSortOrder()
+	_u.mutation.SetSortOrder(v)
+	return _u
+}
+
+// SetNillableSortOrder sets the "sort_order" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableSortOrder(v *int) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetSortOrder(*v)
+	}
+	return _u
+}
+
+// AddSortOrder adds value to the "sort_order" field.
+func (_u *ChannelMonitorUpdateOne) AddSortOrder(v int) *ChannelMonitorUpdateOne {
+	_u.mutation.AddSortOrder(v)
 	return _u
 }
 
@@ -1522,6 +1575,11 @@ func (_u *ChannelMonitorUpdateOne) check() error {
 			return &ValidationError{Name: "primary_model", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.primary_model": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SortOrder(); ok {
+		if err := channelmonitor.SortOrderValidator(v); err != nil {
+			return &ValidationError{Name: "sort_order", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.sort_order": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.GroupName(); ok {
 		if err := channelmonitor.GroupNameValidator(v); err != nil {
 			return &ValidationError{Name: "group_name", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.group_name": %w`, err)}
@@ -1614,6 +1672,12 @@ func (_u *ChannelMonitorUpdateOne) sqlSave(ctx context.Context) (_node *ChannelM
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, channelmonitor.FieldExtraModels, value)
 		})
+	}
+	if value, ok := _u.mutation.SortOrder(); ok {
+		_spec.SetField(channelmonitor.FieldSortOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSortOrder(); ok {
+		_spec.AddField(channelmonitor.FieldSortOrder, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.GroupName(); ok {
 		_spec.SetField(channelmonitor.FieldGroupName, field.TypeString, value)

@@ -37,6 +37,8 @@ const (
 	FieldPrimaryModel = "primary_model"
 	// FieldExtraModels holds the string denoting the extra_models field in the database.
 	FieldExtraModels = "extra_models"
+	// FieldSortOrder holds the string denoting the sort_order field in the database.
+	FieldSortOrder = "sort_order"
 	// FieldGroupName holds the string denoting the group_name field in the database.
 	FieldGroupName = "group_name"
 	// FieldAutoCheckEnabled holds the string denoting the auto_check_enabled field in the database.
@@ -115,6 +117,7 @@ var Columns = []string{
 	FieldAPIKeyEncrypted,
 	FieldPrimaryModel,
 	FieldExtraModels,
+	FieldSortOrder,
 	FieldGroupName,
 	FieldAutoCheckEnabled,
 	FieldVisibility,
@@ -171,6 +174,10 @@ var (
 	PrimaryModelValidator func(string) error
 	// DefaultExtraModels holds the default value on creation for the "extra_models" field.
 	DefaultExtraModels []string
+	// DefaultSortOrder holds the default value on creation for the "sort_order" field.
+	DefaultSortOrder int
+	// SortOrderValidator is a validator for the "sort_order" field. It is called by the builders before save.
+	SortOrderValidator func(int) error
 	// DefaultGroupName holds the default value on creation for the "group_name" field.
 	DefaultGroupName string
 	// GroupNameValidator is a validator for the "group_name" field. It is called by the builders before save.
@@ -282,6 +289,11 @@ func ByAPIKeyEncrypted(opts ...sql.OrderTermOption) OrderOption {
 // ByPrimaryModel orders the results by the primary_model field.
 func ByPrimaryModel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPrimaryModel, opts...).ToFunc()
+}
+
+// BySortOrder orders the results by the sort_order field.
+func BySortOrder(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSortOrder, opts...).ToFunc()
 }
 
 // ByGroupName orders the results by the group_name field.

@@ -677,40 +677,60 @@ func init() {
 	channelmonitorDescExtraModels := channelmonitorFields[8].Descriptor()
 	// channelmonitor.DefaultExtraModels holds the default value on creation for the extra_models field.
 	channelmonitor.DefaultExtraModels = channelmonitorDescExtraModels.Default.([]string)
+	// channelmonitorDescSortOrder is the schema descriptor for sort_order field.
+	channelmonitorDescSortOrder := channelmonitorFields[9].Descriptor()
+	// channelmonitor.DefaultSortOrder holds the default value on creation for the sort_order field.
+	channelmonitor.DefaultSortOrder = channelmonitorDescSortOrder.Default.(int)
+	// channelmonitor.SortOrderValidator is a validator for the "sort_order" field. It is called by the builders before save.
+	channelmonitor.SortOrderValidator = func() func(int) error {
+		validators := channelmonitorDescSortOrder.Validators
+		fns := [...]func(int) error{
+			validators[0].(func(int) error),
+			validators[1].(func(int) error),
+		}
+		return func(sort_order int) error {
+			for _, fn := range fns {
+				if err := fn(sort_order); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	// channelmonitorDescGroupName is the schema descriptor for group_name field.
-	channelmonitorDescGroupName := channelmonitorFields[9].Descriptor()
+	channelmonitorDescGroupName := channelmonitorFields[10].Descriptor()
 	// channelmonitor.DefaultGroupName holds the default value on creation for the group_name field.
 	channelmonitor.DefaultGroupName = channelmonitorDescGroupName.Default.(string)
 	// channelmonitor.GroupNameValidator is a validator for the "group_name" field. It is called by the builders before save.
 	channelmonitor.GroupNameValidator = channelmonitorDescGroupName.Validators[0].(func(string) error)
 	// channelmonitorDescAutoCheckEnabled is the schema descriptor for auto_check_enabled field.
-	channelmonitorDescAutoCheckEnabled := channelmonitorFields[10].Descriptor()
+	channelmonitorDescAutoCheckEnabled := channelmonitorFields[11].Descriptor()
 	// channelmonitor.DefaultAutoCheckEnabled holds the default value on creation for the auto_check_enabled field.
 	channelmonitor.DefaultAutoCheckEnabled = channelmonitorDescAutoCheckEnabled.Default.(bool)
 	// channelmonitorDescVisibility is the schema descriptor for visibility field.
-	channelmonitorDescVisibility := channelmonitorFields[11].Descriptor()
+	channelmonitorDescVisibility := channelmonitorFields[12].Descriptor()
 	// channelmonitor.DefaultVisibility holds the default value on creation for the visibility field.
 	channelmonitor.DefaultVisibility = channelmonitorDescVisibility.Default.(string)
 	// channelmonitorDescEnabled is the schema descriptor for enabled field.
-	channelmonitorDescEnabled := channelmonitorFields[13].Descriptor()
+	channelmonitorDescEnabled := channelmonitorFields[14].Descriptor()
 	// channelmonitor.DefaultEnabled holds the default value on creation for the enabled field.
 	channelmonitor.DefaultEnabled = channelmonitorDescEnabled.Default.(bool)
 	// channelmonitorDescIntervalSeconds is the schema descriptor for interval_seconds field.
-	channelmonitorDescIntervalSeconds := channelmonitorFields[14].Descriptor()
+	channelmonitorDescIntervalSeconds := channelmonitorFields[15].Descriptor()
 	// channelmonitor.IntervalSecondsValidator is a validator for the "interval_seconds" field. It is called by the builders before save.
 	channelmonitor.IntervalSecondsValidator = channelmonitorDescIntervalSeconds.Validators[0].(func(int) error)
 	// channelmonitorDescJitterSeconds is the schema descriptor for jitter_seconds field.
-	channelmonitorDescJitterSeconds := channelmonitorFields[15].Descriptor()
+	channelmonitorDescJitterSeconds := channelmonitorFields[16].Descriptor()
 	// channelmonitor.DefaultJitterSeconds holds the default value on creation for the jitter_seconds field.
 	channelmonitor.DefaultJitterSeconds = channelmonitorDescJitterSeconds.Default.(int)
 	// channelmonitor.JitterSecondsValidator is a validator for the "jitter_seconds" field. It is called by the builders before save.
 	channelmonitor.JitterSecondsValidator = channelmonitorDescJitterSeconds.Validators[0].(func(int) error)
 	// channelmonitorDescExtraHeaders is the schema descriptor for extra_headers field.
-	channelmonitorDescExtraHeaders := channelmonitorFields[19].Descriptor()
+	channelmonitorDescExtraHeaders := channelmonitorFields[20].Descriptor()
 	// channelmonitor.DefaultExtraHeaders holds the default value on creation for the extra_headers field.
 	channelmonitor.DefaultExtraHeaders = channelmonitorDescExtraHeaders.Default.(map[string]string)
 	// channelmonitorDescBodyOverrideMode is the schema descriptor for body_override_mode field.
-	channelmonitorDescBodyOverrideMode := channelmonitorFields[20].Descriptor()
+	channelmonitorDescBodyOverrideMode := channelmonitorFields[21].Descriptor()
 	// channelmonitor.DefaultBodyOverrideMode holds the default value on creation for the body_override_mode field.
 	channelmonitor.DefaultBodyOverrideMode = channelmonitorDescBodyOverrideMode.Default.(string)
 	// channelmonitor.BodyOverrideModeValidator is a validator for the "body_override_mode" field. It is called by the builders before save.

@@ -40,7 +40,7 @@ func NewChannelMonitorHandler(monitorService *service.ChannelMonitorService) *Ch
 // --- Request / Response ---
 
 type channelMonitorCreateRequest struct {
-	SortOrder int `json:"sort_order" binding:"min=0,max=2147483647"`
+	SortOrder        int               `json:"sort_order" binding:"min=0,max=2147483647"`
 	AutoCheckEnabled bool              `json:"auto_check_enabled"`
 	Visibility       string            `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
 	AllowedUserIDs   []int64           `json:"allowed_user_ids" binding:"max=1000,dive,gt=0"`
@@ -69,7 +69,7 @@ type channelMonitorCreateRequest struct {
 }
 
 type channelMonitorUpdateRequest struct {
-	SortOrder *int `json:"sort_order" binding:"omitempty,min=0,max=2147483647"`
+	SortOrder        *int               `json:"sort_order" binding:"omitempty,min=0,max=2147483647"`
 	AutoCheckEnabled *bool              `json:"auto_check_enabled"`
 	Visibility       *string            `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
 	AllowedUserIDs   *[]int64           `json:"allowed_user_ids"`
@@ -97,7 +97,7 @@ type channelMonitorUpdateRequest struct {
 }
 
 type channelMonitorResponse struct {
-	SortOrder int `json:"sort_order"`
+	SortOrder        int     `json:"sort_order"`
 	EgressConfigured bool    `json:"egress_configured"`
 	AutoCheckEnabled bool    `json:"auto_check_enabled"`
 	Visibility       string  `json:"visibility"`
