@@ -13,6 +13,7 @@ import (
 // stubMonitorSvc 实现 monitorRunnerSvc，用于隔离 runner 与真实 service/repo。
 type stubMonitorSvc struct {
 	enabled    []*ChannelMonitor
+	finished   atomic.Int64
 	runCount   atomic.Int64
 	runCalled  chan int64 // 每次 RunCheck 触发时 push 一次（缓冲足够大避免阻塞）
 	runErr     error
@@ -29,6 +30,7 @@ func (s *stubMonitorSvc) ListEnabledMonitors(_ context.Context) ([]*ChannelMonit
 
 func (s *stubMonitorSvc) RunCheck(ctx context.Context, id int64) ([]*CheckResult, error) {
 	s.runCount.Add(1)
+	defer s.finished.Add(1)
 	if s.runCalled != nil {
 		select {
 		case s.runCalled <- id:
@@ -319,12 +321,9 @@ func TestStop_WaitsForInFlightCheck(t *testing.T) {
 		t.Fatal("first fire never happened")
 	}
 
-	start := time.Now()
 	stoppedWithin(t, r, 3*time.Second)
-	elapsed := time.Since(start)
-	// Stop 必须等待 in-flight check 跑完（runHoldFor=200ms），耗时下界约 100ms。
-	if elapsed < 100*time.Millisecond {
-		t.Fatalf("Stop returned too fast (%v); did not wait for in-flight check", elapsed)
+	if svc.finished.Load() != svc.runCount.Load() {
+		t.Fatal("Stop returned before the canceled in-flight check finished")
 	}
 }
 
@@ -382,4 +381,23 @@ func TestMonitorManualNeverRegistersTimer(t *testing.T) {
 		t.Fatal("manual monitor executed")
 	case <-time.After(50 * time.Millisecond):
 	}
+}
+
+func TestMonitorCanceledQueuedTaskNeverChecks(t *testing.T) {
+	svc := &stubMonitorSvc{}
+	r := newRunnerForTest(svc)
+	defer r.Stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if !r.tryAcquireInFlight(7) {
+		t.Fatal("fixture could not reserve an in-flight slot")
+	}
+	r.runOne(7, "canceled", ctx)
+	if svc.runCount.Load() != 0 {
+		t.Fatal("a canceled scheduled task must never start a check")
+	}
+	if !r.tryAcquireInFlight(7) {
+		t.Fatal("canceled task leaked its in-flight slot")
+	}
+	r.releaseInFlight(7)
 }

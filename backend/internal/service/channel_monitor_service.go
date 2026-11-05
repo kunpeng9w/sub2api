@@ -610,6 +610,9 @@ func (s *ChannelMonitorService) RunCheck(ctx context.Context, id int64) ([]*Chec
 	return s.runCheck(ctx, id, 0)
 }
 func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64) ([]*CheckResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	rt := s.probeRuntime(ctx)
 	if !rt.Enabled {
 		return nil, ErrChannelMonitorDisabled
@@ -623,6 +626,9 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 	}
 	if !m.Enabled {
 		return nil, ErrChannelMonitorNotFound
+	}
+	if actorID == 0 && !m.AutoCheckEnabled {
+		return nil, ErrChannelMonitorDisabled
 	}
 	ctx, err = s.monitorContext(ctx, m, actorID)
 	if err != nil {

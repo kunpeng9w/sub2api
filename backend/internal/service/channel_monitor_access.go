@@ -141,6 +141,9 @@ func (s *ChannelMonitorService) monitorContext(ctx context.Context, m *ChannelMo
 		if err != nil || !current.Enabled {
 			return ErrChannelMonitorEgress
 		}
+		if trigger == "scheduled" && !current.AutoCheckEnabled {
+			return ErrChannelMonitorDisabled
+		}
 		fresh, currentRevision, err := s.monitorRouteSnapshot(checkCtx, current)
 		if err != nil || fresh != route || currentRevision != revision {
 			return ErrChannelMonitorEgress

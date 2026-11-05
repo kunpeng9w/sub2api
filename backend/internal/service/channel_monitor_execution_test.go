@@ -101,7 +101,7 @@ func TestMonitorMissingProxyAndUnauthorizedNeverReachQuota(t *testing.T) {
 }
 
 func TestMonitorRouteRevocationInvalidatesPinnedContext(t *testing.T) {
-	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Enabled: true, ProxyID: int64Ptr(71), Provider: MonitorProviderOpenAI}}
+	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Enabled: true, AutoCheckEnabled: true, ProxyID: int64Ptr(71), Provider: MonitorProviderOpenAI}}
 	proxies := &monitorFixtureProxyRepo{}
 	svc := NewChannelMonitorService(repo, nil)
 	svc.proxies = proxies
@@ -110,6 +110,12 @@ func TestMonitorRouteRevocationInvalidatesPinnedContext(t *testing.T) {
 	policy, ok := monitorrequest.From(ctx)
 	require.True(t, ok)
 	require.NoError(t, monitorrequest.Check(ctx, policy.Route))
+	repo.monitor.AutoCheckEnabled = false
+	require.ErrorIs(t, monitorrequest.Check(ctx, policy.Route), ErrChannelMonitorDisabled)
+	manual, err := svc.monitorContext(context.Background(), repo.monitor, 10)
+	require.NoError(t, err)
+	require.NoError(t, monitorrequest.Check(manual, policy.Route))
+	repo.monitor.AutoCheckEnabled = true
 	proxies.broken = true
 	require.Error(t, monitorrequest.Check(ctx, policy.Route))
 	proxies.broken = false
