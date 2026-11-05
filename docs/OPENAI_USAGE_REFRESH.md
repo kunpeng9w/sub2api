@@ -19,6 +19,19 @@
 
 ## 验证结果
 
+### 审阅问题修复后的验证（2026-11-05）
+
+代码提交 `b339fc238dad748f7abada6bbd6e38b0a6d54d86` 修复共享刷新取消和缺失用量误记为零的问题。以下 GitHub Actions 均已完成并通过，已核对运行步骤和测试日志：
+
+- [专项验证](https://github.com/kunpeng9w/sub2api/actions/runs/41971619969)：配额查询与模型兜底、handler 契约及快照持久化回归通过；新增测试覆盖发起者和等待者分别取消、已取消请求、普通/Spark 账号缺失或 `null` 用量、显式零用量和兜底路径。取消测试开启 race 检测并重复 10 次通过。服务器与依赖注入编译、前端全量类型检查、配额组件测试和语言完整性检查通过。
+- [常规 CI](https://github.com/kunpeng9w/sub2api/actions/runs/41971620008)：Go 单元测试、集成测试、golangci-lint、前端检查、Shell 检查与发布辅助测试通过，lint 报告为 0 issues。
+- [源码与运维验证](https://github.com/kunpeng9w/sub2api/actions/runs/41971619988)：运维配置检查、出口审计回归、前端模板测试和嵌入前端的 Linux amd64 构建通过。
+- [安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/41971619956)：通过。
+
+以上结果对应代码提交 `b339fc238`；后续仅补充本验证记录，PR 新触发的检查以其运行结果为准。本次修复与记录阶段未在本机执行编译、测试或 lint，也未部署生产环境。
+
+### 初始实现的验证
+
 代码提交 `28902fce1e3279e95198b97fc00e5dd9a2e5bf20` 的[专用 GitHub Actions 验证](https://github.com/kunpeng9w/sub2api/actions/runs/41960241852)全部通过：
 
 - Go service：43 个顶层测试通过，包含子用例共 163 个通过事件。
