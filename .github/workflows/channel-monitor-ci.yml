@@ -81,7 +81,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: monitor-frontend-${{ github.sha }}
-          path: frontend/dist/
+          path: backend/internal/web/dist/
+          if-no-files-found: error
 
   verification:
     if: always()
