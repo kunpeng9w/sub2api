@@ -29,6 +29,8 @@ jobs:
       - name: Download build dependencies
         working-directory: backend
         run: go mod download
+      - name: Verify isolated process retains Docker fixture access
+        run: bash ops/changes/20261105-channel-monitor/test-isolated.sh docker info --format '{{json .ServerVersion}}'
       - name: Generate Ent and Wire, format source
         working-directory: backend
         run: |

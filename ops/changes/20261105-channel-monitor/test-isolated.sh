@@ -36,4 +36,8 @@ sudo ip6tables -A "$chain" -j REJECT
 sudo ip6tables -I OUTPUT 1 -m owner --gid-owner "$test_gid" -j "$chain"
 # Preserve the runner UID, workspace/cache ownership and Docker supplementary group.
 # Only the effective group changes, so CI cancellation and artifact upload keep working.
-sudo --preserve-env -- runuser -u "$test_user" -g "$test_group" -- env PATH="$PATH" "$@"
+supplementary_groups=()
+for runner_group in $(id -Gn); do
+  supplementary_groups+=(-G "$runner_group")
+done
+sudo --preserve-env -- runuser --preserve-environment -u "$test_user" -g "$test_group" "${supplementary_groups[@]}" -- env PATH="$PATH" "$@"
