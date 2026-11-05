@@ -17,7 +17,7 @@
 
 ## 验证结果
 
-代码提交 `024114fe41cdf7deb5c82c9e2a0fad11c0270458` 的[专用 GitHub Actions 验证](https://github.com/kunpeng9w/sub2api/actions/runs/41958829392)全部通过：
+代码提交 `28902fce1e3279e95198b97fc00e5dd9a2e5bf20` 的[专用 GitHub Actions 验证](https://github.com/kunpeng9w/sub2api/actions/runs/41960241852)全部通过：
 
 - Go service：43 个顶层测试通过，包含子用例共 163 个通过事件。
 - Handler / repository：17 个顶层测试通过，包含子用例共 28 个通过事件。
@@ -26,7 +26,9 @@
 - 源码与运维验证、安全扫描通过。
 - `gofmt`、`git diff --check`、工作流 YAML/Shell 检查和 `actionlint` 通过。
 
-常规 CI 首次运行另发现两个未检查类型断言和现有计费内存测试越过 8 MiB 上限。类型断言已修复，完整 CI 将在后续提交上复跑；没有调整计费测试的阈值或断言。
+[常规 CI](https://github.com/kunpeng9w/sub2api/actions/runs/41960241999)的全量 Go 单元测试、集成测试、lint、前端检查及发布辅助测试全部通过。首次运行发现的两处未检查类型断言已修复；现有计费内存测试在复跑中通过，没有调整阈值或断言。
+
+同一代码提交的[源码与运维验证](https://github.com/kunpeng9w/sub2api/actions/runs/41960242113)和[安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/41960242296)也全部通过。
 
 本地重型检查因约 900 MB 内存及持续换页而停止，重型验证已迁移至 GitHub Actions。测试使用本地模拟上游，无真实账号模型调用。
 
