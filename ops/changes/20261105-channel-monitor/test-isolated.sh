@@ -7,7 +7,7 @@ if [[ "${GITHUB_ACTIONS:-}" != true ]]; then
   exit 1
 fi
 chain="MONITOR_TEST_$$"
-test_uid=$(id -u)
+test_user=$(id -un)
 test_group="sub2api-ci-$$"
 sudo groupadd "$test_group"
 test_gid=$(getent group "$test_group" | cut -d: -f3)
@@ -36,4 +36,4 @@ sudo ip6tables -A "$chain" -j REJECT
 sudo ip6tables -I OUTPUT 1 -m owner --gid-owner "$test_gid" -j "$chain"
 # Preserve the runner UID, workspace/cache ownership and Docker supplementary group.
 # Only the effective group changes, so CI cancellation and artifact upload keep working.
-sudo --preserve-env -u "#$test_uid" -g "$test_group" -- env PATH="$PATH" "$@"
+sudo --preserve-env -- runuser -u "$test_user" -g "$test_group" -- env PATH="$PATH" "$@"
