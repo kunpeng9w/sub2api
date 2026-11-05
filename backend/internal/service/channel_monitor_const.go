@@ -131,19 +131,10 @@ const (
 	// monitorRunOneBuffer runOne 的总超时缓冲（除请求超时与 ping 超时外的额外裕量）。
 	monitorRunOneBuffer = 10 * time.Second
 
-	// monitorIdleConnTimeout HTTP transport 空闲连接关闭超时。
-	monitorIdleConnTimeout = 30 * time.Second
-	// monitorTLSHandshakeTimeout HTTP transport TLS 握手超时。
-	monitorTLSHandshakeTimeout = 10 * time.Second
 	// monitorResponseHeaderTimeout HTTP transport 等待响应头超时。
 	monitorResponseHeaderTimeout = 30 * time.Second
 	// monitorPingDiscardMaxBytes ping 时丢弃响应体的最大字节数。
 	monitorPingDiscardMaxBytes = 1024
-
-	// monitorDialTimeout 自定义 dialer 单次连接超时。
-	monitorDialTimeout = 10 * time.Second
-	// monitorDialKeepAlive 自定义 dialer keep-alive 间隔。
-	monitorDialKeepAlive = 30 * time.Second
 )
 
 // 业务错误（统一在此声明，避免散落）。
@@ -174,6 +165,9 @@ var (
 	)
 	ErrChannelMonitorInvalidInterval = infraerrors.BadRequest(
 		"CHANNEL_MONITOR_INVALID_INTERVAL", "interval_seconds must be in [15, 3600]",
+	)
+	ErrChannelMonitorInvalidSortOrder = infraerrors.BadRequest(
+		"CHANNEL_MONITOR_INVALID_SORT_ORDER", "sort_order must be an integer in [0, 2147483647]",
 	)
 	ErrChannelMonitorInvalidJitter = infraerrors.BadRequest(
 		"CHANNEL_MONITOR_INVALID_JITTER", "jitter_seconds must be >= 0 and interval_seconds - jitter_seconds must be >= 15",

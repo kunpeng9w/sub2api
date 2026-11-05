@@ -11,12 +11,14 @@ const {
   accountsGetById,
   monitorCreate,
   monitorUpdate,
+  usersList,
 } = vi.hoisted(() => ({
   listTemplates: vi.fn(),
   accountsList: vi.fn(),
   accountsGetById: vi.fn(),
   monitorCreate: vi.fn(),
   monitorUpdate: vi.fn(),
+  usersList: vi.fn(),
 }))
 
 
@@ -32,6 +34,7 @@ vi.mock('@/features/channel-monitor-v2/MonitorSettingsPanel.vue', () => ({
 
 vi.mock('@/api/admin', () => ({
   adminAPI: {
+    users: { list: usersList },
     channelMonitor: {
       create: monitorCreate,
       update: monitorUpdate,
@@ -163,6 +166,7 @@ afterEach(() => {
 
 describe('MonitorFormDialog linked account selector', () => {
   beforeEach(() => {
+    usersList.mockReset().mockResolvedValue({ items: [{id:7,username:'alpha',email:'alpha@example.invalid'}, {id:9,username:'beta',email:'beta@example.invalid'}] })
     listTemplates.mockReset().mockResolvedValue({ items: [] })
     accountsList.mockReset().mockResolvedValue({ items: [] })
     accountsGetById.mockReset()
@@ -170,11 +174,73 @@ describe('MonitorFormDialog linked account selector', () => {
     monitorUpdate.mockReset().mockResolvedValue({})
   })
 
-  it('loads the first page of provider accounts when quota mode is enabled', async () => {
+  it('loads display order and sends an explicit zero when reset', async () => {
+    const wrapper = mountDialog(makeMonitor({ sort_order: 20, visibility: 'all' }))
+    await flushPromises()
+    const input = wrapper.get<HTMLInputElement>('#monitor-sort-order')
+    expect(input.element.value).toBe('20')
+    await input.setValue('0')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ sort_order: 0 }))
+  })
+
+  it.each(['-1', '1.5', '2147483648', ''])('rejects invalid display order %s', async (value) => {
+    const wrapper = mountDialog(makeMonitor({ visibility: 'all' }))
+    await flushPromises()
+    await wrapper.get('#monitor-sort-order').setValue(value)
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).not.toHaveBeenCalled()
+  })
+
+  it('creates a manual monitor with multiple explicitly selected viewers', async () => {
+    const wrapper = mountDialog(); await flushPromises()
+    await wrapper.findAll('input[type="text"]')[0].setValue('private monitor')
+    await wrapper.get('[data-testid="monitor-primary-model"]').setValue('fixture-model')
+    await wrapper.get('[data-testid="monitor-visibility"] button').trigger('click')
+    await nextTick()
+    const visibilityDropdown = document.body.querySelector<HTMLElement>('.select-dropdown-portal')!
+    clickOption(visibilityDropdown, 'monitorCommon.controls.selected')
+    await nextTick()
+    await wrapper.get('#channel-monitor-form').trigger('submit'); await flushPromises()
+    expect(monitorCreate).not.toHaveBeenCalled()
+    await wrapper.get('[data-testid="monitor-user-search"]').setValue('alpha')
+    await wrapper.get('[data-testid="monitor-user-search-submit"]').trigger('click'); await flushPromises()
+    expect(usersList).toHaveBeenCalledWith(1, 20, { search: 'alpha' })
+    for (const box of wrapper.findAll('input[type="checkbox"]')) await box.setValue(true)
+    await wrapper.get('#channel-monitor-form').trigger('submit'); await flushPromises()
+    expect(monitorCreate).toHaveBeenCalledWith(expect.objectContaining({ auto_check_enabled: false, visibility: 'selected', allowed_user_ids: [7, 9], sort_order: 0 }))
+  })
+
+  it('preserves every viewer from the list row when only the name is edited', async () => {
+    const wrapper = mountDialog(makeMonitor({
+      visibility: 'selected',
+      allowed_user_ids: [7, 9, 99],
+    }))
+    await flushPromises()
+    await wrapper.get('[data-testid="monitor-user-search-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('input[type="checkbox"]').map(box =>
+      (box.element as HTMLInputElement).checked,
+    )).toEqual([true, true])
+    await wrapper.findAll('input[type="text"]')[0].setValue('renamed monitor')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({
+      name: 'renamed monitor',
+      visibility: 'selected',
+      allowed_user_ids: [7, 9, 99],
+    }))
+  })
+
+  it('loads provider accounts for both probe proxy binding and quota mode', async () => {
     accountsList.mockResolvedValue({ items: [{ id: 1, name: 'a', platform: 'anthropic' }] })
     const wrapper = mountDialog()
     await flushPromises()
-    expect(accountsList).not.toHaveBeenCalled()
+    expect(accountsList).toHaveBeenCalledTimes(1)
 
     await wrapper.get('[data-testid="monitor-check-mode-quota"]').trigger('click')
     await flushPromises()
@@ -227,7 +293,7 @@ describe('MonitorFormDialog linked account selector', () => {
     expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 999 }))
   })
 
-  it('clears the binding with a visible hint when the bound account cannot be loaded', async () => {
+  it('preserves an unavailable binding with a visible hint and blocks submission', async () => {
     accountsGetById.mockRejectedValue(new Error('gone'))
     const wrapper = mountDialog(makeMonitor({
       provider: 'anthropic',
@@ -306,7 +372,7 @@ describe('MonitorFormDialog linked account selector', () => {
     await flushPromises()
 
     expect(accountTrigger(wrapper).text()).not.toContain('alpha')
-    expect(accountTrigger(wrapper).text()).toContain('linkedAccountPlaceholder')
+    expect(accountTrigger(wrapper).text()).toContain('monitorCommon.controls.noAccount')
   })
 
   // P2-7(b)：antigravity 强制的 quota 在切走时要对称还原，占位模型一并清掉。
@@ -339,8 +405,8 @@ describe('MonitorFormDialog linked account selector', () => {
   })
 
   // P2-7(c)：update 切回 probe 显式发 account_id=0 解绑存量关联（null=不动）。
-  it('unbinds the linked account with account_id=0 when a quota monitor switches back to probe', async () => {
-    accountsGetById.mockRejectedValue(new Error('gone'))
+  it('keeps the linked account as proxy source when switching from quota to probe', async () => {
+    accountsGetById.mockResolvedValue({id:999,name:'bound',platform:'anthropic'})
     const wrapper = mountDialog(makeMonitor({
       provider: 'anthropic',
       check_mode: 'quota',
@@ -355,7 +421,7 @@ describe('MonitorFormDialog linked account selector', () => {
     await wrapper.get('#channel-monitor-form').trigger('submit')
     await flushPromises()
 
-    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 0 }))
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 999 }))
   })
 
   // P2-7(c)：create 绝不发 0（后端会把 0 存成 &0 触发外键违约），保持 null。

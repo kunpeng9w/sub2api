@@ -12,6 +12,8 @@
 
     <MonitorCardGrid
       :items="items"
+      :running-i-ds="runningIDs"
+      @run="runMonitor"
       :window="currentWindow"
       :countdown-seconds="countdown"
       :loading="loading"
@@ -35,6 +37,7 @@ import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import {
   list as listChannelMonitorViews,
+  run as runChannelMonitor,
   status as fetchChannelMonitorDetail,
   type UserMonitorView,
   type UserMonitorDetail,
@@ -96,6 +99,9 @@ async function reload(silent = false) {
     const res = await listChannelMonitorViews({ signal: ctrl.signal })
     if (ctrl.signal.aborted || abortController !== ctrl) return
     items.value = res.items || []
+    const visibleIDs = new Set(items.value.map(item => item.id))
+    for (const key of Object.keys(detailCache)) { if (!visibleIDs.has(Number(key))) delete detailCache[Number(key)] }
+    if (detailTarget.value && !visibleIDs.has(detailTarget.value.id)) closeDetail()
   } catch (err: unknown) {
     const e = err as { name?: string; code?: string }
     if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
@@ -130,6 +136,15 @@ async function loadDetail(id: number, force = false) {
 async function ensureDetailsForWindow() {
   if (currentWindow.value === '7d') return
   await Promise.all(items.value.map(it => loadDetail(it.id)))
+}
+
+const runningIDs = reactive(new Set<number>())
+async function runMonitor(item: UserMonitorView) {
+  if (runningIDs.has(item.id)) return
+  runningIDs.add(item.id)
+  try { await runChannelMonitor(item.id); await refresh(true) }
+  catch (error) { appStore.showError(extractApiErrorMessage(error, t('common.error'))) }
+  finally { runningIDs.delete(item.id) }
 }
 
 // ── Handlers ──

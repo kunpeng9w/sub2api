@@ -17,6 +17,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
+	"github.com/Wei-Shaw/sub2api/ent/user"
 )
 
 // ChannelMonitorUpdate is the builder for updating ChannelMonitor entities.
@@ -175,6 +176,27 @@ func (_u *ChannelMonitorUpdate) AppendExtraModels(v []string) *ChannelMonitorUpd
 	return _u
 }
 
+// SetSortOrder sets the "sort_order" field.
+func (_u *ChannelMonitorUpdate) SetSortOrder(v int) *ChannelMonitorUpdate {
+	_u.mutation.ResetSortOrder()
+	_u.mutation.SetSortOrder(v)
+	return _u
+}
+
+// SetNillableSortOrder sets the "sort_order" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableSortOrder(v *int) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetSortOrder(*v)
+	}
+	return _u
+}
+
+// AddSortOrder adds value to the "sort_order" field.
+func (_u *ChannelMonitorUpdate) AddSortOrder(v int) *ChannelMonitorUpdate {
+	_u.mutation.AddSortOrder(v)
+	return _u
+}
+
 // SetGroupName sets the "group_name" field.
 func (_u *ChannelMonitorUpdate) SetGroupName(v string) *ChannelMonitorUpdate {
 	_u.mutation.SetGroupName(v)
@@ -192,6 +214,61 @@ func (_u *ChannelMonitorUpdate) SetNillableGroupName(v *string) *ChannelMonitorU
 // ClearGroupName clears the value of the "group_name" field.
 func (_u *ChannelMonitorUpdate) ClearGroupName() *ChannelMonitorUpdate {
 	_u.mutation.ClearGroupName()
+	return _u
+}
+
+// SetAutoCheckEnabled sets the "auto_check_enabled" field.
+func (_u *ChannelMonitorUpdate) SetAutoCheckEnabled(v bool) *ChannelMonitorUpdate {
+	_u.mutation.SetAutoCheckEnabled(v)
+	return _u
+}
+
+// SetNillableAutoCheckEnabled sets the "auto_check_enabled" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableAutoCheckEnabled(v *bool) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetAutoCheckEnabled(*v)
+	}
+	return _u
+}
+
+// SetVisibility sets the "visibility" field.
+func (_u *ChannelMonitorUpdate) SetVisibility(v string) *ChannelMonitorUpdate {
+	_u.mutation.SetVisibility(v)
+	return _u
+}
+
+// SetNillableVisibility sets the "visibility" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableVisibility(v *string) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetVisibility(*v)
+	}
+	return _u
+}
+
+// SetProxyID sets the "proxy_id" field.
+func (_u *ChannelMonitorUpdate) SetProxyID(v int64) *ChannelMonitorUpdate {
+	_u.mutation.ResetProxyID()
+	_u.mutation.SetProxyID(v)
+	return _u
+}
+
+// SetNillableProxyID sets the "proxy_id" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableProxyID(v *int64) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetProxyID(*v)
+	}
+	return _u
+}
+
+// AddProxyID adds value to the "proxy_id" field.
+func (_u *ChannelMonitorUpdate) AddProxyID(v int64) *ChannelMonitorUpdate {
+	_u.mutation.AddProxyID(v)
+	return _u
+}
+
+// ClearProxyID clears the value of the "proxy_id" field.
+func (_u *ChannelMonitorUpdate) ClearProxyID() *ChannelMonitorUpdate {
+	_u.mutation.ClearProxyID()
 	return _u
 }
 
@@ -344,6 +421,21 @@ func (_u *ChannelMonitorUpdate) ClearBodyOverride() *ChannelMonitorUpdate {
 	return _u
 }
 
+// AddViewerIDs adds the "viewers" edge to the User entity by IDs.
+func (_u *ChannelMonitorUpdate) AddViewerIDs(ids ...int64) *ChannelMonitorUpdate {
+	_u.mutation.AddViewerIDs(ids...)
+	return _u
+}
+
+// AddViewers adds the "viewers" edges to the User entity.
+func (_u *ChannelMonitorUpdate) AddViewers(v ...*User) *ChannelMonitorUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddViewerIDs(ids...)
+}
+
 // AddHistoryIDs adds the "history" edge to the ChannelMonitorHistory entity by IDs.
 func (_u *ChannelMonitorUpdate) AddHistoryIDs(ids ...int64) *ChannelMonitorUpdate {
 	_u.mutation.AddHistoryIDs(ids...)
@@ -396,6 +488,27 @@ func (_u *ChannelMonitorUpdate) SetRequestTemplate(v *ChannelMonitorRequestTempl
 // Mutation returns the ChannelMonitorMutation object of the builder.
 func (_u *ChannelMonitorUpdate) Mutation() *ChannelMonitorMutation {
 	return _u.mutation
+}
+
+// ClearViewers clears all "viewers" edges to the User entity.
+func (_u *ChannelMonitorUpdate) ClearViewers() *ChannelMonitorUpdate {
+	_u.mutation.ClearViewers()
+	return _u
+}
+
+// RemoveViewerIDs removes the "viewers" edge to User entities by IDs.
+func (_u *ChannelMonitorUpdate) RemoveViewerIDs(ids ...int64) *ChannelMonitorUpdate {
+	_u.mutation.RemoveViewerIDs(ids...)
+	return _u
+}
+
+// RemoveViewers removes "viewers" edges to User entities.
+func (_u *ChannelMonitorUpdate) RemoveViewers(v ...*User) *ChannelMonitorUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveViewerIDs(ids...)
 }
 
 // ClearHistory clears all "history" edges to the ChannelMonitorHistory entity.
@@ -519,6 +632,11 @@ func (_u *ChannelMonitorUpdate) check() error {
 			return &ValidationError{Name: "primary_model", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.primary_model": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SortOrder(); ok {
+		if err := channelmonitor.SortOrderValidator(v); err != nil {
+			return &ValidationError{Name: "sort_order", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.sort_order": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.GroupName(); ok {
 		if err := channelmonitor.GroupNameValidator(v); err != nil {
 			return &ValidationError{Name: "group_name", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.group_name": %w`, err)}
@@ -595,11 +713,32 @@ func (_u *ChannelMonitorUpdate) sqlSave(ctx context.Context) (_node int, err err
 			sqljson.Append(u, channelmonitor.FieldExtraModels, value)
 		})
 	}
+	if value, ok := _u.mutation.SortOrder(); ok {
+		_spec.SetField(channelmonitor.FieldSortOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSortOrder(); ok {
+		_spec.AddField(channelmonitor.FieldSortOrder, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.GroupName(); ok {
 		_spec.SetField(channelmonitor.FieldGroupName, field.TypeString, value)
 	}
 	if _u.mutation.GroupNameCleared() {
 		_spec.ClearField(channelmonitor.FieldGroupName, field.TypeString)
+	}
+	if value, ok := _u.mutation.AutoCheckEnabled(); ok {
+		_spec.SetField(channelmonitor.FieldAutoCheckEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Visibility(); ok {
+		_spec.SetField(channelmonitor.FieldVisibility, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ProxyID(); ok {
+		_spec.SetField(channelmonitor.FieldProxyID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedProxyID(); ok {
+		_spec.AddField(channelmonitor.FieldProxyID, field.TypeInt64, value)
+	}
+	if _u.mutation.ProxyIDCleared() {
+		_spec.ClearField(channelmonitor.FieldProxyID, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(channelmonitor.FieldEnabled, field.TypeBool, value)
@@ -639,6 +778,51 @@ func (_u *ChannelMonitorUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if _u.mutation.BodyOverrideCleared() {
 		_spec.ClearField(channelmonitor.FieldBodyOverride, field.TypeJSON)
+	}
+	if _u.mutation.ViewersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   channelmonitor.ViewersTable,
+			Columns: channelmonitor.ViewersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedViewersIDs(); len(nodes) > 0 && !_u.mutation.ViewersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   channelmonitor.ViewersTable,
+			Columns: channelmonitor.ViewersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ViewersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   channelmonitor.ViewersTable,
+			Columns: channelmonitor.ViewersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.HistoryCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -922,6 +1106,27 @@ func (_u *ChannelMonitorUpdateOne) AppendExtraModels(v []string) *ChannelMonitor
 	return _u
 }
 
+// SetSortOrder sets the "sort_order" field.
+func (_u *ChannelMonitorUpdateOne) SetSortOrder(v int) *ChannelMonitorUpdateOne {
+	_u.mutation.ResetSortOrder()
+	_u.mutation.SetSortOrder(v)
+	return _u
+}
+
+// SetNillableSortOrder sets the "sort_order" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableSortOrder(v *int) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetSortOrder(*v)
+	}
+	return _u
+}
+
+// AddSortOrder adds value to the "sort_order" field.
+func (_u *ChannelMonitorUpdateOne) AddSortOrder(v int) *ChannelMonitorUpdateOne {
+	_u.mutation.AddSortOrder(v)
+	return _u
+}
+
 // SetGroupName sets the "group_name" field.
 func (_u *ChannelMonitorUpdateOne) SetGroupName(v string) *ChannelMonitorUpdateOne {
 	_u.mutation.SetGroupName(v)
@@ -939,6 +1144,61 @@ func (_u *ChannelMonitorUpdateOne) SetNillableGroupName(v *string) *ChannelMonit
 // ClearGroupName clears the value of the "group_name" field.
 func (_u *ChannelMonitorUpdateOne) ClearGroupName() *ChannelMonitorUpdateOne {
 	_u.mutation.ClearGroupName()
+	return _u
+}
+
+// SetAutoCheckEnabled sets the "auto_check_enabled" field.
+func (_u *ChannelMonitorUpdateOne) SetAutoCheckEnabled(v bool) *ChannelMonitorUpdateOne {
+	_u.mutation.SetAutoCheckEnabled(v)
+	return _u
+}
+
+// SetNillableAutoCheckEnabled sets the "auto_check_enabled" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableAutoCheckEnabled(v *bool) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetAutoCheckEnabled(*v)
+	}
+	return _u
+}
+
+// SetVisibility sets the "visibility" field.
+func (_u *ChannelMonitorUpdateOne) SetVisibility(v string) *ChannelMonitorUpdateOne {
+	_u.mutation.SetVisibility(v)
+	return _u
+}
+
+// SetNillableVisibility sets the "visibility" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableVisibility(v *string) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetVisibility(*v)
+	}
+	return _u
+}
+
+// SetProxyID sets the "proxy_id" field.
+func (_u *ChannelMonitorUpdateOne) SetProxyID(v int64) *ChannelMonitorUpdateOne {
+	_u.mutation.ResetProxyID()
+	_u.mutation.SetProxyID(v)
+	return _u
+}
+
+// SetNillableProxyID sets the "proxy_id" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableProxyID(v *int64) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetProxyID(*v)
+	}
+	return _u
+}
+
+// AddProxyID adds value to the "proxy_id" field.
+func (_u *ChannelMonitorUpdateOne) AddProxyID(v int64) *ChannelMonitorUpdateOne {
+	_u.mutation.AddProxyID(v)
+	return _u
+}
+
+// ClearProxyID clears the value of the "proxy_id" field.
+func (_u *ChannelMonitorUpdateOne) ClearProxyID() *ChannelMonitorUpdateOne {
+	_u.mutation.ClearProxyID()
 	return _u
 }
 
@@ -1091,6 +1351,21 @@ func (_u *ChannelMonitorUpdateOne) ClearBodyOverride() *ChannelMonitorUpdateOne 
 	return _u
 }
 
+// AddViewerIDs adds the "viewers" edge to the User entity by IDs.
+func (_u *ChannelMonitorUpdateOne) AddViewerIDs(ids ...int64) *ChannelMonitorUpdateOne {
+	_u.mutation.AddViewerIDs(ids...)
+	return _u
+}
+
+// AddViewers adds the "viewers" edges to the User entity.
+func (_u *ChannelMonitorUpdateOne) AddViewers(v ...*User) *ChannelMonitorUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddViewerIDs(ids...)
+}
+
 // AddHistoryIDs adds the "history" edge to the ChannelMonitorHistory entity by IDs.
 func (_u *ChannelMonitorUpdateOne) AddHistoryIDs(ids ...int64) *ChannelMonitorUpdateOne {
 	_u.mutation.AddHistoryIDs(ids...)
@@ -1143,6 +1418,27 @@ func (_u *ChannelMonitorUpdateOne) SetRequestTemplate(v *ChannelMonitorRequestTe
 // Mutation returns the ChannelMonitorMutation object of the builder.
 func (_u *ChannelMonitorUpdateOne) Mutation() *ChannelMonitorMutation {
 	return _u.mutation
+}
+
+// ClearViewers clears all "viewers" edges to the User entity.
+func (_u *ChannelMonitorUpdateOne) ClearViewers() *ChannelMonitorUpdateOne {
+	_u.mutation.ClearViewers()
+	return _u
+}
+
+// RemoveViewerIDs removes the "viewers" edge to User entities by IDs.
+func (_u *ChannelMonitorUpdateOne) RemoveViewerIDs(ids ...int64) *ChannelMonitorUpdateOne {
+	_u.mutation.RemoveViewerIDs(ids...)
+	return _u
+}
+
+// RemoveViewers removes "viewers" edges to User entities.
+func (_u *ChannelMonitorUpdateOne) RemoveViewers(v ...*User) *ChannelMonitorUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveViewerIDs(ids...)
 }
 
 // ClearHistory clears all "history" edges to the ChannelMonitorHistory entity.
@@ -1279,6 +1575,11 @@ func (_u *ChannelMonitorUpdateOne) check() error {
 			return &ValidationError{Name: "primary_model", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.primary_model": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SortOrder(); ok {
+		if err := channelmonitor.SortOrderValidator(v); err != nil {
+			return &ValidationError{Name: "sort_order", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.sort_order": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.GroupName(); ok {
 		if err := channelmonitor.GroupNameValidator(v); err != nil {
 			return &ValidationError{Name: "group_name", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.group_name": %w`, err)}
@@ -1372,11 +1673,32 @@ func (_u *ChannelMonitorUpdateOne) sqlSave(ctx context.Context) (_node *ChannelM
 			sqljson.Append(u, channelmonitor.FieldExtraModels, value)
 		})
 	}
+	if value, ok := _u.mutation.SortOrder(); ok {
+		_spec.SetField(channelmonitor.FieldSortOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSortOrder(); ok {
+		_spec.AddField(channelmonitor.FieldSortOrder, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.GroupName(); ok {
 		_spec.SetField(channelmonitor.FieldGroupName, field.TypeString, value)
 	}
 	if _u.mutation.GroupNameCleared() {
 		_spec.ClearField(channelmonitor.FieldGroupName, field.TypeString)
+	}
+	if value, ok := _u.mutation.AutoCheckEnabled(); ok {
+		_spec.SetField(channelmonitor.FieldAutoCheckEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Visibility(); ok {
+		_spec.SetField(channelmonitor.FieldVisibility, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ProxyID(); ok {
+		_spec.SetField(channelmonitor.FieldProxyID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedProxyID(); ok {
+		_spec.AddField(channelmonitor.FieldProxyID, field.TypeInt64, value)
+	}
+	if _u.mutation.ProxyIDCleared() {
+		_spec.ClearField(channelmonitor.FieldProxyID, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(channelmonitor.FieldEnabled, field.TypeBool, value)
@@ -1416,6 +1738,51 @@ func (_u *ChannelMonitorUpdateOne) sqlSave(ctx context.Context) (_node *ChannelM
 	}
 	if _u.mutation.BodyOverrideCleared() {
 		_spec.ClearField(channelmonitor.FieldBodyOverride, field.TypeJSON)
+	}
+	if _u.mutation.ViewersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   channelmonitor.ViewersTable,
+			Columns: channelmonitor.ViewersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedViewersIDs(); len(nodes) > 0 && !_u.mutation.ViewersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   channelmonitor.ViewersTable,
+			Columns: channelmonitor.ViewersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ViewersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   channelmonitor.ViewersTable,
+			Columns: channelmonitor.ViewersPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.HistoryCleared() {
 		edge := &sqlgraph.EdgeSpec{

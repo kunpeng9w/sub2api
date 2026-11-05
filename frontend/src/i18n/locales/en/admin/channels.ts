@@ -552,6 +552,7 @@ export default {
       primaryModelRequired: 'Please enter a primary model',
       linkedAccountRequired: 'Please select a linked account',
       columns: {
+        sortOrder: 'Display order',
         name: 'Name',
         provider: 'Provider',
         primaryModel: 'Primary Model',
@@ -561,6 +562,9 @@ export default {
         actions: 'Actions'
       },
       form: {
+        sortOrder: 'Display order',
+        sortOrderHint: 'Lower numbers appear first. Ties follow creation order.',
+        sortOrderInvalid: 'Display order must be an integer between 0 and 2147483647.',
         name: 'Name',
         namePlaceholder: 'Enter monitor name',
         provider: 'Platform',

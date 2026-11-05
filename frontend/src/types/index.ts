@@ -1430,7 +1430,16 @@ export interface WindowStats {
   user_cost?: number
 }
 
+export interface QuotaEstimate {
+  total_cost?: number
+  remaining_cost?: number
+  sampled_at?: string
+  unavailable_reason?: string
+}
+
 export interface UsageProgress {
+  sampled_at?: string | null
+  estimate?: QuotaEstimate | null
   utilization: number // Percentage (0-100+, 100 = 100%)
   resets_at: string | null
   remaining_seconds: number

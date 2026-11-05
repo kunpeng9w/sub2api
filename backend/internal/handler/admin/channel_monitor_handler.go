@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -39,6 +40,11 @@ func NewChannelMonitorHandler(monitorService *service.ChannelMonitorService) *Ch
 // --- Request / Response ---
 
 type channelMonitorCreateRequest struct {
+	SortOrder        int               `json:"sort_order" binding:"min=0,max=2147483647"`
+	AutoCheckEnabled bool              `json:"auto_check_enabled"`
+	Visibility       string            `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
+	AllowedUserIDs   []int64           `json:"allowed_user_ids" binding:"max=1000,dive,gt=0"`
+	ProxyID          *int64            `json:"proxy_id" binding:"omitempty,gt=0"`
 	Name             string            `json:"name" binding:"required,max=100"`
 	Provider         string            `json:"provider" binding:"required,oneof=openai anthropic gemini grok antigravity kimi zhipu deepseek minimax opencode_go"`
 	APIMode          string            `json:"api_mode" binding:"omitempty,oneof=chat_completions responses"`
@@ -48,7 +54,7 @@ type channelMonitorCreateRequest struct {
 	ExtraModels      []string          `json:"extra_models"`
 	GroupName        string            `json:"group_name" binding:"max=100"`
 	Enabled          *bool             `json:"enabled"`
-	IntervalSeconds  int               `json:"interval_seconds" binding:"required,min=15,max=3600"`
+	IntervalSeconds  int               `json:"interval_seconds" binding:"omitempty,min=15,max=3600"`
 	JitterSeconds    int               `json:"jitter_seconds" binding:"omitempty,min=0,max=3585"`
 	TemplateID       *int64            `json:"template_id"`
 	ExtraHeaders     map[string]string `json:"extra_headers"`
@@ -63,6 +69,11 @@ type channelMonitorCreateRequest struct {
 }
 
 type channelMonitorUpdateRequest struct {
+	SortOrder        *int               `json:"sort_order" binding:"omitempty,min=0,max=2147483647"`
+	AutoCheckEnabled *bool              `json:"auto_check_enabled"`
+	Visibility       *string            `json:"visibility" binding:"omitempty,oneof=all selected admin_only"`
+	AllowedUserIDs   *[]int64           `json:"allowed_user_ids"`
+	ProxyID          *int64             `json:"proxy_id" binding:"omitempty,min=0"`
 	Name             *string            `json:"name" binding:"omitempty,max=100"`
 	Provider         *string            `json:"provider" binding:"omitempty,oneof=openai anthropic gemini grok antigravity kimi zhipu deepseek minimax opencode_go"`
 	APIMode          *string            `json:"api_mode" binding:"omitempty,oneof=chat_completions responses"`
@@ -86,6 +97,13 @@ type channelMonitorUpdateRequest struct {
 }
 
 type channelMonitorResponse struct {
+	SortOrder        int     `json:"sort_order"`
+	EgressConfigured bool    `json:"egress_configured"`
+	AutoCheckEnabled bool    `json:"auto_check_enabled"`
+	Visibility       string  `json:"visibility"`
+	AllowedUserIDs   []int64 `json:"allowed_user_ids"`
+	ProxyID          *int64  `json:"proxy_id"`
+
 	ID                  int64                                `json:"id"`
 	Name                string                               `json:"name"`
 	Provider            string                               `json:"provider"`
@@ -162,7 +180,8 @@ func channelMonitorToResponse(m *service.ChannelMonitor) *channelMonitorResponse
 		headers = map[string]string{}
 	}
 	resp := &channelMonitorResponse{
-		ID:                  m.ID,
+		ID:               m.ID,
+		EgressConfigured: m.EgressConfigured, AutoCheckEnabled: m.AutoCheckEnabled, Visibility: m.Visibility, AllowedUserIDs: m.AllowedUserIDs, ProxyID: m.ProxyID,
 		Name:                m.Name,
 		Provider:            m.Provider,
 		APIMode:             m.APIMode,
@@ -172,6 +191,7 @@ func channelMonitorToResponse(m *service.ChannelMonitor) *channelMonitorResponse
 		PrimaryModel:        m.PrimaryModel,
 		ExtraModels:         extras,
 		GroupName:           m.GroupName,
+		SortOrder:           m.SortOrder,
 		Enabled:             m.Enabled,
 		IntervalSeconds:     m.IntervalSeconds,
 		JitterSeconds:       m.JitterSeconds,
@@ -336,6 +356,7 @@ func (h *ChannelMonitorHandler) Create(c *gin.Context) {
 	}
 
 	m, err := h.monitorService.Create(c.Request.Context(), service.ChannelMonitorCreateParams{
+		AutoCheckEnabled: req.AutoCheckEnabled, Visibility: req.Visibility, AllowedUserIDs: req.AllowedUserIDs, ProxyID: req.ProxyID,
 		Name:             req.Name,
 		Provider:         req.Provider,
 		APIMode:          req.APIMode,
@@ -344,6 +365,7 @@ func (h *ChannelMonitorHandler) Create(c *gin.Context) {
 		PrimaryModel:     req.PrimaryModel,
 		ExtraModels:      req.ExtraModels,
 		GroupName:        req.GroupName,
+		SortOrder:        req.SortOrder,
 		Enabled:          enabled,
 		IntervalSeconds:  req.IntervalSeconds,
 		JitterSeconds:    req.JitterSeconds,
@@ -432,6 +454,7 @@ func (h *ChannelMonitorHandler) Update(c *gin.Context) {
 	}
 
 	m, err := h.monitorService.Update(c.Request.Context(), id, service.ChannelMonitorUpdateParams{
+		AutoCheckEnabled: req.AutoCheckEnabled, Visibility: req.Visibility, AllowedUserIDs: req.AllowedUserIDs, ProxyID: req.ProxyID,
 		Name:             req.Name,
 		Provider:         req.Provider,
 		APIMode:          req.APIMode,
@@ -440,6 +463,7 @@ func (h *ChannelMonitorHandler) Update(c *gin.Context) {
 		PrimaryModel:     req.PrimaryModel,
 		ExtraModels:      req.ExtraModels,
 		GroupName:        req.GroupName,
+		SortOrder:        req.SortOrder,
 		Enabled:          req.Enabled,
 		IntervalSeconds:  req.IntervalSeconds,
 		JitterSeconds:    req.JitterSeconds,
@@ -477,8 +501,12 @@ func (h *ChannelMonitorHandler) Run(c *gin.Context) {
 	if !ok {
 		return
 	}
-	results, err := h.monitorService.RunCheck(c.Request.Context(), id)
+	subject, _ := middleware2.GetAuthSubjectFromContext(c)
+	results, err := h.monitorService.RunManual(c.Request.Context(), id, subject.UserID, true)
 	if err != nil {
+		if errors.Is(err, service.ErrChannelMonitorCooldown) {
+			c.Header("Retry-After", "60")
+		}
 		response.ErrorFrom(c, err)
 		return
 	}

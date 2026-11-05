@@ -2173,6 +2173,11 @@ func (s *RateLimitService) samplePassiveUsageFromHeaders(ctx context.Context, ac
 	}
 	if len(extraUpdates) > 0 {
 		extraUpdates["passive_usage_sampled_at"] = time.Now().UTC().Format(time.RFC3339)
+		for _, w := range []struct{ util, key string }{{"session_window_utilization", "5h"}, {"passive_usage_7d_utilization", "7d"}, {"passive_usage_7d_oi_utilization", "7d_oi"}} {
+			if _, ok := extraUpdates[w.util]; ok {
+				extraUpdates["passive_usage_"+w.key+"_sampled_at"] = extraUpdates["passive_usage_sampled_at"]
+			}
+		}
 		if err := s.accountRepo.UpdateExtra(ctx, account.ID, extraUpdates); err != nil {
 			slog.Warn("passive_usage_update_failed", "account_id", account.ID, "error", err)
 		}

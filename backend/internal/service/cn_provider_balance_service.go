@@ -12,6 +12,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/singleflight"
 )
@@ -99,6 +100,12 @@ func (s *CNProviderBalanceService) QueryBalanceForAccount(ctx context.Context, a
 	}
 	if err := validatePayGAccount(account); err != nil {
 		return nil, err
+	}
+	if monitorrequest.Active(ctx) {
+		// 由监控 fetcher 合并并等待查询，保留代理策略与执行期限直到真实查询退出。
+		probeCtx, cancel := context.WithTimeout(ctx, cnBalanceUpstreamTimeout+5*time.Second)
+		defer cancel()
+		return s.queryBalanceForAccount(probeCtx, account)
 	}
 	key := "cn_balance:" + strconv.FormatInt(account.ID, 10)
 	resultCh := s.flight.DoChan(key, func() (any, error) {

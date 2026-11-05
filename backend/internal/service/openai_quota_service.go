@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -218,6 +219,11 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 		return nil, infraerrors.Newf(http.StatusBadGateway, "OPENAI_QUOTA_CLIENT_ERROR", "failed to build upstream client: %v", err)
 	}
 
+	client, err = monitorrequest.ReqClient(ctx, client, proxyURL)
+	if err != nil {
+		return nil, err
+	}
+
 	callCtx, cancel := context.WithTimeout(ctx, openaiQuotaUpstreamTimeout)
 	defer cancel()
 	agentIdentity := s.isAgentIdentityAccount(ctx, accountID)
@@ -237,7 +243,7 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 			return nil, infraerrors.Newf(http.StatusBadGateway, "OPENAI_QUOTA_REQUEST_FAILED", "upstream request failed: %v", err)
 		}
 		if !resp.IsSuccessState() {
-			if agentIdentity && !recovered && isAgentIdentityTaskInvalidHTTPResponse(resp.StatusCode, []byte(resp.String())) {
+			if !monitorrequest.Active(ctx) && agentIdentity && !recovered && isAgentIdentityTaskInvalidHTTPResponse(resp.StatusCode, []byte(resp.String())) {
 				recovered = true
 				if err := s.recoverAgentIdentityTask(ctx, accountID, expectedTaskID); err != nil {
 					return nil, infraerrors.Newf(http.StatusBadGateway, "OPENAI_QUOTA_AUTH_FAILED", "agent identity task recovery failed: %v", err)
@@ -610,6 +616,18 @@ func (s *OpenAIQuotaService) prepareUpstreamCall(ctx context.Context, accountID 
 		return "", "", "", false, infraerrors.New(http.StatusBadRequest, "OPENAI_QUOTA_MISSING_ACCOUNT_ID", "chatgpt_account_id is missing; please re-authorize this account")
 	}
 
+	if monitorrequest.Active(ctx) {
+		currentRoute, routeErr := ResolveAccountProxyFromRepository(ctx, s.proxyRepo, account)
+		if routeErr != nil {
+			return "", "", "", false, routeErr
+		}
+		if err := monitorrequest.Check(ctx, currentRoute); err != nil {
+			return "", "", "", false, err
+		}
+		if account.IsOpenAIAgentIdentity() {
+			return "", "", "", false, ErrChannelMonitorAccountNotSupportable
+		}
+	}
 	if !account.IsOpenAIAgentIdentity() {
 		if s.tokenProvider == nil {
 			return "", "", "", false, infraerrors.New(http.StatusInternalServerError, "OPENAI_QUOTA_NOT_CONFIGURED", "openai quota token provider is not configured")
@@ -803,6 +821,7 @@ func buildCodexSparkWindowExtraUpdates(usage *OpenAIQuotaUsage, now time.Time) m
 	updates := make(map[string]any)
 	if normalized.Used5hPercent != nil {
 		updates["codex_5h_used_percent"] = *normalized.Used5hPercent
+		updates["codex_5h_sampled_at"] = now.UTC().Format(time.RFC3339Nano)
 	}
 	if normalized.Reset5hSeconds != nil {
 		updates["codex_5h_reset_after_seconds"] = *normalized.Reset5hSeconds
@@ -812,6 +831,7 @@ func buildCodexSparkWindowExtraUpdates(usage *OpenAIQuotaUsage, now time.Time) m
 	}
 	if normalized.Used7dPercent != nil {
 		updates["codex_7d_used_percent"] = *normalized.Used7dPercent
+		updates["codex_7d_sampled_at"] = now.UTC().Format(time.RFC3339Nano)
 	}
 	if normalized.Reset7dSeconds != nil {
 		updates["codex_7d_reset_after_seconds"] = *normalized.Reset7dSeconds

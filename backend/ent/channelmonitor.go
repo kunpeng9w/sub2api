@@ -41,8 +41,16 @@ type ChannelMonitor struct {
 	PrimaryModel string `json:"primary_model,omitempty"`
 	// Additional model names to test alongside primary_model
 	ExtraModels []string `json:"extra_models,omitempty"`
+	// Display order, lower values first; ties use ID ascending
+	SortOrder int `json:"sort_order,omitempty"`
 	// GroupName holds the value of the "group_name" field.
 	GroupName string `json:"group_name,omitempty"`
+	// AutoCheckEnabled holds the value of the "auto_check_enabled" field.
+	AutoCheckEnabled bool `json:"auto_check_enabled,omitempty"`
+	// Visibility holds the value of the "visibility" field.
+	Visibility string `json:"visibility,omitempty"`
+	// ProxyID holds the value of the "proxy_id" field.
+	ProxyID *int64 `json:"proxy_id,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
 	// IntervalSeconds holds the value of the "interval_seconds" field.
@@ -69,6 +77,8 @@ type ChannelMonitor struct {
 
 // ChannelMonitorEdges holds the relations/edges for other nodes in the graph.
 type ChannelMonitorEdges struct {
+	// Viewers holds the value of the viewers edge.
+	Viewers []*User `json:"viewers,omitempty"`
 	// History holds the value of the history edge.
 	History []*ChannelMonitorHistory `json:"history,omitempty"`
 	// DailyRollups holds the value of the daily_rollups edge.
@@ -77,13 +87,22 @@ type ChannelMonitorEdges struct {
 	RequestTemplate *ChannelMonitorRequestTemplate `json:"request_template,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
+}
+
+// ViewersOrErr returns the Viewers value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChannelMonitorEdges) ViewersOrErr() ([]*User, error) {
+	if e.loadedTypes[0] {
+		return e.Viewers, nil
+	}
+	return nil, &NotLoadedError{edge: "viewers"}
 }
 
 // HistoryOrErr returns the History value or an error if the edge
 // was not loaded in eager-loading.
 func (e ChannelMonitorEdges) HistoryOrErr() ([]*ChannelMonitorHistory, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.History, nil
 	}
 	return nil, &NotLoadedError{edge: "history"}
@@ -92,7 +111,7 @@ func (e ChannelMonitorEdges) HistoryOrErr() ([]*ChannelMonitorHistory, error) {
 // DailyRollupsOrErr returns the DailyRollups value or an error if the edge
 // was not loaded in eager-loading.
 func (e ChannelMonitorEdges) DailyRollupsOrErr() ([]*ChannelMonitorDailyRollup, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.DailyRollups, nil
 	}
 	return nil, &NotLoadedError{edge: "daily_rollups"}
@@ -103,7 +122,7 @@ func (e ChannelMonitorEdges) DailyRollupsOrErr() ([]*ChannelMonitorDailyRollup, 
 func (e ChannelMonitorEdges) RequestTemplateOrErr() (*ChannelMonitorRequestTemplate, error) {
 	if e.RequestTemplate != nil {
 		return e.RequestTemplate, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[3] {
 		return nil, &NotFoundError{label: channelmonitorrequesttemplate.Label}
 	}
 	return nil, &NotLoadedError{edge: "request_template"}
@@ -116,11 +135,11 @@ func (*ChannelMonitor) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case channelmonitor.FieldExtraModels, channelmonitor.FieldExtraHeaders, channelmonitor.FieldBodyOverride:
 			values[i] = new([]byte)
-		case channelmonitor.FieldEnabled:
+		case channelmonitor.FieldAutoCheckEnabled, channelmonitor.FieldEnabled:
 			values[i] = new(sql.NullBool)
-		case channelmonitor.FieldID, channelmonitor.FieldAccountID, channelmonitor.FieldIntervalSeconds, channelmonitor.FieldJitterSeconds, channelmonitor.FieldCreatedBy, channelmonitor.FieldTemplateID:
+		case channelmonitor.FieldID, channelmonitor.FieldAccountID, channelmonitor.FieldSortOrder, channelmonitor.FieldProxyID, channelmonitor.FieldIntervalSeconds, channelmonitor.FieldJitterSeconds, channelmonitor.FieldCreatedBy, channelmonitor.FieldTemplateID:
 			values[i] = new(sql.NullInt64)
-		case channelmonitor.FieldName, channelmonitor.FieldProvider, channelmonitor.FieldCheckMode, channelmonitor.FieldAPIMode, channelmonitor.FieldEndpoint, channelmonitor.FieldAPIKeyEncrypted, channelmonitor.FieldPrimaryModel, channelmonitor.FieldGroupName, channelmonitor.FieldBodyOverrideMode:
+		case channelmonitor.FieldName, channelmonitor.FieldProvider, channelmonitor.FieldCheckMode, channelmonitor.FieldAPIMode, channelmonitor.FieldEndpoint, channelmonitor.FieldAPIKeyEncrypted, channelmonitor.FieldPrimaryModel, channelmonitor.FieldGroupName, channelmonitor.FieldVisibility, channelmonitor.FieldBodyOverrideMode:
 			values[i] = new(sql.NullString)
 		case channelmonitor.FieldCreatedAt, channelmonitor.FieldUpdatedAt, channelmonitor.FieldLastCheckedAt:
 			values[i] = new(sql.NullTime)
@@ -214,11 +233,36 @@ func (_m *ChannelMonitor) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field extra_models: %w", err)
 				}
 			}
+		case channelmonitor.FieldSortOrder:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sort_order", values[i])
+			} else if value.Valid {
+				_m.SortOrder = int(value.Int64)
+			}
 		case channelmonitor.FieldGroupName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field group_name", values[i])
 			} else if value.Valid {
 				_m.GroupName = value.String
+			}
+		case channelmonitor.FieldAutoCheckEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_check_enabled", values[i])
+			} else if value.Valid {
+				_m.AutoCheckEnabled = value.Bool
+			}
+		case channelmonitor.FieldVisibility:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field visibility", values[i])
+			} else if value.Valid {
+				_m.Visibility = value.String
+			}
+		case channelmonitor.FieldProxyID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field proxy_id", values[i])
+			} else if value.Valid {
+				_m.ProxyID = new(int64)
+				*_m.ProxyID = value.Int64
 			}
 		case channelmonitor.FieldEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -293,6 +337,11 @@ func (_m *ChannelMonitor) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryViewers queries the "viewers" edge of the ChannelMonitor entity.
+func (_m *ChannelMonitor) QueryViewers() *UserQuery {
+	return NewChannelMonitorClient(_m.config).QueryViewers(_m)
+}
+
 // QueryHistory queries the "history" edge of the ChannelMonitor entity.
 func (_m *ChannelMonitor) QueryHistory() *ChannelMonitorHistoryQuery {
 	return NewChannelMonitorClient(_m.config).QueryHistory(_m)
@@ -365,8 +414,22 @@ func (_m *ChannelMonitor) String() string {
 	builder.WriteString("extra_models=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ExtraModels))
 	builder.WriteString(", ")
+	builder.WriteString("sort_order=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SortOrder))
+	builder.WriteString(", ")
 	builder.WriteString("group_name=")
 	builder.WriteString(_m.GroupName)
+	builder.WriteString(", ")
+	builder.WriteString("auto_check_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AutoCheckEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("visibility=")
+	builder.WriteString(_m.Visibility)
+	builder.WriteString(", ")
+	if v := _m.ProxyID; v != nil {
+		builder.WriteString("proxy_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))

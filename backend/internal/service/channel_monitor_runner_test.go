@@ -13,6 +13,7 @@ import (
 // stubMonitorSvc 实现 monitorRunnerSvc，用于隔离 runner 与真实 service/repo。
 type stubMonitorSvc struct {
 	enabled    []*ChannelMonitor
+	finished   atomic.Int64
 	runCount   atomic.Int64
 	runCalled  chan int64 // 每次 RunCheck 触发时 push 一次（缓冲足够大避免阻塞）
 	runErr     error
@@ -29,6 +30,7 @@ func (s *stubMonitorSvc) ListEnabledMonitors(_ context.Context) ([]*ChannelMonit
 
 func (s *stubMonitorSvc) RunCheck(ctx context.Context, id int64) ([]*CheckResult, error) {
 	s.runCount.Add(1)
+	defer s.finished.Add(1)
 	if s.runCalled != nil {
 		select {
 		case s.runCalled <- id:
@@ -81,7 +83,12 @@ func TestSchedule_AddsTaskAndFiresOnce(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start() // svc.enabled 为空，Start 立即完成
 
-	r.Schedule(&ChannelMonitor{ID: 1, Name: "m1", Enabled: true, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 1, Name: "m1", Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
+	select {
+	case <-svc.runCalled:
+		t.Fatal("schedule must not fire after its interval")
+	case <-time.After(50 * time.Millisecond):
+	}
 
 	if got := runnerTaskCount(r); got != 1 {
 		t.Fatalf("expected 1 scheduled task, got %d", got)
@@ -93,7 +100,7 @@ func TestSchedule_AddsTaskAndFiresOnce(t *testing.T) {
 			t.Fatalf("expected first fire for id=1, got %d", id)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("expected immediate first fire within 2s")
+		t.Fatal("expected first scheduled fire within 2s")
 	}
 
 	r.Stop()
@@ -106,7 +113,7 @@ func TestSchedule_ReplaceCancelsOldTask(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start()
 
-	m := &ChannelMonitor{ID: 7, Name: "m7", Enabled: true, IntervalSeconds: 60}
+	m := &ChannelMonitor{ID: 7, Name: "m7", Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1}
 	r.Schedule(m)
 	first := runnerTaskPtr(r, 7)
 	if first == nil {
@@ -131,7 +138,7 @@ func TestUnschedule_RemovesTask(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start()
 
-	r.Schedule(&ChannelMonitor{ID: 3, Enabled: true, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 3, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
 	waitFor(t, time.Second, "task registered", func() bool { return runnerTaskCount(r) == 1 })
 
 	r.Unschedule(3)
@@ -148,10 +155,10 @@ func TestSchedule_DisabledRedirectsToUnschedule(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start()
 
-	r.Schedule(&ChannelMonitor{ID: 9, Enabled: true, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 9, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
 	waitFor(t, time.Second, "task registered", func() bool { return runnerTaskCount(r) == 1 })
 
-	r.Schedule(&ChannelMonitor{ID: 9, Enabled: false, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 9, Enabled: false, IntervalSeconds: 1})
 	if got := runnerTaskCount(r); got != 0 {
 		t.Fatalf("expected tasks empty after disabled re-Schedule, got %d", got)
 	}
@@ -164,10 +171,10 @@ func TestSchedule_DecryptFailedRedirectsToUnschedule(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start()
 
-	r.Schedule(&ChannelMonitor{ID: 10, Enabled: true, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 10, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
 	waitFor(t, time.Second, "task registered", func() bool { return runnerTaskCount(r) == 1 })
 
-	r.Schedule(&ChannelMonitor{ID: 10, Enabled: true, IntervalSeconds: 60, APIKeyDecryptFailed: true})
+	r.Schedule(&ChannelMonitor{ID: 10, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1, APIKeyDecryptFailed: true})
 	if got := runnerTaskCount(r); got != 0 {
 		t.Fatalf("expected tasks empty after decrypt-failed re-Schedule, got %d", got)
 	}
@@ -180,12 +187,12 @@ func TestSchedule_RepairedAPIKeyCanBeScheduled(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start()
 
-	r.Schedule(&ChannelMonitor{ID: 11, Enabled: true, IntervalSeconds: 60, APIKeyDecryptFailed: true})
+	r.Schedule(&ChannelMonitor{ID: 11, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1, APIKeyDecryptFailed: true})
 	if got := runnerTaskCount(r); got != 0 {
 		t.Fatalf("expected no task for decrypt-failed monitor, got %d", got)
 	}
 
-	r.Schedule(&ChannelMonitor{ID: 11, Enabled: true, IntervalSeconds: 60, APIKey: "replacement-key"})
+	r.Schedule(&ChannelMonitor{ID: 11, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1, APIKey: "replacement-key"})
 	if got := runnerTaskCount(r); got != 1 {
 		t.Fatalf("expected repaired monitor to be scheduled, got %d tasks", got)
 	}
@@ -195,7 +202,7 @@ func TestSchedule_RepairedAPIKeyCanBeScheduled(t *testing.T) {
 			t.Fatalf("expected repaired monitor id=11 to fire, got %d", id)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("expected repaired monitor to fire immediately")
+		t.Fatal("expected repaired monitor to fire after its interval")
 	}
 
 	stoppedWithin(t, r, 3*time.Second)
@@ -209,14 +216,14 @@ func TestRunOne_DecryptFailureUnschedulesTask(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start()
 
-	r.Schedule(&ChannelMonitor{ID: 12, Enabled: true, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 12, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
 	select {
 	case id := <-svc.runCalled:
 		if id != 12 {
 			t.Fatalf("expected failing monitor id=12 to fire, got %d", id)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("expected failing monitor to fire immediately")
+		t.Fatal("expected failing monitor to fire after its interval")
 	}
 	waitFor(t, time.Second, "decrypt-failed task unscheduled", func() bool { return runnerTaskCount(r) == 0 })
 
@@ -229,7 +236,7 @@ func TestSchedule_InvalidIntervalSkipped(t *testing.T) {
 	r := newRunnerForTest(svc)
 	r.Start()
 
-	r.Schedule(&ChannelMonitor{ID: 1, Enabled: true, IntervalSeconds: 0})
+	r.Schedule(&ChannelMonitor{ID: 1, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 0})
 	if got := runnerTaskCount(r); got != 0 {
 		t.Fatalf("expected no task for invalid interval, got %d", got)
 	}
@@ -242,7 +249,7 @@ func TestSchedule_BeforeStartIsNoOp(t *testing.T) {
 	r := newRunnerForTest(svc)
 	// 故意不调用 Start
 
-	r.Schedule(&ChannelMonitor{ID: 1, Enabled: true, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 1, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
 	if got := runnerTaskCount(r); got != 0 {
 		t.Fatalf("expected no task before Start, got %d", got)
 	}
@@ -253,9 +260,9 @@ func TestSchedule_BeforeStartIsNoOp(t *testing.T) {
 func TestStart_LoadsAllEnabledMonitors(t *testing.T) {
 	svc := &stubMonitorSvc{
 		enabled: []*ChannelMonitor{
-			{ID: 1, Enabled: true, IntervalSeconds: 60},
-			{ID: 2, Enabled: true, IntervalSeconds: 60},
-			{ID: 3, Enabled: true, IntervalSeconds: 60},
+			{ID: 1, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1},
+			{ID: 2, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1},
+			{ID: 3, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1},
 		},
 	}
 	r := newRunnerForTest(svc)
@@ -268,7 +275,7 @@ func TestStart_LoadsAllEnabledMonitors(t *testing.T) {
 func TestStart_SkipsDecryptFailedMonitor(t *testing.T) {
 	svc := &stubMonitorSvc{
 		enabled: []*ChannelMonitor{
-			{ID: 4, Enabled: true, IntervalSeconds: 60, APIKeyDecryptFailed: true},
+			{ID: 4, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1, APIKeyDecryptFailed: true},
 		},
 	}
 	r := newRunnerForTest(svc)
@@ -291,7 +298,7 @@ func TestStop_DrainsAllGoroutines(t *testing.T) {
 	r.Start()
 
 	for id := int64(1); id <= 5; id++ {
-		r.Schedule(&ChannelMonitor{ID: id, Enabled: true, IntervalSeconds: 60})
+		r.Schedule(&ChannelMonitor{ID: id, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
 	}
 	waitFor(t, 2*time.Second, "5 tasks scheduled", func() bool { return runnerTaskCount(r) == 5 })
 
@@ -306,7 +313,7 @@ func TestStop_WaitsForInFlightCheck(t *testing.T) {
 	}
 	r := newRunnerForTest(svc)
 	r.Start()
-	r.Schedule(&ChannelMonitor{ID: 1, Enabled: true, IntervalSeconds: 60})
+	r.Schedule(&ChannelMonitor{ID: 1, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
 
 	select {
 	case <-svc.runCalled:
@@ -314,12 +321,9 @@ func TestStop_WaitsForInFlightCheck(t *testing.T) {
 		t.Fatal("first fire never happened")
 	}
 
-	start := time.Now()
 	stoppedWithin(t, r, 3*time.Second)
-	elapsed := time.Since(start)
-	// Stop 必须等待 in-flight check 跑完（runHoldFor=200ms），耗时下界约 100ms。
-	if elapsed < 100*time.Millisecond {
-		t.Fatalf("Stop returned too fast (%v); did not wait for in-flight check", elapsed)
+	if svc.finished.Load() != svc.runCount.Load() {
+		t.Fatal("Stop returned before the canceled in-flight check finished")
 	}
 }
 
@@ -357,4 +361,43 @@ func stoppedWithin(t *testing.T, r *ChannelMonitorRunner, timeout time.Duration)
 	case <-time.After(timeout):
 		t.Fatalf("Stop did not return within %s — leaked goroutine?", timeout)
 	}
+}
+
+func TestMonitorManualNeverRegistersTimer(t *testing.T) {
+	svc := &stubMonitorSvc{enabled: []*ChannelMonitor{{ID: 1, Enabled: true, AutoCheckEnabled: false, IntervalSeconds: 1}}, runCalled: make(chan int64, 1)}
+	r := newRunnerForTest(svc)
+	r.Start()
+	defer r.Stop()
+	if got := runnerTaskCount(r); got != 0 {
+		t.Fatalf("manual monitor scheduled: %d", got)
+	}
+	r.Schedule(&ChannelMonitor{ID: 2, Enabled: true, AutoCheckEnabled: true, IntervalSeconds: 1})
+	r.Schedule(&ChannelMonitor{ID: 2, Enabled: true, AutoCheckEnabled: false, IntervalSeconds: 1})
+	if got := runnerTaskCount(r); got != 0 {
+		t.Fatalf("turning auto off must unschedule: %d", got)
+	}
+	select {
+	case <-svc.runCalled:
+		t.Fatal("manual monitor executed")
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func TestMonitorCanceledQueuedTaskNeverChecks(t *testing.T) {
+	svc := &stubMonitorSvc{}
+	r := newRunnerForTest(svc)
+	defer r.Stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if !r.tryAcquireInFlight(7) {
+		t.Fatal("fixture could not reserve an in-flight slot")
+	}
+	r.runOne(7, "canceled", ctx)
+	if svc.runCount.Load() != 0 {
+		t.Fatal("a canceled scheduled task must never start a check")
+	}
+	if !r.tryAcquireInFlight(7) {
+		t.Fatal("canceled task leaked its in-flight slot")
+	}
+	r.releaseInFlight(7)
 }
