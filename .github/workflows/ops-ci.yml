@@ -31,6 +31,17 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python -m unittest -v test_state.py test_install.py
 
+  mihomo-dns:
+    name: Mihomo DNS lifecycle with real systemd and dnsmasq
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install DNS fixture dependency
+        run: sudo apt-get update && sudo apt-get install -y dnsmasq-base
+      - name: Verify lifecycle without contacting public upstreams
+        run: sudo env PYTHONDONTWRITEBYTECODE=1 python3 ops/scripts/mihomo-dns/test_lifecycle.py -v
+
   egress-audit:
     name: Egress audit integration and routing regressions
     runs-on: ubuntu-latest
