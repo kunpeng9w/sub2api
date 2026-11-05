@@ -82,3 +82,32 @@ jobs:
         with:
           name: monitor-frontend-${{ github.sha }}
           path: frontend/dist/
+
+  verification:
+    if: always()
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record source and isolated verification results
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          result = {
+              "commit": os.environ["GITHUB_SHA"],
+              "run_url": f'{os.environ["GITHUB_SERVER_URL"]}/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{os.environ["GITHUB_RUN_ID"]}',
+              "backend": os.environ["BACKEND_RESULT"],
+              "frontend": os.environ["FRONTEND_RESULT"],
+              "scope": "isolated monitor regression, database fixtures and builds",
+              "real_upstream_tests": "not run; require separate user confirmation",
+              "production_changes": "none",
+          }
+          Path("verification.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+          PYTHON
+      - uses: actions/upload-artifact@v7
+        with:
+          name: monitor-verification-${{ github.sha }}
+          path: verification.json
