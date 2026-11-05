@@ -51,6 +51,9 @@ func (r *quotaModeRepoStub) Update(_ context.Context, m *ChannelMonitor) error {
 // newQuotaModeService 构造启用 V1 探活的 service（复用 retirement/duplicate 测试的 stub）。
 func newQuotaModeService(t *testing.T, repo *quotaModeRepoStub) *ChannelMonitorService {
 	svc := NewChannelMonitorService(repo, &duplicateChannelMonitorEncryptor{})
+ originalTargetValidator:=monitorTargetValidator
+ monitorTargetValidator=func(context.Context,string)error{return nil}
+ t.Cleanup(func(){monitorTargetValidator=originalTargetValidator})
  originalFactory:=monitorProxyClientFactory
  monitorProxyClientFactory=func(_ httpclient.Options)(*http.Client,error){return monitorHTTPClient,nil}
  t.Cleanup(func(){monitorProxyClientFactory=originalFactory})

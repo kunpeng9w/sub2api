@@ -215,7 +215,7 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
-	if err:=monitorrequest.Check(req.Context(),route);err!=nil{return nil,err}
+	if err:=monitorrequest.CheckRequest(req,route);err!=nil{return nil,err}
  proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
 	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)
@@ -275,7 +275,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
-	if err:=monitorrequest.Check(req.Context(),route);err!=nil{return nil,err}
+	if err:=monitorrequest.CheckRequest(req,route);err!=nil{return nil,err}
  proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
 	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)

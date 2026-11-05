@@ -583,7 +583,6 @@ function checkModeButtonClass(mode: CheckMode): string {
 function selectCheckMode(mode: CheckMode) {
   if (checkModeOptions.value.find((opt) => opt.value === mode)?.disabled) return
   form.check_mode = mode
-  if (!usesQuotaMode.value) form.account_id = null
 }
 
 // --- 关联账号选择器 ---

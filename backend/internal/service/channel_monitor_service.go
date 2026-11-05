@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -607,8 +608,12 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 		return nil, ErrChannelMonitorAPIKeyDecryptFailed
 	}
 
-	var results []*CheckResult
-	switch checkMode {
+ policy,_:=monitorrequest.From(ctx)
+ trigger:="scheduled";if actorID>0{trigger="manual"}
+ slog.Info("channel_monitor_check_started","monitor_id",id,"actor_id",actorID,"trigger",trigger,"route_revision",policy.Revision)
+ defer slog.Info("channel_monitor_check_finished","monitor_id",id,"actor_id",actorID,"trigger",trigger)
+ var results []*CheckResult
+ switch checkMode {
 	case MonitorCheckModeQuota:
 		results = s.runQuotaOnlyCheck(ctx, m)
 	case MonitorCheckModeQuotaProbe:

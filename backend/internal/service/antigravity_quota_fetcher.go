@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,7 +84,9 @@ func (f *AntigravityQuotaFetcher) FetchQuota(ctx context.Context, account *Accou
 	}
 
 	// 调用 LoadCodeAssist 获取订阅等级和 AI Credits 余额（非关键路径，失败不影响主流程）
-	tierRaw, tierNormalized, loadResp := f.fetchSubscriptionTier(ctx, client, accessToken)
+	var tierRaw,tierNormalized string
+ var loadResp *antigravity.LoadCodeAssistResponse
+ if !monitorrequest.Active(ctx){tierRaw,tierNormalized,loadResp=f.fetchSubscriptionTier(ctx,client,accessToken)}
 
 	// 转换为 UsageInfo
 	usageInfo := f.buildUsageInfo(modelsResp, tierRaw, tierNormalized, loadResp)

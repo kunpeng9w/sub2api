@@ -142,7 +142,7 @@ func (r *ChannelMonitorRunner) Start() {
 // Schedule 为指定监控创建（或重置）独立定时任务。
 //   - m.Enabled=false 或 APIKeyDecryptFailed=true → 等同于 Unschedule(m.ID)
 //   - 已存在的任务会先被取消再重建（适用于 IntervalSeconds 变更场景）
-//   - 新任务立即触发首次检测，之后按 IntervalSeconds 周期触发
+//   - 新任务等待一个 IntervalSeconds 周期后首次检测
 func (r *ChannelMonitorRunner) Schedule(m *ChannelMonitor) {
 	if r == nil || m == nil {
 		return
@@ -233,8 +233,8 @@ func (r *ChannelMonitorRunner) Stop() {
 	r.pool.StopAndWait()
 }
 
-// runScheduled 单个监控的循环：立即触发首次（满足"新建/启用即跑"），
-// 之后按 interval ± jitter 周期触发；ctx 取消即退出。
+// runScheduled waits one interval before the first check; creating/editing or
+// restarting never sends an immediate upstream request. ctx cancellation exits.
 // 用 timer 而非 ticker：jitter > 0 时每轮等待时长都需要重新随机化。
 func (r *ChannelMonitorRunner) runScheduled(ctx context.Context, task *scheduledMonitor) {
 	defer r.wg.Done()

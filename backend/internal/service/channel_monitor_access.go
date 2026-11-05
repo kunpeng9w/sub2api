@@ -70,7 +70,8 @@ func(s *ChannelMonitorService)monitorRouteSnapshot(ctx context.Context,m *Channe
 func (s *ChannelMonitorService) monitorContext(ctx context.Context,m *ChannelMonitor)(context.Context,error){
  route,revision,err:=s.monitorRouteSnapshot(ctx,m); if err!=nil{return ctx,err}
  accountID:=int64(0); if m.AccountID!=nil{accountID=*m.AccountID}
- return monitorrequest.With(ctx,monitorrequest.Policy{Route:route,Revision:revision,AccountID:accountID,Validate:func(checkCtx context.Context)error{
+ ctx=WithHTTPUpstreamPublicHostsOnly(WithHTTPUpstreamRedirectsDisabled(ctx))
+ return monitorrequest.With(ctx,monitorrequest.Policy{Route:route,Revision:revision,AccountID:accountID,ValidateTarget:monitorTargetValidator,Validate:func(checkCtx context.Context)error{
   current,err:=s.repo.GetByID(checkCtx,m.ID)
   if err!=nil || !current.Enabled { return ErrChannelMonitorEgress }
   fresh,currentRevision,err:=s.monitorRouteSnapshot(checkCtx,current)
@@ -95,3 +96,5 @@ func (s *ChannelMonitorService) acquireRun(ctx context.Context,id,userID int64)(
  }
  return cleanup,nil
 }
+
+var monitorTargetValidator = validateMonitorTarget

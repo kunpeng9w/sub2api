@@ -84,6 +84,7 @@ type channelMonitorUserTimelinePoint struct {
 }
 
 type channelMonitorUserDetailResponse struct {
+ AutoCheckEnabled bool `json:"auto_check_enabled"`
 	ID        int64                         `json:"id"`
 	Name      string                        `json:"name"`
 	Provider  string                        `json:"provider"`
@@ -153,6 +154,7 @@ func userMonitorDetailToResponse(d *service.UserMonitorDetail) *channelMonitorUs
 		})
 	}
 	return &channelMonitorUserDetailResponse{
+ AutoCheckEnabled:d.AutoCheckEnabled,
 		ID:        d.ID,
 		Name:      d.Name,
 		Provider:  d.Provider,

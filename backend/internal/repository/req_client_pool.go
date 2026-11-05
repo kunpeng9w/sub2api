@@ -67,7 +67,7 @@ func getSharedReqClient(opts reqClientOptions) (*req.Client, error) {
 	}
 	client = instrumentReqClient(client)
  client.GetTransport().WrapRoundTripFunc(func(rt http.RoundTripper) req.HttpRoundTripFunc {
-  return func(r *http.Request)(*http.Response,error){if err:=monitorrequest.Check(r.Context(),trimmed);err!=nil{return nil,err};return rt.RoundTrip(r)}
+  return func(r *http.Request)(*http.Response,error){if err:=monitorrequest.CheckRequest(r,trimmed);err!=nil{return nil,err};return rt.RoundTrip(r)}
  })
  previousRedirect:=client.GetClient().CheckRedirect
  client.GetClient().CheckRedirect=func(next *http.Request,via []*http.Request)error{

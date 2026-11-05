@@ -219,6 +219,13 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 		return nil, infraerrors.Newf(http.StatusBadGateway, "OPENAI_QUOTA_CLIENT_ERROR", "failed to build upstream client: %v", err)
 	}
 
+ if monitorrequest.Active(ctx){
+  client=client.Clone().SetCommonRetryCount(0)
+  client.GetClient().CheckRedirect=func(*http.Request,[]*http.Request)error{return http.ErrUseLastResponse}
+  client.GetTransport().WrapRoundTripFunc(func(rt http.RoundTripper) req.HttpRoundTripFunc{
+   return func(r *http.Request)(*http.Response,error){if err:=monitorrequest.CheckRequest(r,proxyURL);err!=nil{return nil,err};return rt.RoundTrip(r)}
+  })
+ }
 	callCtx, cancel := context.WithTimeout(ctx, openaiQuotaUpstreamTimeout)
 	defer cancel()
 	agentIdentity := s.isAgentIdentityAccount(ctx, accountID)

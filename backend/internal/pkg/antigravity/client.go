@@ -712,8 +712,9 @@ func (c *Client) fetchAvailableModels(ctx context.Context, availableURLs []strin
 		return nil, nil, fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	fetchClient := c.fetchAvailableModelsHTTPClient()
-	if fixedEndpoint {
+	if monitorrequest.Active(ctx)&&len(availableURLs)>1{availableURLs=availableURLs[:1]}
+ fetchClient := c.fetchAvailableModelsHTTPClient()
+	if fixedEndpoint || monitorrequest.Active(ctx) {
 		fetchClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	}
 	var lastErr error

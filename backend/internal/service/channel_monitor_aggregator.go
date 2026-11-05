@@ -152,6 +152,7 @@ func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64, use
 
 	models := mergeModelDetails(m, latest, availMap)
 	return &UserMonitorDetail{
+ AutoCheckEnabled:m.AutoCheckEnabled,
 		ID:        m.ID,
 		Name:      m.Name,
 		Provider:  m.Provider,

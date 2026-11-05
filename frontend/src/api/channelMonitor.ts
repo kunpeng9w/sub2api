@@ -58,6 +58,7 @@ export interface UserMonitorModelDetail {
 }
 
 export interface UserMonitorDetail {
+  auto_check_enabled?: boolean
   id: number
   name: string
   provider: Provider

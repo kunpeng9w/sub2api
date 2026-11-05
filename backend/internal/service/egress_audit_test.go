@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+ "github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"errors"
 	"io"
 	"log/slog"
@@ -285,4 +286,12 @@ func TestEgressAuditWebSocketDialFailuresAndRetry(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMonitorAuditNeverStartsExitIPProbe(t *testing.T){
+ prober:=&auditProber{};auditor:=NewEgressAuditor("",prober)
+ ctx:=monitorrequest.With(context.Background(),monitorrequest.Policy{Route:"http://proxy.invalid:8080"})
+ attempt:=auditor.Begin(ctx,&Account{ID:1},"http://proxy.invalid:8080","https://upstream.invalid","http")
+ attempt.Finish(nil)
+ if prober.calls.Load()!=0{t.Fatal("monitor audit must never issue exit-IP queries")}
 }

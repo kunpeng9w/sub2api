@@ -199,6 +199,7 @@ type ExtraModelStatus struct {
 
 // UserMonitorDetail 用户只读视图：监控详情（含全部模型 7d/15d/30d 可用率与平均延迟）。
 type UserMonitorDetail struct {
+ AutoCheckEnabled bool
 	ID        int64
 	Name      string
 	Provider  string

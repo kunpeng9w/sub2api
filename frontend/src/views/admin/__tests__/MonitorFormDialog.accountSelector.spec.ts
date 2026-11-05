@@ -306,7 +306,7 @@ describe('MonitorFormDialog linked account selector', () => {
     await flushPromises()
 
     expect(accountTrigger(wrapper).text()).not.toContain('alpha')
-    expect(accountTrigger(wrapper).text()).toContain('linkedAccountPlaceholder')
+    expect(accountTrigger(wrapper).text()).toContain('monitorCommon.controls.noAccount')
   })
 
   // P2-7(b)：antigravity 强制的 quota 在切走时要对称还原，占位模型一并清掉。

@@ -15,6 +15,7 @@ type Policy struct {
  AccountID int64
  // Validate reloads the binding before each request; it never probes a proxy.
  Validate func(context.Context) error
+ ValidateTarget func(context.Context,string)error
 }
 func With(ctx context.Context, p Policy) context.Context { return context.WithValue(ctx, key{}, p) }
 func From(ctx context.Context) (Policy, bool) { p, ok := ctx.Value(key{}).(Policy); return p, ok }
@@ -40,7 +41,13 @@ func Client(ctx context.Context, base *http.Client, route string) (*http.Client,
 }
 type transport struct { base http.RoundTripper; route string }
 func (t *transport) RoundTrip(req *http.Request) (*http.Response,error) {
- if err := Check(req.Context(), t.route); err != nil { return nil, err }
+ if err := CheckRequest(req,t.route); err != nil { return nil, err }
  if t.base == nil { return nil, fmt.Errorf("monitor transport unavailable") }
  return t.base.RoundTrip(req)
+}
+
+func CheckRequest(r *http.Request,route string)error{
+ if err:=Check(r.Context(),route);err!=nil{return err}
+ if p,ok:=From(r.Context());ok&&p.ValidateTarget!=nil{return p.ValidateTarget(r.Context(),r.URL.String())}
+ return nil
 }
