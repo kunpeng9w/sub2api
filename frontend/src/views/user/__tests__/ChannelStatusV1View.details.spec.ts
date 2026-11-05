@@ -34,7 +34,7 @@ function mountView() {
         <button class="refresh" @click="$emit('refresh')">Refresh</button>
       </div>` },
       MonitorCardGrid: false,
-      MonitorCard: { props: ['availabilityValue', 'item'], template: '<output>{{ availabilityValue }}</output>' }
+      MonitorCard: { props: ['availabilityValue', 'item'], template: '<output :data-monitor-id="item.id">{{ availabilityValue }}</output>' }
     } }
   })
 }
@@ -45,7 +45,7 @@ describe('channel monitor automatic detail refresh', () => {
     mocks.list.mockResolvedValue({ items })
     const wrapper = mountView()
     await flushPromises()
-    const ids = () => wrapper.findAllComponents({ name: 'MonitorCard' }).map(card => card.props('item').id)
+    const ids = () => wrapper.findAll('output').map(card => Number(card.attributes('data-monitor-id')))
     expect(ids()).toEqual([9, 2, 7])
     await wrapper.get('.fifteen').trigger('click')
     await flushPromises()
