@@ -1,20 +1,19 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
+	"math"
 	"math/rand/v2"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	httppool "github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
-	openaipkg "github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
@@ -110,9 +109,13 @@ const (
 	antigravityErrorTTL = 1 * time.Minute        // Antigravity 错误缓存 TTL（可恢复错误）
 	apiQueryMaxJitter   = 800 * time.Millisecond // 用量查询最大随机延迟
 	windowStatsCacheTTL = 1 * time.Minute
-	openAIProbeCacheTTL = 10 * time.Minute
+	openAIUsageCacheTTL = 10 * time.Minute
 	grokProbeRetryTTL   = 1 * time.Minute
 	grokFreeQuotaWindow = 24 * time.Hour
+
+	// Allow the usage read, model fallback and Spark re-read to finish even if
+	// one waiter disconnects, while bounding the lifetime of the shared task.
+	openAIUsageRefreshTimeout = time.Minute
 )
 
 // UsageCache 封装账户使用量相关的缓存
@@ -122,8 +125,9 @@ type UsageCache struct {
 	antigravityCache  sync.Map           // accountID -> *antigravityUsageCache
 	apiFlight         singleflight.Group // 防止同一账号的并发请求击穿缓存（Anthropic）
 	antigravityFlight singleflight.Group // 防止同一 Antigravity 账号的并发请求击穿缓存
-	openAIProbeCache  sync.Map           // accountID -> time.Time
-	grokProbeCache    sync.Map           // accountID -> last billing probe attempt
+	openAIUsageCache  sync.Map           // accountID -> *openAIUsageCacheEntry
+	openAIUsageFlight singleflight.Group
+	grokProbeCache    sync.Map // accountID -> last billing probe attempt
 }
 
 // NewUsageCache 创建 UsageCache 实例
@@ -301,8 +305,6 @@ type AccountUsageService struct {
 	cache                   *UsageCache
 	identityCache           IdentityCache
 	tlsFPProfileService     *TLSFingerprintProfileService
-	agentIdentityTaskMu     sync.Mutex
-	agentIdentityWS         agentIdentityWSConnectionInvalidator
 }
 
 // NewAccountUsageService 创建AccountUsageService实例
@@ -584,7 +586,7 @@ func (s *AccountUsageService) GetUsageBatch(ctx context.Context, accountIDs []in
 }
 
 // GetPassiveUsage 从 Account.Extra 中的被动采样数据构建 UsageInfo，不调用外部 API。
-// 仅适用于 Anthropic OAuth / SetupToken 账号。
+// 支持 OpenAI OAuth 和 Anthropic OAuth / SetupToken 账号。
 func (s *AccountUsageService) GetPassiveUsage(ctx context.Context, accountID int64) (*UsageInfo, error) {
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {
@@ -595,8 +597,16 @@ func (s *AccountUsageService) GetPassiveUsage(ctx context.Context, accountID int
 }
 
 func (s *AccountUsageService) getPassiveUsageForAccount(ctx context.Context, account *Account) (*UsageInfo, error) {
+	if account != nil && account.IsOpenAIOAuth() {
+		info := openAIUsageFromExtra(account.Extra, time.Now())
+		info.Source = "passive"
+		if entry := s.cachedOpenAIUsage(account.ID); entry != nil {
+			info.Error, info.ErrorCode = entry.message, entry.errorCode
+		}
+		return info, nil
+	}
 	if !supportsAnthropicPassiveUsage(account) {
-		return nil, fmt.Errorf("passive usage only supported for Anthropic OAuth/SetupToken accounts")
+		return nil, fmt.Errorf("passive usage only supported for OpenAI OAuth or Anthropic OAuth/SetupToken accounts")
 	}
 
 	// 复用 estimateSetupTokenUsage 构建 5h 窗口（OAuth 和 SetupToken 逻辑一致）
@@ -706,77 +716,205 @@ func (s *AccountUsageService) syncActiveToPassive(ctx context.Context, accountID
 	}
 }
 
-func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Account, force bool) (*UsageInfo, error) {
-	now := time.Now()
-	usage := &UsageInfo{UpdatedAt: &now}
+// openAIUsageCacheEntry retains the last attempt, including failures, for the
+// refresh throttle. Updates are immutable and contain only display snapshot keys.
+type openAIUsageCacheEntry struct {
+	timestamp time.Time
+	updates   map[string]any
+	message   string
+	errorCode string
+}
 
-	if account == nil {
-		return usage, nil
+func openAIUsageFromExtra(extra map[string]any, now time.Time) *UsageInfo {
+	usage := &UsageInfo{}
+	applyExtraToUsage(usage, extra, now)
+	if usage.FiveHour != nil || usage.SevenDay != nil {
+		if ts, err := parseTime(fmt.Sprint(extra["codex_usage_updated_at"])); err == nil && !ts.IsZero() {
+			usage.UpdatedAt = &ts
+		}
 	}
+	return usage
+}
 
-	applyExtraToUsage(usage, account.Extra, now)
+func (s *AccountUsageService) cachedOpenAIUsage(accountID int64) *openAIUsageCacheEntry {
+	if s.cache != nil {
+		if value, ok := s.cache.openAIUsageCache.Load(accountID); ok {
+			entry, _ := value.(*openAIUsageCacheEntry)
+			return entry
+		}
+	}
+	return nil
+}
 
-	if (force || shouldRefreshOpenAICodexSnapshot(account, usage, now)) && s.shouldProbeOpenAICodexSnapshot(account.ID, now, force) {
-		if account.IsShadow() {
-			// Spark shadow accounts fetch usage from /wham/usage (bengalfox channel)
-			// via the shared OpenAIQuotaService, which resolves credentials from the
-			// parent account.  The result is written to the shadow row's own codex_*
-			// Extra keys and immediately reflected in the returned UsageInfo.
-			if s.openAIQuotaService != nil {
-				if quotaUsage, err := s.openAIQuotaService.QueryUsage(ctx, account.ID); err == nil {
-					if updates := buildCodexSparkWindowExtraUpdates(quotaUsage, now); len(updates) > 0 {
-						mergeAccountExtra(account, updates)
-						s.persistOpenAICodexProbeSnapshot(account.ID, updates)
-						if account.ParentAccountID != nil {
-							notifyOpenAIAutoReset(*account.ParentAccountID)
-						}
-						if usage.UpdatedAt == nil {
-							usage.UpdatedAt = &now
-						}
-						applyExtraToUsage(usage, account.Extra, now)
-					}
+func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Account, force bool) (*UsageInfo, error) {
+	if account == nil {
+		return nil, fmt.Errorf("account is required")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	usage := openAIUsageFromExtra(account.Extra, now)
+	entry := s.cachedOpenAIUsage(account.ID)
+	if force || shouldRefreshOpenAICodexSnapshot(account, usage, now) || (entry != nil && entry.message != "") {
+		refresh := func(refreshCtx context.Context) *openAIUsageCacheEntry {
+			if cached := s.cachedOpenAIUsage(account.ID); !force && cached != nil && time.Since(cached.timestamp) < openAIUsageCacheTTL {
+				return cached
+			}
+			result := s.queryOpenAIUsageSnapshot(refreshCtx, account)
+			if s.cache != nil {
+				s.cache.openAIUsageCache.Store(account.ID, result)
+			}
+			return result
+		}
+		if s.cache != nil {
+			ch := s.cache.openAIUsageFlight.DoChan(fmt.Sprintf("usage:%d", account.ID), func() (any, error) {
+				refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), openAIUsageRefreshTimeout)
+				defer cancel()
+				return refresh(refreshCtx), nil
+			})
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case shared := <-ch:
+				if shared.Err != nil {
+					return nil, shared.Err
 				}
+				result, ok := shared.Val.(*openAIUsageCacheEntry)
+				if !ok || result == nil {
+					return nil, fmt.Errorf("invalid OpenAI usage refresh result")
+				}
+				entry = result
 			}
 		} else {
-			if updates, err := s.probeOpenAICodexSnapshot(ctx, account); err == nil && len(updates) > 0 {
-				mergeAccountExtra(account, updates)
-				if usage.UpdatedAt == nil {
-					usage.UpdatedAt = &now
-				}
-				applyExtraToUsage(usage, account.Extra, now)
+			entry = refresh(ctx)
+		}
+	}
+	if entry != nil {
+		// A concurrent gateway observation may be newer than the display cache.
+		if len(entry.updates) > 0 {
+			fresh := openAIUsageFromExtra(entry.updates, now)
+			if usage.UpdatedAt == nil || (fresh.UpdatedAt != nil && !fresh.UpdatedAt.Before(*usage.UpdatedAt)) {
+				usage = fresh
+			}
+		}
+		usage.Error, usage.ErrorCode = entry.message, entry.errorCode
+	}
+	usage.Source = "active"
+	// Local billing statistics cannot establish that a missing quota window is 0%.
+	if s.usageLogRepo != nil {
+		for _, window := range []struct {
+			progress *UsageProgress
+			duration time.Duration
+		}{
+			{usage.FiveHour, 5 * time.Hour}, {usage.SevenDay, 7 * 24 * time.Hour},
+		} {
+			if window.progress == nil {
+				continue
+			}
+			if stats, err := s.usageLogRepo.GetAccountWindowStats(ctx, account.ID, codexWindowStatsStart(window.progress, window.duration, now)); err == nil {
+				window.progress.WindowStats = windowStatsFromAccountStats(stats)
 			}
 		}
 	}
-
-	if s.usageLogRepo == nil {
-		return usage, nil
-	}
-
-	if stats, err := s.usageLogRepo.GetAccountWindowStats(ctx, account.ID, codexWindowStatsStart(usage.FiveHour, 5*time.Hour, now)); err == nil {
-		if usage.FiveHour == nil {
-			usage.FiveHour = &UsageProgress{Utilization: 0}
-		}
-		usage.FiveHour.WindowStats = windowStatsFromAccountStats(stats)
-	}
-
-	if stats, err := s.usageLogRepo.GetAccountWindowStats(ctx, account.ID, codexWindowStatsStart(usage.SevenDay, 7*24*time.Hour, now)); err == nil {
-		if usage.SevenDay == nil {
-			usage.SevenDay = &UsageProgress{Utilization: 0}
-		}
-		usage.SevenDay.WindowStats = windowStatsFromAccountStats(stats)
-	}
-
 	return usage, nil
+}
+
+func (s *AccountUsageService) queryOpenAIUsageSnapshot(ctx context.Context, account *Account) *openAIUsageCacheEntry {
+	entry := &openAIUsageCacheEntry{timestamp: time.Now()}
+	if s.openAIQuotaService == nil {
+		entry.message, entry.errorCode = "OpenAI quota service is not configured", "quota_service_unavailable"
+		return entry
+	}
+	// Prefer the read-only resource. A failed read may use one model request,
+	// as explicitly enabled by the account usage refresh policy.
+	quota, queryErr := s.openAIQuotaService.QueryUsage(withOpenAIQuotaUsageOnly(ctx), account.ID)
+	updates := openAIQuotaDisplayUpdates(account, quota)
+	if queryErr == nil && !hasOpenAIQuotaDisplayWindows(updates) {
+		queryErr = infraerrors.New(http.StatusBadGateway, "OPENAI_QUOTA_WINDOWS_MISSING", "OpenAI quota query returned no usable windows")
+	}
+	if queryErr != nil {
+		var fallbackErr error
+		updates, fallbackErr = s.openAIQuotaService.queryUsageFromModel(ctx, account)
+		if fallbackErr != nil {
+			// Keep authentication classification even when the other attempt
+			// fails differently. Never expose upstream bodies or parse errors.
+			classified := queryErr
+			if code := infraerrors.Code(fallbackErr); code == http.StatusUnauthorized || code == http.StatusForbidden {
+				classified = fallbackErr
+			}
+			entry.message, entry.errorCode = "OpenAI quota query and model fallback failed", "quota_query_failed"
+			switch infraerrors.Code(classified) {
+			case http.StatusUnauthorized:
+				entry.message, entry.errorCode = "OpenAI quota query and model fallback failed: HTTP 401", errorCodeUnauthenticated
+			case http.StatusForbidden:
+				entry.message, entry.errorCode = "OpenAI quota query and model fallback failed: HTTP 403", errorCodeForbidden
+			case http.StatusTooManyRequests:
+				entry.message, entry.errorCode = "OpenAI quota query and model fallback failed: HTTP 429", errorCodeRateLimited
+			}
+			if infraerrors.Reason(classified) == "OPENAI_QUOTA_WINDOWS_MISSING" {
+				entry.message, entry.errorCode = "OpenAI quota query and model fallback returned no usable windows", "quota_windows_missing"
+			}
+			if infraerrors.Reason(queryErr) == "OPENAI_QUOTA_NOT_CONFIGURED" {
+				entry.message, entry.errorCode = "OpenAI quota service is not configured", "quota_service_unavailable"
+			}
+			return entry
+		}
+	}
+	// Replace the displayed snapshot as a whole. Null absent windows so that an
+	// old window is never presented under the new snapshot's acquisition time.
+	for _, prefix := range []string{"codex_5h_", "codex_7d_", "codex_primary_", "codex_secondary_"} {
+		for _, suffix := range []string{"used_percent", "reset_at", "reset_after_seconds", "window_minutes"} {
+			key := prefix + suffix
+			if _, ok := updates[key]; !ok {
+				updates[key] = nil
+			}
+		}
+	}
+	if s.accountRepo == nil {
+		entry.message, entry.errorCode = "OpenAI quota snapshot storage is not configured", "quota_service_unavailable"
+		return entry
+	}
+	if err := s.accountRepo.UpdateExtra(ctx, account.ID, updates); err != nil {
+		entry.message, entry.errorCode = "Failed to save OpenAI quota snapshot", "quota_snapshot_write_failed"
+		return entry
+	}
+	entry.updates = updates
+	return entry
+}
+
+func hasOpenAIQuotaDisplayWindows(updates map[string]any) bool {
+	present := false
+	for _, key := range []string{"codex_5h_used_percent", "codex_7d_used_percent"} {
+		value := updates[key]
+		if value == nil {
+			continue
+		}
+		percent, ok := value.(float64)
+		if !ok || math.IsNaN(percent) || math.IsInf(percent, 0) {
+			return false
+		}
+		present = true
+	}
+	return present
+}
+
+func openAIQuotaDisplayUpdates(account *Account, quota *OpenAIQuotaUsage) map[string]any {
+	if quota == nil {
+		return nil
+	}
+	fetchedAt := time.Unix(quota.FetchedAt, 0).UTC()
+	if account.IsShadow() {
+		return buildCodexSparkWindowExtraUpdates(quota, fetchedAt)
+	}
+	return buildOpenAIAutoResetUsageUpdates(quota, fetchedAt)
 }
 
 func shouldRefreshOpenAICodexSnapshot(account *Account, usage *UsageInfo, now time.Time) bool {
 	if account == nil {
 		return false
 	}
-	if usage == nil {
-		return true
-	}
-	if usage.FiveHour == nil || usage.SevenDay == nil {
+	if usage == nil || (usage.FiveHour == nil && usage.SevenDay == nil) {
 		return true
 	}
 	if account.IsRateLimited() {
@@ -789,156 +927,8 @@ func isOpenAICodexSnapshotStale(account *Account, now time.Time) bool {
 	if account == nil || !account.IsOpenAIOAuth() {
 		return false
 	}
-	// 普通账号的 codex 刷新走 probe(/responses 头),要求 WSv2;但 spark 影子走 QueryUsage
-	// (/wham/usage body 的 codex_bengalfox),与 WSv2 无关——不能用 WSv2 门控其 staleness,否则首刷后
-	// codex_5h/7d 已存在→staleness 恒 false→spark 窗口永久冻结(外审第9轮 P1)。影子改按
-	// codex_usage_updated_at TTL 判定;实际查询频率仍由 shouldProbeOpenAICodexSnapshot 的缓存 TTL 节流。
-	if !account.IsShadow() && !account.IsOpenAIResponsesWebSocketV2Enabled() {
-		return false
-	}
-	if account.Extra == nil {
-		return true
-	}
-	raw, ok := account.Extra["codex_usage_updated_at"]
-	if !ok {
-		return true
-	}
-	ts, err := parseTime(fmt.Sprint(raw))
-	if err != nil {
-		return true
-	}
-	return now.Sub(ts) >= openAIProbeCacheTTL
-}
-
-func (s *AccountUsageService) shouldProbeOpenAICodexSnapshot(accountID int64, now time.Time, force ...bool) bool {
-	if s == nil || s.cache == nil || accountID <= 0 {
-		return true
-	}
-	forceProbe := len(force) > 0 && force[0]
-	if !forceProbe {
-		if cached, ok := s.cache.openAIProbeCache.Load(accountID); ok {
-			if ts, ok := cached.(time.Time); ok && now.Sub(ts) < openAIProbeCacheTTL {
-				return false
-			}
-		}
-	}
-	s.cache.openAIProbeCache.Store(accountID, now)
-	return true
-}
-
-func (s *AccountUsageService) probeOpenAICodexSnapshot(ctx context.Context, account *Account) (map[string]any, error) {
-	if account == nil || !account.IsOAuth() {
-		return nil, nil
-	}
-	accessToken := ""
-	if !account.IsOpenAIAgentIdentity() {
-		accessToken = account.GetOpenAIAccessToken()
-	}
-	if accessToken == "" && !account.IsOpenAIAgentIdentity() {
-		return nil, fmt.Errorf("no access token available")
-	}
-	modelID := openaipkg.CodexUsageProbeModel
-	payload := createOpenAITestPayload(modelID, true)
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("marshal openai probe payload: %w", err)
-	}
-
-	reqCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, chatgptCodexURL, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return nil, fmt.Errorf("create openai probe request: %w", err)
-	}
-	req.Host = "chatgpt.com"
-	req.Header.Set("Content-Type", "application/json")
-	if account.IsOpenAIAgentIdentity() {
-		authHeaders, authErr := buildAgentIdentityAuthenticationHeaders(ctx, s.accountRepo, s.agentIdentityWS, &s.agentIdentityTaskMu, account)
-		if authErr != nil {
-			return nil, fmt.Errorf("build Agent Identity authentication: %w", authErr)
-		}
-		for key, values := range authHeaders {
-			for _, value := range values {
-				req.Header.Add(key, value)
-			}
-		}
-	} else {
-		req.Header.Set("Authorization", "Bearer "+accessToken)
-	}
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("OpenAI-Beta", "responses=experimental")
-	canonical := resolveCodexOutboundIdentity("")
-	req.Header.Set("Originator", canonical.originator)
-	req.Header.Set("Version", canonical.version)
-	req.Header.Set("User-Agent", canonical.userAgent)
-	if s.identityCache != nil {
-		if fp, fpErr := s.identityCache.GetFingerprint(reqCtx, account.ID); fpErr == nil && fp != nil && strings.TrimSpace(fp.UserAgent) != "" {
-			req.Header.Set("User-Agent", strings.TrimSpace(fp.UserAgent))
-		}
-	}
-	// 与真实转发一致：账号级自定义 UA 同样作为管理员显式配置传入。
-	// 上面写进 header 的指纹缓存 UA 只在强制统一被关闭时才参与配对（保持回滚后的历史语义）；
-	// 强制统一开启时客户端身份不参与构造，探针与真实转发用同一套规范身份出站。
-	enforceCodexIdentityHeadersWithUA(req.Header, account.GetOpenAIUserAgent())
-	setOpenAIChatGPTAccountHeaders(req.Header, account)
-
-	proxyURL, egressErr := ResolveAccountProxyURL(account)
-	if egressErr != nil {
-		return nil, egressErr
-	}
-	client, err := httppool.GetClient(httppool.Options{
-		ProxyURL:              proxyURL,
-		Timeout:               15 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("build openai probe client: %w", err)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("openai codex probe request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	updates, err := extractOpenAICodexProbeUpdates(resp)
-	if err != nil {
-		return nil, err
-	}
-	if len(updates) > 0 {
-		s.persistOpenAICodexProbeSnapshot(account.ID, updates)
-		return updates, nil
-	}
-	return nil, nil
-}
-
-func (s *AccountUsageService) persistOpenAICodexProbeSnapshot(accountID int64, updates map[string]any) {
-	if s == nil || s.accountRepo == nil || accountID <= 0 {
-		return
-	}
-	if len(updates) == 0 {
-		return
-	}
-
-	go func() {
-		updateCtx, updateCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer updateCancel()
-		if err := s.accountRepo.UpdateExtra(updateCtx, accountID, updates); err == nil {
-			notifyOpenAIAutoReset(accountID)
-		}
-	}()
-}
-
-func extractOpenAICodexProbeUpdates(resp *http.Response) (map[string]any, error) {
-	if resp == nil {
-		return nil, nil
-	}
-	if snapshot := ParseCodexRateLimitHeaders(resp.Header); snapshot != nil {
-		return buildCodexUsageExtraUpdates(snapshot, time.Now()), nil
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("openai codex probe returned status %d", resp.StatusCode)
-	}
-	return nil, nil
+	ts, err := parseTime(fmt.Sprint(account.Extra["codex_usage_updated_at"]))
+	return err != nil || ts.IsZero() || now.Sub(ts) >= openAIUsageCacheTTL
 }
 
 func mergeAccountExtra(account *Account, updates map[string]any) {
@@ -960,12 +950,8 @@ func applyExtraToUsage(usage *UsageInfo, extra map[string]any, now time.Time) {
 	if usage == nil {
 		return
 	}
-	if progress := buildCodexUsageProgressFromExtra(extra, "5h", now); progress != nil {
-		usage.FiveHour = progress
-	}
-	if progress := buildCodexUsageProgressFromExtra(extra, "7d", now); progress != nil {
-		usage.SevenDay = progress
-	}
+	usage.FiveHour = buildCodexUsageProgressFromExtra(extra, "5h", now)
+	usage.SevenDay = buildCodexUsageProgressFromExtra(extra, "7d", now)
 }
 
 func (s *AccountUsageService) getGeminiUsage(ctx context.Context, account *Account) (*UsageInfo, error) {
@@ -1242,7 +1228,7 @@ func grokBillingSnapshotNeedsRefresh(account *Account, now time.Time) bool {
 		stamp = strings.TrimSpace(billing.FetchedAt)
 	}
 	updatedAt, err := parseTime(stamp)
-	return err != nil || now.Sub(updatedAt) >= openAIProbeCacheTTL
+	return err != nil || now.Sub(updatedAt) >= openAIUsageCacheTTL
 }
 
 func (s *AccountUsageService) shouldProbeGrokBilling(accountID int64, now time.Time, force bool) bool {
@@ -1508,7 +1494,7 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 	}
 
 	usedRaw, ok := extra[usedPercentKey]
-	if !ok {
+	if !ok || usedRaw == nil {
 		return nil
 	}
 
@@ -1516,33 +1502,25 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 	if resetAtRaw, ok := extra[resetAtKey]; ok {
 		if resetAt, err := parseTime(fmt.Sprint(resetAtRaw)); err == nil {
 			progress.ResetsAt = &resetAt
-			progress.RemainingSeconds = int(time.Until(resetAt).Seconds())
+			progress.RemainingSeconds = int(resetAt.Sub(now).Seconds())
 			if progress.RemainingSeconds < 0 {
 				progress.RemainingSeconds = 0
 			}
 		}
 	}
 	if progress.ResetsAt == nil {
-		if resetAfterSeconds := parseExtraInt(extra[resetAfterKey]); resetAfterSeconds > 0 {
-			base := now
-			if updatedAtRaw, ok := extra["codex_usage_updated_at"]; ok {
-				if updatedAt, err := parseTime(fmt.Sprint(updatedAtRaw)); err == nil {
-					base = updatedAt
-				}
-			}
+		// Relative resets need a trusted acquisition time. Reading an old
+		// snapshot must not start its reset countdown again.
+		base, err := parseTime(fmt.Sprint(extra["codex_usage_updated_at"]))
+		if resetAfterSeconds := parseExtraInt(extra[resetAfterKey]); resetAfterSeconds > 0 && err == nil && !base.IsZero() {
 			resetAt := base.Add(time.Duration(resetAfterSeconds) * time.Second)
 			progress.ResetsAt = &resetAt
-			progress.RemainingSeconds = int(time.Until(resetAt).Seconds())
-			if progress.RemainingSeconds < 0 {
-				progress.RemainingSeconds = 0
-			}
+			progress.RemainingSeconds = max(0, int(resetAt.Sub(now).Seconds()))
 		}
 	}
 
-	// 窗口已过期（resetAt 在 now 之前）→ 额度已重置，归零
-	if progress.ResetsAt != nil && !now.Before(*progress.ResetsAt) {
-		progress.Utilization = 0
-	}
+	// Keep the observed percentage even after reset time passes. Only a
+	// successful upstream read can establish the new window's utilization.
 
 	return progress
 }

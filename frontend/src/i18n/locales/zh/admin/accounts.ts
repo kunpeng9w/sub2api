@@ -513,6 +513,10 @@ export default {
         }
       },
       usageWindow: {
+        refreshFailedHistorical: '刷新失败，当前为历史数据',
+        refreshFailedUnknown: '刷新失败，配额未知',
+        quotaUnknown: '未知',
+        snapshotTime: '快照时间：{time}',
         statsTitle: '5小时窗口用量统计',
         statsTitleDaily: '每日用量统计',
         geminiProDaily: 'Pro',

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	openaipkg "github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/imroc/req/v3"
 )
 
@@ -54,6 +56,37 @@ type OpenAIRateLimit struct {
 	LimitReached    bool                   `json:"limit_reached"`
 	PrimaryWindow   *OpenAIRateLimitWindow `json:"primary_window,omitempty"`
 	SecondaryWindow *OpenAIRateLimitWindow `json:"secondary_window,omitempty"`
+}
+
+// UnmarshalJSON treats a window without an observed percentage as unavailable.
+// In particular, an absent/null used_percent must not become a measured 0%.
+// Normalize at the boundary so display, monitoring and reset consumers agree.
+func (r *OpenAIRateLimit) UnmarshalJSON(data []byte) error {
+	type rateLimit OpenAIRateLimit
+	type window struct {
+		OpenAIRateLimitWindow
+		UsedPercent *float64 `json:"used_percent"`
+	}
+	var decoded rateLimit
+	payload := struct {
+		*rateLimit
+		PrimaryWindow   *window `json:"primary_window"`
+		SecondaryWindow *window `json:"secondary_window"`
+	}{rateLimit: &decoded}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	observedWindow := func(w *window) *OpenAIRateLimitWindow {
+		if w == nil || w.UsedPercent == nil {
+			return nil
+		}
+		w.OpenAIRateLimitWindow.UsedPercent = *w.UsedPercent
+		return &w.OpenAIRateLimitWindow
+	}
+	decoded.PrimaryWindow = observedWindow(payload.PrimaryWindow)
+	decoded.SecondaryWindow = observedWindow(payload.SecondaryWindow)
+	*r = OpenAIRateLimit(decoded)
+	return nil
 }
 
 // OpenAIAdditionalRateLimit describes a per-feature rate limit (e.g. Codex Spark).
@@ -160,10 +193,21 @@ func NewOpenAIQuotaService(
 	}
 }
 
+// The account usage display needs only the usage resource. Other callers keep
+// the existing reset-credit detail read for the explicit reset workflow.
+type openAIQuotaUsageOnlyKey struct{}
+
+func withOpenAIQuotaUsageOnly(ctx context.Context) context.Context {
+	return context.WithValue(ctx, openAIQuotaUsageOnlyKey{}, true)
+}
+
 // QueryUsage fetches the latest rate-limit/usage snapshot for the given OpenAI
 // OAuth account. Returns infraerrors so the handler layer can map them to
 // stable error codes / HTTP statuses.
 func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*OpenAIQuotaUsage, error) {
+	if s == nil || s.accountRepo == nil || s.privacyClientFactory == nil {
+		return nil, infraerrors.New(http.StatusServiceUnavailable, "OPENAI_QUOTA_NOT_CONFIGURED", "OpenAI quota service is not configured")
+	}
 	accessToken, chatGPTAccountID, proxyURL, fedRAMP, err := s.prepareUpstreamCall(ctx, accountID)
 	if err != nil {
 		return nil, err
@@ -201,8 +245,9 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 				continue
 			}
 			status := resp.StatusCode
-			if isOpenAIAutoResetContext(ctx) {
-				slog.Warn("openai_quota_query_failed", "account_id", accountID, "status", status, "source", "auto_reset")
+			usageOnly, _ := ctx.Value(openAIQuotaUsageOnlyKey{}).(bool)
+			if usageOnly || isOpenAIAutoResetContext(ctx) {
+				slog.Warn("openai_quota_query_failed", "account_id", accountID, "status", status)
 				return nil, infraerrors.Newf(mapUpstreamStatus(status), "OPENAI_QUOTA_UPSTREAM_ERROR", "upstream returned %d", status)
 			}
 			body := truncate(s.redactQuotaErrorBody(ctx, accountID, resp.String()), 240)
@@ -213,6 +258,9 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 	}
 
 	payload.FetchedAt = time.Now().Unix()
+	if usageOnly, _ := ctx.Value(openAIQuotaUsageOnlyKey{}).(bool); usageOnly {
+		return &payload, nil
+	}
 	details := s.queryResetCreditDetails(callCtx, client, accessToken, chatGPTAccountID, fedRAMP, accountID)
 	if details != nil {
 		payload.autoResetCandidates = details.AutoResetCandidates
@@ -231,6 +279,88 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 		}
 	}
 	return &payload, nil
+}
+
+// queryUsageFromModel sends at most one model request after a quota read fails.
+// It shares credentials, proxy and HTTP client setup with QueryUsage and never
+// writes local runtime rate limits or triggers the reset-credit workflow.
+func (s *OpenAIQuotaService) queryUsageFromModel(ctx context.Context, account *Account) (map[string]any, error) {
+	accessToken, chatGPTAccountID, proxyURL, fedRAMP, err := s.prepareUpstreamCall(ctx, account.ID)
+	if err != nil {
+		return nil, err
+	}
+	client, err := s.privacyClientFactory(proxyURL)
+	if err != nil {
+		return nil, infraerrors.New(http.StatusBadGateway, "OPENAI_QUOTA_FALLBACK_FAILED", "failed to build model fallback client")
+	}
+	callCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	headers, _, err := s.buildCodexQuotaHeaders(callCtx, account.ID, accessToken, chatGPTAccountID, fedRAMP)
+	if err != nil {
+		return nil, infraerrors.New(http.StatusBadGateway, "OPENAI_QUOTA_FALLBACK_FAILED", "failed to prepare model fallback authentication")
+	}
+	credentialAccount := account
+	if account.IsShadow() {
+		credentialAccount, err = resolveCredentialAccount(ctx, s.accountRepo, account)
+		if err != nil {
+			return nil, err
+		}
+	}
+	requestHeaders := make(http.Header)
+	for key, value := range headers {
+		requestHeaders.Set(key, value)
+	}
+	canonical := resolveCodexOutboundIdentity("")
+	requestHeaders.Set("Accept", "text/event-stream")
+	requestHeaders.Set("Content-Type", "application/json")
+	requestHeaders.Set("OpenAI-Beta", "responses=experimental")
+	requestHeaders.Set("Originator", canonical.originator)
+	requestHeaders.Set("Version", canonical.version)
+	requestHeaders.Set("User-Agent", canonical.userAgent)
+	if userAgent := strings.TrimSpace(credentialAccount.GetOpenAIUserAgent()); userAgent != "" {
+		requestHeaders.Set("User-Agent", userAgent)
+	}
+	enforceCodexIdentityHeadersWithUA(requestHeaders, credentialAccount.GetOpenAIUserAgent())
+	setOpenAIChatGPTAccountHeaders(requestHeaders, credentialAccount)
+	headers = make(map[string]string, len(requestHeaders))
+	for key := range requestHeaders {
+		headers[key] = requestHeaders.Get(key)
+	}
+	model := openaipkg.CodexUsageProbeModel
+	if account.IsShadow() {
+		model = "gpt-5.3-codex-spark"
+	}
+	resp, err := client.R().SetContext(callCtx).SetHeaders(headers).
+		SetBodyJsonMarshal(createOpenAITestPayload(model, true)).
+		DisableAutoReadResponse().Post(chatgptCodexURL)
+	if err != nil {
+		return nil, infraerrors.New(http.StatusBadGateway, "OPENAI_QUOTA_FALLBACK_FAILED", "model fallback request failed")
+	}
+	if resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+	if (resp.StatusCode < 200 || resp.StatusCode >= 300) && resp.StatusCode != http.StatusTooManyRequests {
+		return nil, infraerrors.Newf(mapUpstreamStatus(resp.StatusCode), "OPENAI_QUOTA_FALLBACK_FAILED", "model fallback returned HTTP %d", resp.StatusCode)
+	}
+	if account.IsShadow() {
+		// /responses x-codex-* headers describe the parent's global Codex pool,
+		// even for Spark requests. Only bengalfox can refresh a Spark snapshot.
+		// Retry the read after the model request; never copy global headers.
+		usage, err := s.QueryUsage(withOpenAIQuotaUsageOnly(ctx), account.ID)
+		if err != nil {
+			return nil, err
+		}
+		updates := openAIQuotaDisplayUpdates(account, usage)
+		if hasOpenAIQuotaDisplayWindows(updates) {
+			return updates, nil
+		}
+	} else if snapshot := ParseCodexRateLimitHeaders(resp.Header); snapshot != nil {
+		updates := buildCodexUsageExtraUpdates(snapshot, time.Now())
+		if hasOpenAIQuotaDisplayWindows(updates) {
+			return updates, nil
+		}
+	}
+	return nil, infraerrors.New(http.StatusBadGateway, "OPENAI_QUOTA_WINDOWS_MISSING", "model fallback returned no usable quota windows")
 }
 
 // CacheResetCreditsSnapshot persists a complete reset-credit snapshot after an
@@ -646,7 +776,7 @@ func buildCodexSparkWindowExtraUpdates(usage *OpenAIQuotaUsage, now time.Time) m
 	}
 
 	// Reuse OpenAICodexUsageSnapshot / Normalize to map primary/secondary windows
-	// to canonical 5h/7d buckets (same logic as probeOpenAICodexSnapshot).
+	// to canonical 5h/7d buckets (shared canonical window normalization).
 	snap := &OpenAICodexUsageSnapshot{}
 	if w := spark.PrimaryWindow; w != nil {
 		p := w.UsedPercent

@@ -1,4 +1,13 @@
-.PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
+.PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical test-frontend-openai-usage
+
+FRONTEND_OPENAI_USAGE_VITEST := \
+	src/components/account/__tests__/AccountUsageCell.spec.ts \
+	src/components/account/__tests__/UsageProgressBar.spec.ts \
+	src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \
+	src/components/common/__tests__/MonitorQuotaView.spec.ts \
+	src/components/user/__tests__/MonitorCard.quota.spec.ts \
+	src/utils/__tests__/accountUsageRefresh.spec.ts \
+	src/views/admin/__tests__/AccountsView.usageWindowsHint.spec.ts
 
 FRONTEND_CRITICAL_VITEST := \
 	src/i18n/__tests__/localeKeyCompleteness.spec.ts \
@@ -11,7 +20,7 @@ FRONTEND_CRITICAL_VITEST := \
 	src/composables/__tests__/useModelWhitelist.spec.ts \
 	src/components/account/__tests__/OpenAIReferralCell.spec.ts \
 	src/components/account/__tests__/OpenAIReferralCell.transport.spec.ts \
-	src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \
+	$(FRONTEND_OPENAI_USAGE_VITEST) \
 	src/constants/__tests__/platforms.spec.ts \
 	src/components/account/__tests__/credentialsBuilder.platformCatalog.spec.ts \
 	src/components/account/__tests__/AccountProxyField.spec.ts \
@@ -60,3 +69,7 @@ test-frontend:
 
 test-frontend-critical:
 	@pnpm --dir frontend exec vitest run $(FRONTEND_CRITICAL_VITEST)
+
+# OpenAI quota refresh regression tests (all upstream calls are mocked).
+test-frontend-openai-usage:
+	@pnpm --dir frontend exec vitest run $(FRONTEND_OPENAI_USAGE_VITEST) --maxWorkers=2 --minWorkers=1
