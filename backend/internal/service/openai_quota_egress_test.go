@@ -99,15 +99,22 @@ func TestEgressAuditOpenAIQuotaTimeout(t *testing.T) {
 	upstream.timeout = true
 	_, err := svc.GetUsage(context.Background(), id)
 	require.NoError(t, err)
-	completed := 0
+	completed, timedOut := 0, 0
 	for _, row := range sink.snapshot() {
 		if row["event"] == "upstream_egress_completed" {
 			completed++
-			require.Contains(t, []string{"timeout", "canceled", "transport_error"}, row["outcome"])
+			if row["purpose"] == "quota_usage" {
+				timedOut++
+				require.Contains(t, []string{"timeout", "canceled", "transport_error"}, row["outcome"])
+			} else {
+				// The quota read timed out; the subsequent model request can
+				// still receive headers and close its response normally.
+				require.Equal(t, "body_closed", row["outcome"])
+			}
 		}
 	}
-	require.GreaterOrEqual(t, completed, 1)
-	require.LessOrEqual(t, completed, 2)
+	require.Equal(t, 1, timedOut)
+	require.Equal(t, 2, completed)
 }
 
 func TestEgressAuditOpenAIQuotaCancellation(t *testing.T) {
