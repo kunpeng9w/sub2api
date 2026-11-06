@@ -22,7 +22,7 @@ func TestEgressAuditNetworkProductionWebSocketLease(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.CloseNow()
+		defer func() { _ = conn.CloseNow() }()
 		for i := 0; i < 2; i++ {
 			_, data, err := conn.Read(r.Context())
 			if err != nil {
@@ -41,7 +41,7 @@ func TestEgressAuditNetworkProductionWebSocketLease(t *testing.T) {
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
 	client, _, _, err := dialWithEgressAudit(t.Context(), newDefaultOpenAIWSClientDialer(), auditor, &Account{ID: 1}, wsURL, nil, "", "websocket")
 	require.NoError(t, err)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	lease := &openAIWSConnLease{
 		pool:         &openAIWSConnPool{auditor: auditor},
 		conn:         newOpenAIWSConn("network-test", 1, client, nil),

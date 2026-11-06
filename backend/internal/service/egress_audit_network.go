@@ -11,6 +11,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/egresstrace"
 )
 
 // These are application/transport observations, not wire bytes or proof that
@@ -193,6 +195,13 @@ func (p *EgressAuditAttempt) networkTraceContext(ctx context.Context) context.Co
 			}
 		},
 	}
+	ctx = egresstrace.WithObserver(ctx, func(phase string, started bool, err error) {
+		if started {
+			p.networkStageStart(phase, "")
+		} else {
+			p.networkStageDone(phase, "", err)
+		}
+	})
 	return httptrace.WithClientTrace(ctx, trace)
 }
 
@@ -305,7 +314,7 @@ func (p *EgressAuditAttempt) networkFields() []any {
 			ms(key, t.Sub(p.started))
 		}
 	}
-	for _, name := range []string{"dns", "connect", "tls"} {
+	for _, name := range []string{"dns", "connect", "tls", "proxy_tunnel", "fingerprint_tls"} {
 		if s := m.stages[name]; s != nil {
 			fields = append(fields, name+"_attempts", s.count, name+"_completed", s.completed, name+"_failures", s.failures)
 			ms(name+"_total_ms", s.duration)

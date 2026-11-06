@@ -24,7 +24,11 @@ func auditNetworkFields(p *EgressAuditAttempt) map[string]any {
 	fields := p.networkFields()
 	result := make(map[string]any)
 	for i := 0; i < len(fields); i += 2 {
-		result[fields[i].(string)] = fields[i+1]
+		key, ok := fields[i].(string)
+		if !ok {
+			panic("audit field key must be a string")
+		}
+		result[key] = fields[i+1]
 	}
 	return result
 }
@@ -44,7 +48,11 @@ func TestEgressAuditNetworkHTTPTransport(t *testing.T) {
 		received <- string(body)
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = io.WriteString(w, "data: first\n\n")
-		w.(http.Flusher).Flush()
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			return
+		}
+		flusher.Flush()
 		_, _ = io.WriteString(w, "data: last\n\n")
 	}))
 	defer srv.Close()
@@ -97,7 +105,7 @@ func TestEgressAuditNetworkRequestReplay(t *testing.T) {
 	require.NoError(t, err)
 	originalBody := req.Body
 	traced := p.TraceRequest(req)
-	require.Same(t, originalBody, req.Body, "do not mutate the caller's request")
+	require.Equal(t, originalBody, req.Body, "do not mutate the caller's request")
 	for i := 0; i < 2; i++ {
 		body := traced.Body
 		if i > 0 {

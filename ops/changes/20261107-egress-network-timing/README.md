@@ -11,7 +11,7 @@
 | 字段 | 含义与边界 |
 |---|---|
 | `connection_acquire_ms` | HTTP 最近一次 GetConn→GotConn，包含等待连接及可能的建连/代理握手/TLS，不等于纯连接池排队 |
-| `dns/connect/tls_attempts`、`*_completed`、`*_failures`、`*_total_ms` | trace 观测到的各阶段次数与已完成操作耗时之和；并发拨号按地址分别配对。并行/嵌套阶段不能直接相加得到总耗时 |
+| `dns/connect/tls/proxy_tunnel/fingerprint_tls_attempts`、`*_completed`、`*_failures`、`*_total_ms` | trace 观测到的各阶段次数与已完成操作耗时之和；并发拨号按地址分别配对。并行/嵌套阶段不能直接相加得到总耗时 |
 | `*_pending`、`*_pending_total_ms` | 采样/完成时仍没有对应 Done 的阶段及已等待时长；晚到的回调不会修改完成事件 |
 | `connection_reused`、`connection_was_idle`、`connection_idle_ms` | HTTP 连接取得时的复用、空闲状态和空闲时长；复用连接不伪造 DNS/TLS=0 |
 | `pool_queue_wait_ms`、`pool_connection_pick_ms` | WebSocket 租约取得时的既有指标，每轮重复附带同一租约数据，不能跨轮累加 |
@@ -28,7 +28,7 @@
 | `response_body_observed_ms`、`response_read_max_gap_ms` | 首次至最近一次读到数据的跨度、相邻非空读取最大间隔。包括调用方处理和下游背压，不能单独归因上游断流；不包含首读前等待及末次读取后的静默 |
 | `last_network_error_class`、`last_network_error_phase` | 最近观测到的固定分类，不记录错误原文；连接竞速或内部重试恢复后成功的请求也可能保留此项，是否最终失败看 outcome |
 
-标准 httptrace 不一定能单独观测 SOCKS 握手；自定义 TLS 指纹/其他 transport 未触发标准回调时也不伪造数据。HTTP 内部重试的阶段总和与最近时间点属于同一 attempt，不应把它们解释成单次写入的完整瀑布图。各子阶段回调自身失败会给出具体分类，只有整体失败时按最后可见进度作粗粒度归类，不据此断言根因。
+Claude 指纹连接另记 `fingerprint_tls_*`；指纹 SOCKS 路径另记 `proxy_tunnel_*`，该段包含代理 TCP 连接与 SOCKS 隧道协商，不能理解成纯 SOCKS 握手。标准 httptrace 不一定能单独观测 SOCKS 握手；其他自定义 transport 未触发回调时不伪造数据。HTTP 内部重试的阶段总和与最近时间点属于同一 attempt，不应把它们解释成单次写入的完整瀑布图。各子阶段回调自身失败会给出具体分类，只有整体失败时按最后可见进度作粗粒度归类，不据此断言根因。
 
 池化 WebSocket 在现有编码阶段计数字节，避免对大上下文二次序列化；两条池化业务路径在物理消息读取后计数，拼接 JSON 拆分不会重复计算。透传 WS 延续现有单 active turn 审计模型，要求逐轮 response.create/terminal 交替；不将 session.update/control frames 当作独立模型请求。
 
