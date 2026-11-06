@@ -1580,9 +1580,9 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 	// window is absent. Only its own percentage sample can bound an estimate.
 	setUsageWindowSample(progress, extra["codex_"+window+"_sampled_at"])
 	complete, observed := extra["codex_"+window+"_sample_complete"].(bool)
-	if observed && !complete {
-		// Retained reset fields belong to another response. Neither a reset
-		// deadline nor a full-capacity estimate can be inferred from them.
+	if observed && !complete && progress.Utilization == 0 {
+		// A partial zero observation cannot prove inactivity or a full reset.
+		// Keep nonzero windows on the existing sample-bounded estimate path.
 		progress.sampleTimeMissing = true
 		return progress
 	}
