@@ -858,6 +858,7 @@ func buildCodexSparkWindowExtraUpdates(usage *OpenAIQuotaUsage, now time.Time) m
 	}
 
 	updates := make(map[string]any)
+	stampCodexWindowCompleteness(updates, normalized)
 	if normalized.Used5hPercent != nil {
 		updates["codex_5h_used_percent"] = *normalized.Used5hPercent
 		updates["codex_5h_sampled_at"] = now.UTC().Format(time.RFC3339Nano)

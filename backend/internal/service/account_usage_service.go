@@ -1579,6 +1579,13 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 	// Partial gateway observations update the account timestamp even when this
 	// window is absent. Only its own percentage sample can bound an estimate.
 	setUsageWindowSample(progress, extra["codex_"+window+"_sampled_at"])
+	complete, observed := extra["codex_"+window+"_sample_complete"].(bool)
+	if observed && !complete {
+		// Retained reset fields belong to another response. Neither a reset
+		// deadline nor a full-capacity estimate can be inferred from them.
+		progress.sampleTimeMissing = true
+		return progress
+	}
 	// An unused rolling window can report its full duration on every query.
 	// Adding that duration to the sample time invents a moving reset deadline;
 	// it is not evidence that the upstream window has started. Keep this check
@@ -1591,7 +1598,7 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 			windowMinutes = 7 * 24 * 60
 		}
 	}
-	if progress.Utilization == 0 && parseExtraInt(extra[resetAfterKey]) >= windowMinutes*60 {
+	if complete && progress.Utilization == 0 && parseExtraInt(extra[resetAfterKey]) >= windowMinutes*60 {
 		progress.WindowInactive = true
 		return progress
 	}

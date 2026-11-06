@@ -1114,6 +1114,7 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 
 	// 归一化到 5h/7d 规范字段
 	if normalized := snapshot.Normalize(); normalized != nil {
+		stampCodexWindowCompleteness(updates, normalized)
 		if normalized.Used5hPercent != nil {
 			updates["codex_5h_used_percent"] = *normalized.Used5hPercent
 			updates["codex_5h_sampled_at"] = baseTime.UTC().Format(time.RFC3339Nano)
@@ -1143,6 +1144,25 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 	}
 
 	return updates
+}
+
+// stampCodexWindowCompleteness records whether the fields came from one response.
+// Omitted windows retain their observation; partial windows invalidate it even
+// though UpdateExtra preserves the omitted raw fields for diagnostics.
+func stampCodexWindowCompleteness(updates map[string]any, limits *NormalizedCodexLimits) {
+	for _, window := range []struct {
+		key     string
+		used    *float64
+		reset   *int
+		minutes *int
+	}{
+		{"5h", limits.Used5hPercent, limits.Reset5hSeconds, limits.Window5hMinutes},
+		{"7d", limits.Used7dPercent, limits.Reset7dSeconds, limits.Window7dMinutes},
+	} {
+		if window.used != nil || window.reset != nil || window.minutes != nil {
+			updates["codex_"+window.key+"_sample_complete"] = window.used != nil && window.reset != nil && window.minutes != nil
+		}
+	}
 }
 
 // updateCodexUsageSnapshot saves the Codex usage snapshot to account's Extra field
