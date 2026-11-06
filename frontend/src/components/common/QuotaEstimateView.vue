@@ -16,7 +16,9 @@ import type { QuotaEstimate } from '@/types'
 const props = defineProps<{ estimate?: QuotaEstimate | null; resetsAt?: string | null }>()
 const { t } = useI18n()
 const now = useNow({ interval: 30000 })
-const expired = computed(() => props.estimate?.source !== 'historical' && !!props.resetsAt && new Date(props.resetsAt).getTime() <= now.value.getTime())
+// Historical capacity has no expiry of its own. Any supplied deadline belongs
+// to the current observed window and must still be respected.
+const expired = computed(() => !!props.resetsAt && new Date(props.resetsAt).getTime() <= now.value.getTime())
 const valid = computed(() => props.estimate?.total_cost != null && props.estimate?.remaining_cost != null && Number.isFinite(props.estimate.total_cost) && Number.isFinite(props.estimate.remaining_cost) && props.estimate.total_cost > 0 && props.estimate.remaining_cost >= 0)
 const share = computed(() => {
   const value = props.estimate?.seven_day_share_percent

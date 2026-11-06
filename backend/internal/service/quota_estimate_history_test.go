@@ -124,3 +124,40 @@ func TestQuotaEstimateHistoryNewerObservationReplaces(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 30.0, quotaEstimateHistory(account, "5h", time.Now()).TotalCost)
 }
+
+func TestQuotaEstimateUsesGeneralSevenDayPoolOnly(t *testing.T) {
+	sample := time.Now().Add(-time.Minute)
+	reset := sample.Add(time.Hour)
+	svc := &AccountUsageService{usageLogRepo: &estimateWindowRepo{}}
+	result := svc.attachQuotaEstimates(context.Background(), &Account{ID: 1, Platform: PlatformAnthropic}, &UsageInfo{
+		UpdatedAt:      &sample,
+		FiveHour:       &UsageProgress{Utilization: 40, ResetsAt: &reset},
+		SevenDaySonnet: &UsageProgress{Utilization: 8, ResetsAt: &reset},
+		SevenDayFable:  &UsageProgress{Utilization: 8, ResetsAt: &reset},
+	})
+	require.NotNil(t, result.FiveHour.Estimate.TotalCost)
+	require.Nil(t, result.FiveHour.Estimate.SevenDaySharePercent)
+}
+
+func TestQuotaEstimateClaudeNewGatewaySampleSupersedesInactive(t *testing.T) {
+	sample := time.Now().Add(-time.Minute)
+	reset := sample.Add(time.Hour)
+	account := &Account{ID: 1, Platform: PlatformAnthropic, Type: AccountTypeOAuth, SessionWindowEnd: &reset, Extra: map[string]any{
+		"session_window_utilization":           0.0,
+		"passive_usage_5h_window_inactive":     true,
+		"passive_usage_5h_inactive_sampled_at": sample.UTC().Format(time.RFC3339Nano),
+		"passive_usage_5h_sampled_at":          sample.UTC().Format(time.RFC3339Nano),
+	}}
+	svc := &AccountUsageService{cache: NewUsageCache(), usageLogRepo: &usageBatchLogRepoStub{}}
+	usage, err := svc.getPassiveUsageForAccount(context.Background(), account)
+	require.NoError(t, err)
+	require.True(t, usage.FiveHour.WindowInactive)
+	require.Nil(t, usage.FiveHour.ResetsAt)
+	account.Extra["session_window_utilization"] = 0.25
+	account.Extra["passive_usage_5h_sampled_at"] = sample.Add(time.Second).UTC().Format(time.RFC3339Nano)
+	usage, err = svc.getPassiveUsageForAccount(context.Background(), account)
+	require.NoError(t, err)
+	require.False(t, usage.FiveHour.WindowInactive)
+	require.Equal(t, 25.0, usage.FiveHour.Utilization)
+	require.NotNil(t, usage.FiveHour.ResetsAt)
+}
