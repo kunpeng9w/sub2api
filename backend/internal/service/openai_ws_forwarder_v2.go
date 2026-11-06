@@ -344,7 +344,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 
 	audit := lease.beginEgressAudit(ctx, attempt)
 	defer func() { audit.Finish(auditErr) }()
-	if err := lease.WriteJSONWithContextTimeout(ctx, payload, s.openAIWSWriteTimeout()); err != nil {
+	if err := lease.writeJSONWithEgressAudit(ctx, payload, s.openAIWSWriteTimeout(), audit); err != nil {
 		lease.MarkBroken()
 		logOpenAIWSModeInfo(
 			"write_request_fail account_id=%d conn_id=%s cause=%s payload_bytes=%d",
@@ -542,6 +542,9 @@ readLoop:
 				}
 			}
 			message, readErr = lease.ReadMessageWithContextTimeout(upstreamReadCtx, currentReadTimeout)
+			if readErr == nil {
+				audit.observeResponseBytes(len(message))
+			}
 			if readErr == nil {
 				if documents, repaired := splitOpenAIConcatenatedJSONDocuments(message); repaired {
 					logOpenAIWSModeInfo(
