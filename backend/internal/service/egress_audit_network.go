@@ -294,8 +294,10 @@ func (p *EgressAuditAttempt) finishNetwork(err error) {
 		} else if !m.wroteRequest.IsZero() {
 			phase = "response_wait"
 		}
-		// Preserve the more specific callback phase for the same failure class.
-		if m.lastErrorClass != egressNetworkErrorClass(err) {
+		// Successful request/response progress supersedes earlier callback
+		// failures (for example a losing dial or a recovered write retry).
+		// Only preserve a specific callback phase before that progress.
+		if phase != "transport" || m.lastErrorClass != egressNetworkErrorClass(err) {
 			m.recordError(phase, err)
 		}
 	}

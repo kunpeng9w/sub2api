@@ -152,6 +152,51 @@ func TestEgressAuditNetworkParallelConnectsAndFailures(t *testing.T) {
 	require.Equal(t, m, auditNetworkFields(p))
 }
 
+func TestEgressAuditNetworkRecoveredFailureDoesNotMaskFinalPhase(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		response  bool
+		wantPhase string
+	}{
+		{name: "waiting after recovered write", wantPhase: "response_wait"},
+		{name: "reading after recovered dial", response: true, wantPhase: "response_read"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sink := captureAuditLogs(t)
+			p := NewEgressAuditor("", nil).Begin(t.Context(), nil, "", "https://example.invalid", "http")
+			trace := httptrace.ContextClientTrace(p.networkTraceContext(t.Context()))
+			if tc.response {
+				trace.ConnectStart("tcp", "losing-endpoint")
+				trace.ConnectDone("tcp", "losing-endpoint", context.DeadlineExceeded)
+			} else {
+				trace.WroteRequest(httptrace.WroteRequestInfo{Err: context.DeadlineExceeded})
+			}
+			trace.WroteRequest(httptrace.WroteRequestInfo{})
+			if tc.response {
+				resp := &http.Response{StatusCode: 200, Body: &auditNetworkTimeoutBody{}}
+				p.FinishHTTP(resp, nil)
+				_, err := io.ReadAll(resp.Body)
+				require.ErrorIs(t, err, context.DeadlineExceeded)
+				require.NoError(t, resp.Body.Close())
+			} else {
+				p.Finish(context.DeadlineExceeded)
+			}
+			rows := sink.snapshot()
+			completed := rows[len(rows)-1]
+			require.Equal(t, "upstream_egress_completed", completed["event"])
+			require.Equal(t, "timeout", completed["last_network_error_class"])
+			require.Equal(t, tc.wantPhase, completed["last_network_error_phase"])
+		})
+	}
+}
+
+type auditNetworkTimeoutBody struct{}
+
+func (*auditNetworkTimeoutBody) Read([]byte) (int, error) {
+	return 0, context.DeadlineExceeded
+}
+func (*auditNetworkTimeoutBody) Close() error { return nil }
+
 func TestEgressAuditNetworkMissingHooksAndBodyFailure(t *testing.T) {
 	sink := captureAuditLogs(t)
 	p := NewEgressAuditor("", nil).Begin(t.Context(), nil, "", "https://example.invalid", "http")
