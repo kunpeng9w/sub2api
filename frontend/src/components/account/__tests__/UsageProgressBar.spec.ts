@@ -13,6 +13,25 @@ vi.mock('vue-i18n', async () => {
 })
 
 describe('UsageProgressBar', () => {
+  it('未激活窗口显示状态，刷新后不重新开始五小时倒计时', async () => {
+    const wrapper = mount(UsageProgressBar, {
+      props: {
+        label: '5h', utilization: 0, windowInactive: true,
+        resetsAt: '2026-03-17T05:00:00Z', showNowWhenIdle: true, color: 'indigo'
+      }
+    })
+
+    expect(wrapper.text()).toContain('usage.windowInactive')
+    expect(wrapper.text()).not.toContain('5h 0m')
+    expect(wrapper.text()).not.toContain('usage.resetNow')
+    await wrapper.setProps({ resetsAt: null })
+    expect(wrapper.text()).toContain('usage.windowInactive')
+    await wrapper.setProps({ windowInactive: false, utilization: 1, resetsAt: '2026-03-17T04:59:00Z' })
+    expect(wrapper.text()).toContain('4h 59m')
+    expect(wrapper.text()).not.toContain('usage.windowInactive')
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-17T00:00:00Z'))

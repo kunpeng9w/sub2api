@@ -353,6 +353,7 @@ export default {
     accountBilled: 'Account billed',
     resetNow: 'Now',
     resetPending: 'Pending refresh',
+    windowInactive: 'Window not active',
     accountMultiplier: 'Account rate',
     avgDuration: 'Avg Duration',
     inSelectedRange: 'in selected range',

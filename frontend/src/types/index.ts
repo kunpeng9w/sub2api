@@ -1438,6 +1438,7 @@ export interface QuotaEstimate {
 }
 
 export interface UsageProgress {
+  window_inactive?: boolean
   sampled_at?: string | null
   estimate?: QuotaEstimate | null
   utilization: number // Percentage (0-100+, 100 = 100%)

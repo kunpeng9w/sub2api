@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import AccountUsageCell from '../AccountUsageCell.vue'
+import UsageProgressBar from '../UsageProgressBar.vue'
 import type { Account } from '@/types'
 
 const { getUsage } = vi.hoisted(() => ({
@@ -113,6 +114,24 @@ const cnUsageCellStubs = {
 }
 
 describe('AccountUsageCell', () => {
+  it('OpenAI 未激活状态传递到两个用量窗口', async () => {
+    getUsage.mockResolvedValue({
+      five_hour: { utilization: 0, resets_at: null, remaining_seconds: 0, window_inactive: true },
+      seven_day: { utilization: 0, resets_at: null, remaining_seconds: 0, window_inactive: true }
+    })
+    const wrapper = mount(AccountUsageCell, {
+      props: { account: makeAccount({ id: 2004, platform: 'openai', type: 'oauth' }) },
+      global: { stubs: { OpenAIQuotaResetCell: true } }
+    })
+    await flushPromises()
+    const bars = wrapper.findAllComponents(UsageProgressBar)
+    expect(bars).toHaveLength(2)
+    expect(bars.every((bar) => bar.props('windowInactive') === true)).toBe(true)
+    expect(wrapper.text().match(/usage.windowInactive/g)).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('usage.resetNow')
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     getUsage.mockReset()
     Object.defineProperty(window, 'matchMedia', {

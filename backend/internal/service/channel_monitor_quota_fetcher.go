@@ -330,10 +330,11 @@ func appendProgressTier(tiers *[]domain.MonitorQuotaTier, window, label string, 
 		return
 	}
 	tier := domain.MonitorQuotaTier{
-		Window:      window,
-		Label:       label,
-		UsedPercent: p.Utilization,
-		Estimate:    p.Estimate, SampledAt: p.SampledAt,
+		Window:         window,
+		Label:          label,
+		UsedPercent:    p.Utilization,
+		WindowInactive: p.WindowInactive,
+		Estimate:       p.Estimate, SampledAt: p.SampledAt,
 	}
 	if p.ResetsAt != nil {
 		tier.ResetAt = p.ResetsAt.UTC().Format(time.RFC3339)

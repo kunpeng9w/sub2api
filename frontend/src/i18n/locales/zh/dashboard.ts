@@ -358,6 +358,7 @@ export default {
     accountBilled: '账号计费',
     resetNow: '现在',
     resetPending: '待刷新',
+    windowInactive: '窗口未激活',
     accountMultiplier: '账号倍率',
     avgDuration: '平均耗时',
     inSelectedRange: '所选范围内',

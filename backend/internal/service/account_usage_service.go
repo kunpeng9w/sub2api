@@ -155,10 +155,11 @@ type UsageProgress struct {
 	SampledAt         *time.Time `json:"sampled_at,omitempty"`
 	sampleTimeMissing bool
 	Estimate          *domain.QuotaEstimate `json:"estimate,omitempty"`
-	Utilization       float64               `json:"utilization"`            // 使用率百分比 (0-100+，100表示100%)
-	ResetsAt          *time.Time            `json:"resets_at"`              // 重置时间
-	RemainingSeconds  int                   `json:"remaining_seconds"`      // 距重置剩余秒数
-	WindowStats       *WindowStats          `json:"window_stats,omitempty"` // 窗口期统计（从窗口开始到当前的使用量）
+	Utilization       float64               `json:"utilization"`               // 使用率百分比 (0-100+，100表示100%)
+	ResetsAt          *time.Time            `json:"resets_at"`                 // 重置时间
+	WindowInactive    bool                  `json:"window_inactive,omitempty"` // 未激活的滚动窗口，不显示推算的重置时间
+	RemainingSeconds  int                   `json:"remaining_seconds"`         // 距重置剩余秒数
+	WindowStats       *WindowStats          `json:"window_stats,omitempty"`    // 窗口期统计（从窗口开始到当前的使用量）
 	UsedRequests      int64                 `json:"used_requests,omitempty"`
 	LimitRequests     int64                 `json:"limit_requests,omitempty"`
 }
@@ -1541,6 +1542,22 @@ func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 	// Partial gateway observations update the account timestamp even when this
 	// window is absent. Only its own percentage sample can bound an estimate.
 	setUsageWindowSample(progress, extra["codex_"+window+"_sampled_at"])
+	// An unused rolling window can report its full duration on every query.
+	// Adding that duration to the sample time invents a moving reset deadline;
+	// it is not evidence that the upstream window has started. Keep this check
+	// against the sampled relative value, not a countdown aged against now.
+	windowMinutes := parseExtraInt(extra["codex_"+window+"_window_minutes"])
+	if windowMinutes <= 0 {
+		if window == "5h" {
+			windowMinutes = 5 * 60
+		} else {
+			windowMinutes = 7 * 24 * 60
+		}
+	}
+	if progress.Utilization == 0 && parseExtraInt(extra[resetAfterKey]) >= windowMinutes*60 {
+		progress.WindowInactive = true
+		return progress
+	}
 	if resetAtRaw, ok := extra[resetAtKey]; ok {
 		if resetAt, err := parseTime(fmt.Sprint(resetAtRaw)); err == nil {
 			progress.ResetsAt = &resetAt

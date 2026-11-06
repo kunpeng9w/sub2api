@@ -28,6 +28,7 @@ export type CheckMode = 'probe' | 'quota' | 'quota_probe'
 
 /** 配额快照中的单个用量窗口（与后端 domain.MonitorQuotaTier 一致）。 */
 export interface MonitorQuotaTier {
+  window_inactive?: boolean
   sampled_at?: string | null
   estimate?: QuotaEstimate | null
   /** 5h | 7d | 7d-sonnet | 7d-fable | 30d | daily | weekly | total */
