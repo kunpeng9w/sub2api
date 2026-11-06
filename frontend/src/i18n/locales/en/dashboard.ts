@@ -498,7 +498,7 @@ export default {
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
     controls: {"noAccount": 'No linked account (select a proxy)',"proxy": "Egress proxy", "chooseProxy": "Select a proxy (required to run)", "accountProxy": "Uses the linked account’s current proxy. Requests stop if it is unavailable.", "visibility": "Visibility", "adminOnly": "Administrators only", "selected": "Selected users", "allUsers": "All users", "searchUsers": "Search username or email", "viewersRequired": "Select at least one user", "autoCheck": "Automatic checks", "neverChecked": "Never checked", "running": "Checking…", "runNow": "Run check", "sampleAvailability": "Check sample availability", "egressMissing": "Proxy missing or unavailable"},
-    estimate: {"total": "Estimated total ${value}", "remaining": "Estimated remaining ${value}", "unavailable": "Estimate unavailable", "sampled": "Sampled {time}", "note": "Estimated from usage recorded by this system"},
+    estimate: {"total": "Estimated total ${value}", "remaining": "Remaining ${value}", "sevenDayShare": "{value}% of 7d", "historical": "Using historical total (sampled {time})", "unavailable": "Estimate unavailable", "sampled": "Sampled {time}", "note": "Estimated from usage recorded by this system"},
     status: {
       operational: 'Operational',
       degraded: 'Degraded',
@@ -575,6 +575,9 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    runAll: 'Check all',
+    runAllProgress: 'Checking {done}/{total}',
+    runAllSummary: 'Checks completed: {completed}; execution failures: {failed}; skipped: {skipped}',
     title: 'Channel Status',
     description: 'Inspect channel availability, latency and recent status',
     searchPlaceholder: 'Search channels...',

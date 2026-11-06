@@ -201,6 +201,7 @@ func ProvideOpenAIQuotaService(
 ) *OpenAIQuotaService {
 	service := NewOpenAIQuotaService(accountRepo, proxyRepo, tokenProvider, privacyClientFactory, referralClient)
 	service.agentIdentityWS = openAIGatewayService
+	service.egressAuditor = EgressAuditorFrom(openAIGatewayService.httpUpstream)
 	return service
 }
 

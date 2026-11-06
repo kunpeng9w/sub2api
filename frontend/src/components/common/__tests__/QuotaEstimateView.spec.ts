@@ -15,4 +15,23 @@ describe('QuotaEstimateView', () => {
     expect(wrapper.text()).not.toContain('30.00')
     wrapper.unmount()
   })
+  it('shows the rounded 5h share and retains historical estimates without restarting a window', () => {
+    const wrapper = mount(QuotaEstimateView, { props: {
+      estimate: { total_cost: 7.33, remaining_cost: 7.33, seven_day_share_percent: 14.998, source: 'historical', sampled_at: '2026-11-05T10:00:00Z' },
+      resetsAt: '2000-01-01T00:00:00Z',
+    } })
+    expect(wrapper.text()).toContain('7.33')
+    expect(wrapper.get('[data-testid="quota-seven-day-share"]').text()).toContain('15')
+    expect(wrapper.attributes('title')).toContain('historical')
+    wrapper.unmount()
+  })
+
+  it('hides a missing or nonfinite denominator result', () => {
+    for (const share of [undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const wrapper = mount(QuotaEstimateView, { props: { estimate: { total_cost: 7.33, remaining_cost: 6.67, seven_day_share_percent: share } } })
+      expect(wrapper.find('[data-testid="quota-seven-day-share"]').exists()).toBe(false)
+      wrapper.unmount()
+    }
+  })
+
 })

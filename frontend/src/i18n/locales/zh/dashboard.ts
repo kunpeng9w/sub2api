@@ -503,7 +503,7 @@ export default {
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
     controls: {"noAccount": '不关联账号（手动选择代理）',"proxy": "出口代理", "chooseProxy": "请选择代理（未配置时无法检测）", "accountProxy": "出口严格使用关联账号当前绑定的代理；不可用时停止请求。", "visibility": "可见范围", "adminOnly": "仅管理员", "selected": "指定用户", "allUsers": "所有用户", "searchUsers": "搜索用户名或邮箱", "viewersRequired": "请至少选择一名用户", "autoCheck": "自动检测", "neverChecked": "尚未检测", "running": "检测中…", "runNow": "立即检测", "sampleAvailability": "检测样本可用率", "egressMissing": "出口未配置或不可用"},
-    estimate: {"total": "预计总额度 ${value}", "remaining": "预计剩余 ${value}", "unavailable": "暂无法估算", "sampled": "采样于 {time}", "note": "按本系统记录用量估算"},
+    estimate: {"total": "预计总额度 ${value}", "remaining": "剩余 ${value}", "sevenDayShare": "占比7d {value}%", "historical": "沿用历史总额度（采样于 {time}）", "unavailable": "暂无法估算", "sampled": "采样于 {time}", "note": "按本系统记录用量估算"},
     status: {
       operational: '正常',
       degraded: '降级',
@@ -580,6 +580,9 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    runAll: '一键全部检测',
+    runAllProgress: '检测中 {done}/{total}',
+    runAllSummary: '检测完成 {completed}，执行失败 {failed}，跳过 {skipped}',
     title: '渠道状态',
     description: '查看渠道可用性、延迟和近期状态',
     searchPlaceholder: '搜索渠道...',

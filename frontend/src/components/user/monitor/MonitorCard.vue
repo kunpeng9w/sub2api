@@ -86,7 +86,7 @@
           {{ checkScheduleLabel }}
         </span>
       </div>
-      <button v-if="item.can_run" type="button" class="btn btn-secondary shrink-0 !px-2 !py-1" :disabled="running" @click.stop="emit('run')">
+      <button v-if="item.can_run" type="button" class="btn btn-secondary shrink-0 !px-2 !py-1" :disabled="running || runDisabled" @click.stop="emit('run')">
         {{ t(running ? 'monitorCommon.controls.running' : 'monitorCommon.controls.runNow') }}
       </button>
     </div>
@@ -122,6 +122,7 @@ const PROVIDER_TINT: Record<string, string> = {
 }
 
 const props = defineProps<{
+  runDisabled?: boolean
   running?: boolean
   item: UserMonitorView
   window: '7d' | '15d' | '30d'

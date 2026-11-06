@@ -54,6 +54,7 @@ type accountRepository struct {
 
 var schedulerNeutralExtraKeyPrefixes = []string{
 	"codex_primary_",
+	service.QuotaEstimateSnapshotPrefix,
 	"codex_secondary_",
 	"codex_5h_",
 	"codex_7d_",

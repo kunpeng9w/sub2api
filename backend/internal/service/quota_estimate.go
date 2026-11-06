@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -29,6 +31,7 @@ func EstimateQuota(cost, percentage float64, start, end, sampled, now time.Time)
 			e.UnavailableReason = "invalid_value"
 			return e
 		}
+		e.Source = "current"
 		e.TotalCost = &total
 		e.RemainingCost = &remaining
 	}
@@ -55,6 +58,7 @@ func (s *AccountUsageService) attachQuotaEstimates(ctx context.Context, account 
 	copy := *usage
 	usage = &copy
 	now := time.Now()
+	defer func() { s.finishQuotaEstimates(ctx, account, usage, now) }()
 	sampled := time.Time{}
 	if usage.UpdatedAt != nil {
 		sampled = *usage.UpdatedAt
@@ -186,5 +190,88 @@ func setPassiveWindowSamples(usage *UsageInfo, extra map[string]any) {
 		key string
 	}{{usage.FiveHour, "5h"}, {usage.SevenDay, "7d"}, {usage.SevenDaySonnet, "7d_sonnet"}, {usage.SevenDayFable, "7d_oi"}} {
 		setPassiveWindowSample(w.p, extra, w.key)
+	}
+}
+
+// QuotaEstimateSnapshot is a display-only capacity observation. It is scoped to
+// the queried account (including Spark shadows), never the credential account.
+type QuotaEstimateSnapshot struct {
+	TotalCost         float64   `json:"total_cost"`
+	SampledAt         time.Time `json:"sampled_at"`
+	SampledAtUnixNano int64     `json:"sampled_at_unix_nano"`
+}
+
+const QuotaEstimateSnapshotPrefix = "quota_estimate_"
+
+type quotaEstimateSnapshotWriter interface {
+	SaveQuotaEstimateSnapshot(context.Context, int64, string, QuotaEstimateSnapshot) (bool, error)
+}
+
+func quotaEstimateHistory(account *Account, window string, now time.Time) *QuotaEstimateSnapshot {
+	raw, err := json.Marshal(account.Extra[QuotaEstimateSnapshotPrefix+window])
+	if err != nil {
+		return nil
+	}
+	var snapshot QuotaEstimateSnapshot
+	if json.Unmarshal(raw, &snapshot) != nil || snapshot.TotalCost <= 0 || math.IsNaN(snapshot.TotalCost) || math.IsInf(snapshot.TotalCost, 0) || snapshot.SampledAt.IsZero() || snapshot.SampledAt.After(now) {
+		return nil
+	}
+	return &snapshot
+}
+
+func (s *AccountUsageService) finishQuotaEstimates(ctx context.Context, account *Account, usage *UsageInfo, now time.Time) {
+	history := map[string]*QuotaEstimateSnapshot{}
+	for _, window := range []struct {
+		key      string
+		progress *UsageProgress
+		duration time.Duration
+	}{{"5h", usage.FiveHour, 5 * time.Hour}, {"7d", usage.SevenDay, 7 * 24 * time.Hour}} {
+		h := quotaEstimateHistory(account, window.key, now)
+		history[window.key] = h
+		p := window.progress
+		if p == nil {
+			continue
+		}
+		e := p.Estimate
+		if e != nil && e.TotalCost != nil && e.RemainingCost != nil && e.SampledAt != nil && e.UnavailableReason == "" {
+			snapshot := QuotaEstimateSnapshot{TotalCost: *e.TotalCost, SampledAt: *e.SampledAt, SampledAtUnixNano: e.SampledAt.UnixNano()}
+			if h == nil || snapshot.SampledAt.After(h.SampledAt) {
+				history[window.key] = &snapshot
+				if writer, ok := s.accountRepo.(quotaEstimateSnapshotWriter); ok {
+					if _, err := writer.SaveQuotaEstimateSnapshot(ctx, account.ID, window.key, snapshot); err != nil {
+						slog.Warn("quota_estimate_snapshot_write_failed", "account_id", account.ID, "window", window.key)
+					}
+				}
+			}
+			continue
+		}
+		// Only an observed zero/unused window can regain full capacity. A
+		// missing window or an elapsed deadline is not evidence of a reset.
+		sample := p.SampledAt
+		if sample == nil && !p.sampleTimeMissing {
+			sample = usage.UpdatedAt
+		}
+		trustedZero := sample != nil && !sample.IsZero() && !sample.After(now) && !p.sampleTimeMissing && p.Utilization == 0 &&
+			(p.WindowInactive || (p.ResetsAt != nil && now.Before(*p.ResetsAt) && sample.Before(*p.ResetsAt) && !sample.Before(p.ResetsAt.Add(-window.duration))))
+		if h != nil && usage.Error == "" && usage.ErrorCode == "" && trustedZero {
+			total := h.TotalCost
+			p.Estimate = &domain.QuotaEstimate{Source: "historical", TotalCost: &total, RemainingCost: &total, SampledAt: &h.SampledAt}
+		}
+	}
+	five := usage.FiveHour
+	if five == nil || five.Estimate == nil || five.Estimate.TotalCost == nil || five.Estimate.UnavailableReason != "" {
+		return
+	}
+	var sevenTotal float64
+	if seven := usage.SevenDay; seven != nil && seven.Estimate != nil && seven.Estimate.TotalCost != nil {
+		sevenTotal = *seven.Estimate.TotalCost
+	} else if h := history["7d"]; h != nil {
+		sevenTotal = h.TotalCost
+	}
+	if sevenTotal > 0 {
+		share := *five.Estimate.TotalCost / sevenTotal * 100
+		if !math.IsNaN(share) && !math.IsInf(share, 0) {
+			five.Estimate.SevenDaySharePercent = &share
+		}
 	}
 }

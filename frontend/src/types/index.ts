@@ -1431,6 +1431,8 @@ export interface WindowStats {
 }
 
 export interface QuotaEstimate {
+  source?: 'current' | 'historical'
+  seven_day_share_percent?: number
   total_cost?: number
   remaining_cost?: number
   sampled_at?: string

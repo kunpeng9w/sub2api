@@ -73,6 +73,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
 
 const props = defineProps<{
+  refreshVersion?: number
   show: boolean
   monitorId: number | null
   title: string
@@ -106,7 +107,7 @@ async function load(id: number) {
 }
 
 watch(
-  () => [props.show, props.monitorId] as const,
+  () => [props.show, props.monitorId, props.refreshVersion] as const,
   ([show, id], _, onCleanup) => {
     onCleanup(() => { requestVersion++ })
     if (!show) {

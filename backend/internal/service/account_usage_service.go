@@ -264,7 +264,8 @@ type ClaudeUsageWindow struct {
 
 // ClaudeUsageResponse Anthropic API返回的usage结构
 type ClaudeUsageResponse struct {
-	FiveHour struct {
+	fiveHourInactive bool
+	FiveHour         struct {
 		Utilization float64 `json:"utilization"`
 		ResetsAt    string  `json:"resets_at"`
 	} `json:"five_hour"`
@@ -280,6 +281,29 @@ type ClaudeUsageResponse struct {
 	// 见 anthropic-ratelimit-unified-representative-claim 头）。上游 usage API
 	// 若不下发该字段，GetUsage 会用被动采样数据回填。
 	SevenDayOverageIncluded ClaudeUsageWindow `json:"seven_day_overage_included"`
+}
+
+// UnmarshalJSON distinguishes an explicit unused Claude window from absent data.
+func (r *ClaudeUsageResponse) UnmarshalJSON(data []byte) error {
+	type plain ClaudeUsageResponse
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var observed struct {
+		FiveHour *struct {
+			Utilization *float64 `json:"utilization"`
+			ResetsAt    *string  `json:"resets_at"`
+		} `json:"five_hour"`
+	}
+	if err := json.Unmarshal(data, &observed); err != nil {
+		return err
+	}
+	*r = ClaudeUsageResponse(decoded)
+	if w := observed.FiveHour; w != nil && w.Utilization != nil && *w.Utilization == 0 && (w.ResetsAt == nil || *w.ResetsAt == "") {
+		r.fiveHourInactive = true
+	}
+	return nil
 }
 
 // ClaudeUsageFetchOptions 包含获取 Claude 用量数据所需的所有选项
@@ -649,6 +673,15 @@ func (s *AccountUsageService) getPassiveUsageForAccount(ctx context.Context, acc
 
 	info.SevenDaySonnet = buildPassiveUsageWindow(account.Extra, "passive_usage_7d_sonnet_utilization", "passive_usage_7d_sonnet_reset")
 	setPassiveWindowSamples(info, account.Extra)
+	// A newer gateway sample supersedes an earlier unused-window observation.
+	if inactive, _ := account.Extra["passive_usage_5h_window_inactive"].(bool); inactive && info.FiveHour.SampledAt != nil {
+		if stamp, err := parseTime(fmt.Sprint(account.Extra["passive_usage_5h_inactive_sampled_at"])); err == nil && stamp.Equal(*info.FiveHour.SampledAt) {
+			info.FiveHour.WindowInactive = true
+			info.FiveHour.Utilization = 0
+			info.FiveHour.ResetsAt = nil
+			info.FiveHour.RemainingSeconds = 0
+		}
+	}
 	// 添加窗口统计
 	s.addWindowStats(ctx, account, info)
 	if account.IsSyntheticUITest() {
@@ -707,6 +740,7 @@ func (s *AccountUsageService) syncActiveToPassive(ctx context.Context, accountID
 
 	if usage.FiveHour != nil {
 		extraUpdates["session_window_utilization"] = usage.FiveHour.Utilization / 100
+		extraUpdates["passive_usage_5h_window_inactive"] = usage.FiveHour.WindowInactive
 	}
 	if usage.SevenDay != nil {
 		extraUpdates["passive_usage_7d_utilization"] = usage.SevenDay.Utilization / 100
@@ -734,6 +768,9 @@ func (s *AccountUsageService) syncActiveToPassive(ctx context.Context, accountID
 			stamp = &now
 		}
 		extraUpdates["passive_usage_sampled_at"] = stamp.UTC().Format(time.RFC3339Nano)
+		if usage.FiveHour != nil {
+			extraUpdates["passive_usage_5h_inactive_sampled_at"] = stamp.UTC().Format(time.RFC3339Nano)
+		}
 		for _, w := range []struct {
 			p   *UsageProgress
 			key string
@@ -1684,7 +1721,8 @@ func (s *AccountUsageService) buildUsageInfo(resp *ClaudeUsageResponse, updatedA
 
 	// 5小时窗口 - 始终创建对象（即使 ResetsAt 为空）
 	info.FiveHour = &UsageProgress{
-		Utilization: resp.FiveHour.Utilization,
+		Utilization:    resp.FiveHour.Utilization,
+		WindowInactive: resp.fiveHourInactive,
 	}
 	if resp.FiveHour.ResetsAt != "" {
 		if fiveHourReset, err := parseTime(resp.FiveHour.ResetsAt); err == nil {

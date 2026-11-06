@@ -40,6 +40,7 @@
         :key="item.id"
         :item="item"
         :running="runningIDs?.has(item.id)"
+        :run-disabled="runDisabled"
         @run="emit('run', item)"
         :window="window"
         :availability-value="resolveAvailability(item)"
@@ -57,6 +58,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import MonitorCard from './MonitorCard.vue'
 
 const props = defineProps<{
+  runDisabled?: boolean
   runningIDs?: Set<number>
   items: UserMonitorView[]
   window: '7d' | '15d' | '30d'
