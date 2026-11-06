@@ -27,3 +27,13 @@
 - [出口审计回归日志](https://github.com/kunpeng9w/sub2api/actions/runs/42251416827/artifacts/13520617820)：`egress-audit-tests-a6d879615df07d6a7704134528b0bee7f76a300c`。
 
 本记录是复验说明；如后续只修改本文，受测可执行代码及构建来源仍为上述源码提交，不能将文档提交号冒充产物源码提交号。
+
+## 审核修复复验
+
+修复源码：`86c70522ee0a590350e442cf5475fc9c9c1fecaa`。请求已成功写完或已收到响应后，最终错误按等待响应/读取响应阶段归类，不再因错误分类相同而沿用已恢复的建连或写入失败阶段。尚未取得这些进度时仍保留具体回调阶段。
+
+- [源码/运维检查](https://github.com/kunpeng9w/sub2api/actions/runs/42254780186)：全部通过，包含组件 race、服务/仓库传输回归和嵌入前端的 Linux amd64 构建。日志确认新增“写入恢复后等待超时”“建连恢复后读取超时”两项用例通过，既有未恢复 TLS 超时阶段断言也通过。
+- [完整 CI](https://github.com/kunpeng9w/sub2api/actions/runs/42254780109)：全部通过，包括后端全量单元及数据库集成测试、Lint、前端和部署脚本检查。
+- [安全扫描](https://github.com/kunpeng9w/sub2api/actions/runs/42254780118)：通过。
+
+本机仅编辑、gofmt 和 `git diff --check`，未运行编译或测试；未部署。原有 Nginx 和速度审计文件改动保留。
