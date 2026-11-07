@@ -628,8 +628,12 @@ func (c *quotaRefreshWaitContext) Done() <-chan struct{} {
 }
 
 func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *testing.T) {
-	for _, cancelLeader := range []bool{true, false} {
-		t.Run(fmt.Sprintf("cancelLeader=%t", cancelLeader), func(t *testing.T) {
+	for _, tc := range []struct{ cancelLeader, restricted bool }{{true, false}, {false, false}, {true, true}, {false, true}} {
+		t.Run(fmt.Sprintf("cancelLeader=%t/restricted=%t", tc.cancelLeader, tc.restricted), func(t *testing.T) {
+			ctx := context.Background()
+			if tc.restricted {
+				ctx = upgradeUsageReader(true)
+			}
 			svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
 			started := make(chan struct{}, 1)
 			release := make(chan struct{})
@@ -660,7 +664,7 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 				}
 			}
 			startCaller := func() (context.CancelFunc, <-chan result) {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(ctx)
 				t.Cleanup(cancel)
 				tracked := &quotaRefreshWaitContext{Context: ctx, waiting: make(chan struct{})}
 				results := make(chan result, 1)
@@ -675,7 +679,7 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 			waitFor(started)
 			cancelSecond, second := startCaller()
 			canceled, survivor := first, second
-			if cancelLeader {
+			if tc.cancelLeader {
 				cancelFirst()
 			} else {
 				cancelSecond()
@@ -689,7 +693,7 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 			require.NotNil(t, got.usage)
 			require.Empty(t, got.usage.Error)
 			require.Equal(t, 12.0, got.usage.FiveHour.Utilization)
-			again, err := svc.GetUsage(context.Background(), id)
+			again, err := svc.GetUsage(ctx, id)
 			require.NoError(t, err)
 			require.Empty(t, again.Error)
 			require.Equal(t, got.usage.UpdatedAt, again.UpdatedAt)
