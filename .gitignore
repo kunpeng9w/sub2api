@@ -206,3 +206,6 @@ __pycache__/
 /ops/validation/logs/
 /ops/config/*.local.*
 /ops/config/**/*.local.*
+
+# Local operational investigations and captured production samples
+/ops/audits/
