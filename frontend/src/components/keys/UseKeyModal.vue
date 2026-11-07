@@ -1057,7 +1057,6 @@ windows_wsl_setup_acknowledged = true
 name = "OpenAI"
 base_url = "${baseUrl}"
 ${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlBasicString(buildCodexModelCatalogUrl(baseUrl))}"\n` : ''}wire_api = "responses"
-supports_websockets = true
 ${generateCodexProviderAuthConfig(apiKey)}
 
 [features]

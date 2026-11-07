@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_only:
+        description: Build the embedded program without running tests
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,6 +19,7 @@ concurrency:
 
 jobs:
   operations:
+    if: ${{ !inputs.build_only }}
     name: Operations configuration and existing unit tests
     runs-on: ubuntu-latest
     steps:
@@ -32,6 +38,7 @@ jobs:
         run: python -m unittest -v test_state.py test_install.py
 
   mihomo-dns:
+    if: ${{ !inputs.build_only }}
     name: Mihomo DNS lifecycle with real systemd and dnsmasq
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -43,6 +50,7 @@ jobs:
         run: sudo env PYTHONDONTWRITEBYTECODE=1 python3 ops/scripts/mihomo-dns/test_lifecycle.py -v
 
   egress-audit:
+    if: ${{ !inputs.build_only }}
     name: Egress audit integration and routing regressions
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -92,11 +100,18 @@ jobs:
           cache-dependency-path: backend/go.sum
       - run: pnpm --dir frontend install --frozen-lockfile
       - name: Verify the production template changes and existing catalog behavior
+        if: ${{ !inputs.build_only }}
         run: |
           set -o pipefail
           pnpm --dir frontend exec vitest run src/components/keys/__tests__/UseKeyModal.spec.ts 2>&1 | tee "$RUNNER_TEMP/template-tests.log"
       - name: Build frontend before the backend embeds it
-        run: pnpm --dir frontend run build
+        run: |
+          if [ "${{ inputs.build_only }}" = "true" ]; then
+            pnpm --dir frontend exec vue-tsc -b
+            pnpm --dir frontend exec vite build
+          else
+            pnpm --dir frontend run build
+          fi
       - name: Build the matching source with actual provenance
         working-directory: backend
         env:
@@ -119,7 +134,11 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/delivery"
           tar -czf "$RUNNER_TEMP/delivery/sub2api-linux-amd64.tar.gz" -C "$RUNNER_TEMP" sub2api
-          cp "$RUNNER_TEMP/template-tests.log" "$RUNNER_TEMP/delivery/"
+          if [ -f "$RUNNER_TEMP/template-tests.log" ]; then
+            cp "$RUNNER_TEMP/template-tests.log" "$RUNNER_TEMP/delivery/"
+          else
+            printf 'Tests skipped: build_only workflow input enabled.\n' > "$RUNNER_TEMP/delivery/tests-skipped.txt"
+          fi
           cp "$RUNNER_TEMP/version.txt" "$RUNNER_TEMP/delivery/version.txt"
           go version -m "$RUNNER_TEMP/sub2api" > "$RUNNER_TEMP/delivery/build-provenance.txt"
           (cd "$RUNNER_TEMP" && sha256sum sub2api) > "$RUNNER_TEMP/delivery/sub2api.sha256"

@@ -424,7 +424,7 @@ describe('UseKeyModal', () => {
     expect(configToml).not.toContain('x-openai-actor-authorization')
     expect(configToml).not.toContain('env_key')
     expect(configToml).not.toContain('image_generation')
-    expect(configToml).toContain('supports_websockets = true')
+    expect(configToml).not.toContain('supports_websockets')
     expect(configToml).not.toContain('responses_websockets_v2')
     const features = configToml?.split('[features]\n')[1]?.split('\n[')[0]
     expect(features).toContain('goals = true')
