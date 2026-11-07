@@ -1,6 +1,6 @@
 # v0.2.20 定制升级
 
-2026-11-07（Asia/Singapore）开始。当前为待验收草稿，状态及最终源码 SHA 以 PR 和交付目录验证清单为准。
+2026-11-07（Asia/Singapore）开始。本记录保留实施与检查过程；最终验收状态及源码 SHA 以 PR 和交付目录验证清单为准。
 
 - 升级 PR：https://github.com/kunpeng9w/sub2api/pull/5 ，目标 `main`，不自动合并。
 - 保留监控 PR：https://github.com/kunpeng9w/sub2api/pull/4 ，不关闭、不合并。

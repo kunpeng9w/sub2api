@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -49,6 +50,10 @@ func TestEgressAuditHTTPUsesCurrentProxyNameWithoutChangingBinding(t *testing.T)
 // and audit wrapper. Closing twice must release exactly once; a retry must check
 // the current proxy again instead of using the old connection pool.
 func TestEgressAuditDrainUpgradeRechecksBindingAndReleasesOnce(t *testing.T) {
+	sink := &upgradeDrainAuditSink{}
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(sink))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 	var calls atomic.Int64
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -91,8 +96,47 @@ func TestEgressAuditDrainUpgradeRechecksBindingAndReleasesOnce(t *testing.T) {
 		require.Zero(t, atomic.LoadInt64(&entry.inFlight), "duplicate close must not decrement below zero")
 	}
 	s.mu.RUnlock()
+	require.EqualValues(t, 1, sink.completed.Load(), "EOF/error and repeated Close emit one completion")
+	require.EqualValues(t, 1, sink.cancelledRead.Load(), "drain cancellation is attributed to response_read")
 	p.Status = "disabled"
 	_, err = s.Do(req.Clone(context.Background()), p.URL(), account.ID, 1)
 	require.ErrorIs(t, err, service.ErrAccountProxyUnavailable)
 	require.EqualValues(t, 1, calls.Load())
+}
+
+// Only counts the fixture account's final record; no asynchronous prober is used.
+type upgradeDrainAuditSink struct {
+	completed     atomic.Int64
+	cancelledRead atomic.Int64
+}
+
+func (s *upgradeDrainAuditSink) Enabled(context.Context, slog.Level) bool { return true }
+func (s *upgradeDrainAuditSink) WithAttrs([]slog.Attr) slog.Handler       { return s }
+func (s *upgradeDrainAuditSink) WithGroup(string) slog.Handler           { return s }
+func (s *upgradeDrainAuditSink) Handle(_ context.Context, record slog.Record) error {
+	if record.Message != "upstream_egress_completed" {
+		return nil
+	}
+	var account int64
+	var outcome, phase, class string
+	record.Attrs(func(attr slog.Attr) bool {
+		switch attr.Key {
+		case "account_id":
+			account = attr.Value.Int64()
+		case "outcome":
+			outcome = attr.Value.String()
+		case "last_network_error_phase":
+			phase = attr.Value.String()
+		case "last_network_error_class":
+			class = attr.Value.String()
+		}
+		return true
+	})
+	if account == 4 {
+		s.completed.Add(1)
+		if outcome == "canceled" && phase == "response_read" && class == "canceled" {
+			s.cancelledRead.Add(1)
+		}
+	}
+	return nil
 }

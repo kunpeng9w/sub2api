@@ -59,7 +59,8 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFlightAndCancellationIsolation(t *t
 	go func() { _, err := svc.GetUsage(context.Background(), id, true); fullDone <- err }()
 	select {
 	case <-started:
-	case <-time.After(2*time.Second): t.Fatal("privileged refresh did not start")
+	case <-time.After(2 * time.Second):
+		t.Fatal("privileged refresh did not start")
 	}
 	ctx, cancel := context.WithCancel(upgradeUsageReader(true))
 	defer cancel()
@@ -67,12 +68,15 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFlightAndCancellationIsolation(t *t
 	go func() { _, err := svc.GetUsage(ctx, id, true); readDone <- err }()
 	select {
 	case <-started: // A read-only refresh must not join the privileged flight.
-	case <-time.After(2*time.Second): t.Fatal("restricted reader joined privileged flight")
+	case <-time.After(2 * time.Second):
+		t.Fatal("restricted reader joined privileged flight")
 	}
 	cancel()
 	select {
-	case err := <-readDone: require.ErrorIs(t, err, context.Canceled)
-	case <-time.After(time.Second): t.Fatal("caller cancellation blocked")
+	case err := <-readDone:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("caller cancellation blocked")
 	}
 	// Release both independent requests; only the privileged one may fall back.
 	upstream.mu.Lock()
@@ -81,13 +85,16 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFlightAndCancellationIsolation(t *t
 	release <- struct{}{}
 	release <- struct{}{}
 	select {
-	case err := <-fullDone: require.NoError(t, err)
-	case <-time.After(3*time.Second): t.Fatal("restricted caller cancelled shared upstream")
+	case err := <-fullDone:
+		require.NoError(t, err)
+	case <-time.After(3 * time.Second):
+		t.Fatal("restricted caller cancelled shared upstream")
 	}
 	settled := svc.cache.openAIUsageFlight.DoChan(fmt.Sprintf("usage:%d:read-only", id), func() (any, error) { return nil, nil })
 	select {
 	case <-settled:
-	case <-time.After(3*time.Second): t.Fatal("read-only refresh did not finish")
+	case <-time.After(3 * time.Second):
+		t.Fatal("read-only refresh did not finish")
 	}
 	require.Len(t, upstream.modelLog(), 1)
 }

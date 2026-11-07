@@ -70,7 +70,7 @@ INSERT INTO channel_monitor_users(monitor_id,user_id) VALUES(903,901);`)
 					var name, visibility, endpoint, secret, model string
 					var auto bool
 					var proxy, order, viewers int
-					require.NoError(t, db.QueryRowContext(ctx, `SELECT name,visibility,endpoint,api_key_encrypted,primary_model,auto_check_enabled,proxy_id,sort_order FROM channel_monitors WHERE id=903`).Scan(&name,&visibility,&endpoint,&secret,&model,&auto,&proxy,&order))
+					require.NoError(t, db.QueryRowContext(ctx, `SELECT name,visibility,endpoint,api_key_encrypted,primary_model,auto_check_enabled,proxy_id,sort_order FROM channel_monitors WHERE id=903`).Scan(&name, &visibility, &endpoint, &secret, &model, &auto, &proxy, &order))
 					require.Equal(t, "upgrade-monitor", name)
 					require.Equal(t, "selected", visibility)
 					require.Equal(t, "https://upstream.invalid", endpoint)
