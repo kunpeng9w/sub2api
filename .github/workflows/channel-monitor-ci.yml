@@ -45,6 +45,8 @@ jobs:
         with:
           name: monitor-generated-${{ github.sha }}
           path: ${{ runner.temp }}/generated.patch
+      - name: Require committed generated source
+        run: git diff --exit-code
       - name: Unit regression without public network
         working-directory: backend
         run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -tags=unit -p 2 ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/httpclient ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m

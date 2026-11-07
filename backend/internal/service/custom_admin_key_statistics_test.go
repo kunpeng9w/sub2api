@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/adminaccess"
@@ -126,26 +125,24 @@ func TestScopedAdminBatchRejectsWholeRequestBeforeData(t *testing.T) {
 }
 
 func TestScopedAdminSnapshotWriteDoesNotNotifyAutomaticReset(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		a := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth, GroupIDs: []int64{1}}
-		repo := &stubQuotaAccountRepo{accounts: map[int64]*Account{1: a}}
-		svc := &AccountUsageService{accountRepo: repo}
-		notifier := NewOpenAIQuotaAutoResetService(nil, nil, nil, nil, nil, nil, nil)
+	svc, repo, upstream, id := quotaRefreshFixture(t, false, false)
+	notifier := NewOpenAIQuotaAutoResetService(nil, nil, nil, nil, nil, nil, nil)
+	openAIAutoResetNotifierRegistry.Lock()
+	previous := openAIAutoResetNotifierRegistry.service
+	openAIAutoResetNotifierRegistry.service = notifier
+	openAIAutoResetNotifierRegistry.Unlock()
+	defer func() {
 		openAIAutoResetNotifierRegistry.Lock()
-		previous := openAIAutoResetNotifierRegistry.service
-		openAIAutoResetNotifierRegistry.service = notifier
+		openAIAutoResetNotifierRegistry.service = previous
 		openAIAutoResetNotifierRegistry.Unlock()
-		defer func() {
-			openAIAutoResetNotifierRegistry.Lock()
-			openAIAutoResetNotifierRegistry.service = previous
-			openAIAutoResetNotifierRegistry.Unlock()
-			notifier.cancel()
-		}()
-		svc.persistOpenAICodexProbeSnapshotContext(scopedStatisticsServiceContext("accounts.usage.read"), 1, map[string]any{"codex_5h_used_percent": 25.0})
-		synctest.Wait()
-		require.Equal(t, 1, repo.extraUpdateCalls)
-		require.Empty(t, notifier.queue)
-	})
+		notifier.cancel()
+	}()
+	usage, err := svc.GetUsage(upgradeUsageReader(true), id, true)
+	require.NoError(t, err)
+	require.Empty(t, usage.Error)
+	require.Len(t, repo.writes, 1)
+	require.Empty(t, notifier.queue)
+	require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
 }
 
 func TestScopedAdminQuotaHeaderReloadRechecksScope(t *testing.T) {
