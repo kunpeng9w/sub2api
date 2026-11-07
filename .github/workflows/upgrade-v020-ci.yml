@@ -1,0 +1,68 @@
+name: Upgrade v0.2.20 verification
+on:
+  push:
+    branches: [codex/merge-upstream-v0.2.20]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: upgrade-v020-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  generated:
+    name: Generate source and lockfile for review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Resolve the locked frontend dependencies
+        run: pnpm --dir frontend install --lockfile-only
+      - name: Generate Ent, Wire and format tracked Go files
+        working-directory: backend
+        run: |
+          go generate ./ent
+          GOFLAGS=-mod=mod go generate ./cmd/server
+          git ls-files -z '*.go' | xargs -0 gofmt -w
+      - name: Save reviewable changes
+        if: always()
+        run: git diff --binary > "$RUNNER_TEMP/upgrade-generated.patch"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: upgrade-generated-${{ github.sha }}
+          path: ${{ runner.temp }}/upgrade-generated.patch
+      - name: Require generated changes to be committed
+        run: git diff --exit-code
+  frontend-full:
+    name: Complete frontend unit suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - name: Full frontend tests including MCP, permissions and all exports
+        run: |
+          set -o pipefail
+          bash ops/changes/20261105-channel-monitor/test-isolated.sh pnpm --dir frontend exec vitest run --maxWorkers=2 --minWorkers=1 2>&1 | tee "$RUNNER_TEMP/frontend-full.log"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: upgrade-frontend-${{ github.sha }}
+          path: ${{ runner.temp }}/frontend-full.log
