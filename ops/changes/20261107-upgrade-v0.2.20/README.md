@@ -26,6 +26,8 @@
 - [CI](https://github.com/kunpeng9w/sub2api/actions/runs/42355806182)、[源码/运维](https://github.com/kunpeng9w/sub2api/actions/runs/42355806189)、[Security Scan](https://github.com/kunpeng9w/sub2api/actions/runs/42355806169)。首轮安全扫描成功；源码检查发现历史本地审计目录链接已失效，修为本地目录说明。
 - [监控](https://github.com/kunpeng9w/sub2api/actions/runs/42355806211)、[额度刷新](https://github.com/kunpeng9w/sub2api/actions/runs/42355806183)、[出口专项](https://github.com/kunpeng9w/sub2api/actions/runs/42355818817)。首轮额度检查拦截未格式化文件，已应用远程补丁；测试编译发现旧 probe 方法测试，已适配新入口。
 
+中间提交 `dc5bcd1eeb55f0530cf34028ac103d27b9e88c44` 的 [迁移及完整前端检查](https://github.com/kunpeng9w/sub2api/actions/runs/42356594896) 已确认空库、精确定制基线升级与三次启动幂等性成功；[源码/运维](https://github.com/kunpeng9w/sub2api/actions/runs/42356594846) 的运维、DNS、审计和嵌入构建成功。完整后端测试发现上游 JWT/全权密钥旧用例仍期望直接 probe，已改为通过 quota API 验证 API 优先行为；跨组件工作流补齐已有监控隔离标志。Lint 发现的类型断言检查和格式差异已修正。版本输出捕获补上标准错误流并核对版本/SHA/时间，构建来源补记 `source`。这些修复必须在后续最终源码上重新验证；本段不代表最终验收通过。
+
 最终结果将写入仓库外交付清单 `verification.json`，绑定完整源码 SHA 和各 Actions run URL。只有全部必需工作流成功、生成代码无差异、PR 脱离草稿并完成产物核对后才算源码升级验收。CI 不证明生产升级成功。
 
 ## 本机配置候选（未应用）

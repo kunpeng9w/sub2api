@@ -110,7 +110,9 @@ jobs:
           go build -mod=readonly -tags=embed -trimpath \
             -ldflags "-s -w -X main.Version=$source_version -X main.Commit=$source_commit -X main.Date=$build_date -X main.BuildType=source" \
             -o "$RUNNER_TEMP/sub2api" ./cmd/server
-          "$RUNNER_TEMP/sub2api" -version
+          "$RUNNER_TEMP/sub2api" -version > "$RUNNER_TEMP/version.txt" 2>&1
+          grep -F "Sub2API $source_version (commit: $source_commit, built: $build_date)" "$RUNNER_TEMP/version.txt"
+          printf '%s\n' "$build_date" > "$RUNNER_TEMP/build-date.txt"
           go version -m "$RUNNER_TEMP/sub2api"
           sha256sum "$RUNNER_TEMP/sub2api"
       - name: Package the embedded Linux amd64 program
@@ -118,14 +120,17 @@ jobs:
           mkdir -p "$RUNNER_TEMP/delivery"
           tar -czf "$RUNNER_TEMP/delivery/sub2api-linux-amd64.tar.gz" -C "$RUNNER_TEMP" sub2api
           cp "$RUNNER_TEMP/template-tests.log" "$RUNNER_TEMP/delivery/"
-          "$RUNNER_TEMP/sub2api" -version > "$RUNNER_TEMP/delivery/version.txt"
+          cp "$RUNNER_TEMP/version.txt" "$RUNNER_TEMP/delivery/version.txt"
           go version -m "$RUNNER_TEMP/sub2api" > "$RUNNER_TEMP/delivery/build-provenance.txt"
           (cd "$RUNNER_TEMP" && sha256sum sub2api) > "$RUNNER_TEMP/delivery/sub2api.sha256"
           source_version=$(backend/scripts/resolve-version.sh)
           cd "$RUNNER_TEMP/delivery"
           sha256sum sub2api-linux-amd64.tar.gz > SHA256SUMS
-          printf 'source_version=%s\nsource_commit=%s\nactions_run=%s/%s/actions/runs/%s\n' \
-            "$source_version" "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > build-info.txt
+          printf 'source_version=%s\nsource_commit=%s\nbuild_date=%s\nbuild_type=source\nactions_run=%s/%s/actions/runs/%s\n' \
+            "$source_version" "$GITHUB_SHA" "$(cat "$RUNNER_TEMP/build-date.txt")" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > build-info.txt
+          sha256sum -c SHA256SUMS
+      - name: Require a clean source tree after the embedded build
+        run: git diff --exit-code
       - uses: actions/upload-artifact@v7
         with:
           name: sub2api-linux-amd64-${{ github.sha }}

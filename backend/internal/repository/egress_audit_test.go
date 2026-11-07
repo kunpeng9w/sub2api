@@ -75,7 +75,8 @@ func TestEgressAuditDrainUpgradeRechecksBindingAndReleasesOnce(t *testing.T) {
 	p := strictEgressBoundProxy(t, proxy.URL)
 	account := &service.Account{ID: 4, ProxyID: &p.ID, Proxy: p}
 	proxies := &strictEgressProxies{value: p}
-	s := strictEgressHTTPUpstream(t, nil, &strictEgressAccounts{value: account}, proxies).(*httpUpstreamService)
+	s, ok := strictEgressHTTPUpstream(t, nil, &strictEgressAccounts{value: account}, proxies).(*httpUpstreamService)
+	require.True(t, ok)
 	s.audit = service.NewEgressAuditor("", nil)
 	client, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -112,7 +113,7 @@ type upgradeDrainAuditSink struct {
 
 func (s *upgradeDrainAuditSink) Enabled(context.Context, slog.Level) bool { return true }
 func (s *upgradeDrainAuditSink) WithAttrs([]slog.Attr) slog.Handler       { return s }
-func (s *upgradeDrainAuditSink) WithGroup(string) slog.Handler           { return s }
+func (s *upgradeDrainAuditSink) WithGroup(string) slog.Handler            { return s }
 func (s *upgradeDrainAuditSink) Handle(_ context.Context, record slog.Record) error {
 	if record.Message != "upstream_egress_completed" {
 		return nil

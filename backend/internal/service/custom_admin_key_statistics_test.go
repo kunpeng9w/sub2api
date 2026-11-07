@@ -5,7 +5,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/adminaccess"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	httppool "github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 	"github.com/stretchr/testify/require"
 )
@@ -209,19 +207,14 @@ func TestScopedAdminQuotaHeaderParentResolveFailureFailsClosed(t *testing.T) {
 	require.Equal(t, 404, infraerrors.Code(err))
 }
 
-type scopedUsageRoundTripper func(*http.Request) (*http.Response, error)
-
-func (f scopedUsageRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
-
-func TestScopedAdminOpenAIUsageRefreshNeverGeneratesModelRequests(t *testing.T) {
+func TestScopedAdminOpenAIUsageRefreshPrefersQuotaAPI(t *testing.T) {
 	for _, tc := range []struct {
 		name                     string
 		restricted, shadow, full bool
-		wantModel                int
 		wantUsage                float64
 	}{
-		{"受限普通账户", true, false, false, 0, 37}, {"受限影子账户", true, true, false, 0, 67},
-		{"JWT普通账户", false, false, false, 1, 98}, {"全权密钥普通账户", false, false, true, 1, 98},
+		{"受限普通账户", true, false, false, 37}, {"受限影子账户", true, true, false, 67},
+		{"JWT普通账户", false, false, false, 37}, {"全权密钥普通账户", false, false, true, 37},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			parentID := int64(2)
@@ -250,19 +243,6 @@ func TestScopedAdminOpenAIUsageRefreshNeverGeneratesModelRequests(t *testing.T) 
 			}))
 			defer upstream.Close()
 			quota := NewOpenAIQuotaService(repo, nil, NewOpenAITokenProvider(repo, nil, nil), newQuotaRedirectingFactory(upstream), nil)
-			client, err := httppool.GetClient(httppool.Options{Timeout: 15 * time.Second, ResponseHeaderTimeout: 10 * time.Second})
-			require.NoError(t, err)
-			previous := client.Transport
-			defer func() { client.Transport = previous }()
-			modelCalls := 0
-			client.Transport = scopedUsageRoundTripper(func(r *http.Request) (*http.Response, error) {
-				modelCalls++
-				headers := make(http.Header)
-				headers.Set("x-codex-primary-used-percent", "98")
-				headers.Set("x-codex-primary-window-minutes", "300")
-				headers.Set("x-codex-primary-reset-after-seconds", "3600")
-				return &http.Response{StatusCode: 200, Header: headers, Body: io.NopCloser(strings.NewReader(""))}, nil
-			})
 			svc := &AccountUsageService{accountRepo: repo, openAIQuotaService: quota, cache: NewUsageCache()}
 			ctx := context.Background()
 			if tc.restricted {
@@ -273,13 +253,9 @@ func TestScopedAdminOpenAIUsageRefreshNeverGeneratesModelRequests(t *testing.T) 
 			}
 			usage, err := svc.GetUsageForAccount(ctx, a, true)
 			require.NoError(t, err)
-			require.Equal(t, tc.wantModel, modelCalls, "读取额度不能合成模型消费请求")
-			if tc.restricted {
-				require.Equal(t, 1, quotaCalls)
-				require.Zero(t, nonReadCalls)
-			} else {
-				require.Zero(t, quotaCalls)
-			}
+			require.Empty(t, usage.Error)
+			require.Equal(t, 1, quotaCalls)
+			require.Zero(t, nonReadCalls, "successful quota reads must not synthesize model requests")
 			require.NotNil(t, usage.FiveHour)
 			require.Equal(t, tc.wantUsage, usage.FiveHour.Utilization)
 			select {
