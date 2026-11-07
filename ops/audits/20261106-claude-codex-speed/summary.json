@@ -1,0 +1,42 @@
+{
+  "claude_lt80": {
+    "window_count": 26,
+    "windows_with_codex_lt10": 25,
+    "anthropic": {
+      "n": 206,
+      "avg_tps": 47.98188287466335,
+      "lt10_n": 15,
+      "ttft_avg_s": 11.296228155339806,
+      "post_ttft_weighted_tps": 103.95498366946525
+    },
+    "openai": {
+      "n": 391,
+      "avg_tps": 16.6175002433083,
+      "lt10_n": 155,
+      "ttft_avg_s": 34.759189743589744,
+      "post_ttft_weighted_tps": 41.02454159674788
+    },
+    "rx_mbps": 0.6634615384615384,
+    "tx_mbps": 0.6569230769230769
+  },
+  "claude_ge80": {
+    "window_count": 6,
+    "windows_with_codex_lt10": 4,
+    "anthropic": {
+      "n": 141,
+      "avg_tps": 83.73826580183693,
+      "lt10_n": 1,
+      "ttft_avg_s": 1.6480212765957447,
+      "post_ttft_weighted_tps": 111.13382393022621
+    },
+    "openai": {
+      "n": 252,
+      "avg_tps": 19.67615923357164,
+      "lt10_n": 57,
+      "ttft_avg_s": 7.194051587301587,
+      "post_ttft_weighted_tps": 45.885745565769945
+    },
+    "rx_mbps": 3.0083333333333333,
+    "tx_mbps": 2.8066666666666666
+  }
+}

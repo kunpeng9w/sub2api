@@ -1,0 +1,5182 @@
+[
+  {
+    "time": "2026-11-07T08:40:10.324842+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31602.0,
+          "bytes_acked": 31603.0,
+          "bytes_received": 29435.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.236/2.282",
+          "busy": "5560ms",
+          "rwnd_limited": "746ms(13.4%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 32,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13494.0,
+          "bytes_received": 13662.0,
+          "unacked": 1.0,
+          "snd_wnd": 64512.0,
+          "rtt": "253.679/24.124",
+          "busy": "66150ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467788.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "39190",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 21305.0,
+          "bytes_retrans": 2184.0,
+          "bytes_acked": 19122.0,
+          "bytes_received": 974167.0,
+          "snd_wnd": 7168.0,
+          "rtt": "251.847/6.371",
+          "retrans": "0/2",
+          "busy": "3819ms",
+          "delivery_rate": "89800bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7300.0,
+          "snd_wnd": 7168.0,
+          "rtt": "254.616/20.997",
+          "busy": "7514ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7298.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.1/19.418",
+          "busy": "7641ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11644.0,
+          "bytes_acked": 11645.0,
+          "bytes_received": 12461.0,
+          "snd_wnd": 7168.0,
+          "rtt": "261.411/21.121",
+          "busy": "56838ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8203.0,
+          "bytes_acked": 8204.0,
+          "bytes_received": 419739.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.996/17.578",
+          "busy": "1640ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 93711.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 93680.0,
+          "bytes_received": 756247.0,
+          "snd_wnd": 133632.0,
+          "rtt": "256.534/30.294",
+          "retrans": "0/1",
+          "busy": "68492ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 3833.0,
+          "bytes_acked": 3834.0,
+          "bytes_received": 143835.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.782/32.662",
+          "busy": "1253ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38730.0,
+          "bytes_acked": 38731.0,
+          "bytes_received": 36253.0,
+          "snd_wnd": 64512.0,
+          "rtt": "244.352/21.771",
+          "busy": "59918ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 96,
+        "metrics": {
+          "cwnd": 25.0,
+          "bytes_sent": 11183289.0,
+          "bytes_retrans": 1143344.0,
+          "bytes_acked": 10039850.0,
+          "bytes_received": 1630831.0,
+          "unacked": 2.0,
+          "snd_wnd": 735744.0,
+          "rtt": "375.166/41.644",
+          "retrans": "0/828",
+          "busy": "104542ms",
+          "rwnd_limited": "958ms(0.9%)",
+          "delivery_rate": "558936bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=0.66 avg60=4.48 avg300=6.27 total=4569686964\nfull avg10=0.50 avg60=3.90 avg300=5.56 total=4020505048",
+    "io_pressure": "some avg10=4.98 avg60=10.86 avg300=13.04 total=11958569574\nfull avg10=4.33 avg60=9.45 avg300=11.29 total=10248622032"
+  },
+  {
+    "time": "2026-11-07T08:40:12.392458+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31602.0,
+          "bytes_acked": 31603.0,
+          "bytes_received": 29435.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.236/2.282",
+          "busy": "5560ms",
+          "rwnd_limited": "746ms(13.4%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467788.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "39190",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 21305.0,
+          "bytes_retrans": 2184.0,
+          "bytes_acked": 19122.0,
+          "bytes_received": 976967.0,
+          "snd_wnd": 7168.0,
+          "rtt": "251.847/6.371",
+          "retrans": "0/2",
+          "busy": "3819ms",
+          "delivery_rate": "89800bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7300.0,
+          "snd_wnd": 7168.0,
+          "rtt": "254.616/20.997",
+          "busy": "7514ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7298.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.1/19.418",
+          "busy": "7641ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11644.0,
+          "bytes_acked": 11645.0,
+          "bytes_received": 12461.0,
+          "snd_wnd": 7168.0,
+          "rtt": "261.411/21.121",
+          "busy": "56838ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8203.0,
+          "bytes_acked": 8204.0,
+          "bytes_received": 419739.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.996/17.578",
+          "busy": "1640ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 93711.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 93680.0,
+          "bytes_received": 767420.0,
+          "snd_wnd": 133632.0,
+          "rtt": "256.534/30.294",
+          "retrans": "0/1",
+          "busy": "68492ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 3833.0,
+          "bytes_acked": 3834.0,
+          "bytes_received": 143835.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.782/32.662",
+          "busy": "1253ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 48,
+        "metrics": {
+          "cwnd": 25.0,
+          "bytes_sent": 11183481.0,
+          "bytes_retrans": 1143344.0,
+          "bytes_acked": 10040090.0,
+          "bytes_received": 1679831.0,
+          "unacked": 1.0,
+          "snd_wnd": 735744.0,
+          "rtt": "387.538/23.88",
+          "retrans": "0/828",
+          "busy": "105716ms",
+          "rwnd_limited": "958ms(0.9%)",
+          "delivery_rate": "558936bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=0.72 avg60=4.37 avg300=6.24 total=4569704123\nfull avg10=0.59 avg60=3.81 avg300=5.53 total=4020520137",
+    "io_pressure": "some avg10=4.80 avg60=10.63 avg300=12.98 total=11958621635\nfull avg10=4.09 avg60=9.24 avg300=11.23 total=10248668372"
+  },
+  {
+    "time": "2026-11-07T08:40:14.425467+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31602.0,
+          "bytes_acked": 31603.0,
+          "bytes_received": 29435.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.236/2.282",
+          "busy": "5560ms",
+          "rwnd_limited": "746ms(13.4%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467788.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "39190",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 21305.0,
+          "bytes_retrans": 2184.0,
+          "bytes_acked": 19122.0,
+          "bytes_received": 1002167.0,
+          "snd_wnd": 7168.0,
+          "rtt": "251.847/6.371",
+          "retrans": "0/2",
+          "busy": "3819ms",
+          "delivery_rate": "89800bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7300.0,
+          "snd_wnd": 7168.0,
+          "rtt": "254.616/20.997",
+          "busy": "7514ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7298.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.1/19.418",
+          "busy": "7641ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11676.0,
+          "bytes_acked": 11677.0,
+          "bytes_received": 12489.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.714/22.446",
+          "busy": "57126ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 434219.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 93999.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 93968.0,
+          "bytes_received": 795560.0,
+          "snd_wnd": 136704.0,
+          "rtt": "254.579/26.63",
+          "retrans": "0/1",
+          "busy": "68733ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 152235.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 1533,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 1583.0,
+          "bytes_acked": 51.0,
+          "bytes_received": 14.0,
+          "unacked": 2.0,
+          "snd_wnd": 65536.0,
+          "rtt": "240.03/51.132",
+          "busy": "856ms",
+          "delivery_rate": "48336bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48954",
+        "recv_q": 0,
+        "send_q": 1533,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 1583.0,
+          "bytes_acked": 51.0,
+          "bytes_received": 14.0,
+          "unacked": 2.0,
+          "snd_wnd": 65536.0,
+          "rtt": "228.645/48.754",
+          "busy": "769ms",
+          "delivery_rate": "50728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 208049,
+        "metrics": {
+          "cwnd": 22.0,
+          "bytes_sent": 11414183.0,
+          "bytes_retrans": 1157344.0,
+          "bytes_acked": 10226040.0,
+          "bytes_received": 1692809.0,
+          "unacked": 22.0,
+          "notsent": 177249.0,
+          "snd_wnd": 705024.0,
+          "rtt": "243.693/0.591",
+          "retrans": "0/838",
+          "busy": "107522ms",
+          "rwnd_limited": "958ms(0.9%)",
+          "delivery_rate": "915976bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=1.31 avg60=4.36 avg300=6.22 total=4569811226\nfull avg10=0.85 avg60=3.75 avg300=5.50 total=4020580096",
+    "io_pressure": "some avg10=5.20 avg60=10.51 avg300=12.94 total=11958830994\nfull avg10=4.07 avg60=9.07 avg300=11.18 total=10248785106"
+  },
+  {
+    "time": "2026-11-07T08:40:16.462402+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31602.0,
+          "bytes_acked": 31603.0,
+          "bytes_received": 29435.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.236/2.282",
+          "busy": "5560ms",
+          "rwnd_limited": "746ms(13.4%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467788.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "39190",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 21305.0,
+          "bytes_retrans": 2184.0,
+          "bytes_acked": 19122.0,
+          "bytes_received": 1028767.0,
+          "snd_wnd": 7168.0,
+          "rtt": "251.847/6.371",
+          "retrans": "0/2",
+          "busy": "3819ms",
+          "delivery_rate": "89800bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7300.0,
+          "snd_wnd": 7168.0,
+          "rtt": "254.616/20.997",
+          "busy": "7514ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5710.0,
+          "bytes_acked": 5711.0,
+          "bytes_received": 7298.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.1/19.418",
+          "busy": "7641ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11676.0,
+          "bytes_acked": 11677.0,
+          "bytes_received": 12489.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.714/22.446",
+          "busy": "57126ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 487795.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 93999.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 93968.0,
+          "bytes_received": 795560.0,
+          "snd_wnd": 136704.0,
+          "rtt": "254.579/26.63",
+          "retrans": "0/1",
+          "busy": "68733ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 216635.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 257425,
+        "metrics": {
+          "cwnd": 12.0,
+          "bytes_sent": 210429.0,
+          "bytes_retrans": 66608.0,
+          "bytes_acked": 94590.0,
+          "bytes_received": 5202.0,
+          "unacked": 34.0,
+          "notsent": 208193.0,
+          "snd_wnd": 226304.0,
+          "rtt": "239.58/0.225",
+          "retrans": "12/46",
+          "busy": "2884ms",
+          "delivery_rate": "386320bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 169492,
+        "metrics": {
+          "cwnd": 4.0,
+          "bytes_sent": 11521983.0,
+          "bytes_retrans": 1196544.0,
+          "bytes_acked": 10297440.0,
+          "bytes_received": 1692879.0,
+          "unacked": 20.0,
+          "notsent": 141492.0,
+          "snd_wnd": 722432.0,
+          "rtt": "243.606/1.005",
+          "retrans": "4/866",
+          "busy": "109562ms",
+          "rwnd_limited": "958ms(0.9%)",
+          "delivery_rate": "92136bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=1.26 avg60=4.25 avg300=6.18 total=4569812555\nfull avg10=0.69 avg60=3.62 avg300=5.46 total=4020581383",
+    "io_pressure": "some avg10=4.98 avg60=10.30 avg300=12.87 total=11958910524\nfull avg10=3.70 avg60=8.84 avg300=11.12 total=10248860319"
+  },
+  {
+    "time": "2026-11-07T08:40:18.502609+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31602.0,
+          "bytes_acked": 31603.0,
+          "bytes_received": 29435.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.236/2.282",
+          "busy": "5560ms",
+          "rwnd_limited": "746ms(13.4%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467788.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "39190",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 21305.0,
+          "bytes_retrans": 2184.0,
+          "bytes_acked": 19122.0,
+          "bytes_received": 1045567.0,
+          "snd_wnd": 7168.0,
+          "rtt": "251.847/6.371",
+          "retrans": "0/2",
+          "busy": "3819ms",
+          "delivery_rate": "89800bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7328.0,
+          "snd_wnd": 7168.0,
+          "rtt": "257.913/22.341",
+          "busy": "7795ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7326.0,
+          "snd_wnd": 7168.0,
+          "rtt": "268.732/21.827",
+          "busy": "7935ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11676.0,
+          "bytes_acked": 11677.0,
+          "bytes_received": 12489.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.714/22.446",
+          "busy": "57126ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 557604.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 32,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 94031.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 93968.0,
+          "bytes_received": 800716.0,
+          "unacked": 1.0,
+          "snd_wnd": 136704.0,
+          "rtt": "254.579/26.63",
+          "retrans": "0/1",
+          "busy": "68757ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 282179.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 259695,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 449349.0,
+          "bytes_retrans": 139008.0,
+          "bytes_acked": 269798.0,
+          "bytes_received": 5517.0,
+          "unacked": 28.0,
+          "notsent": 219151.0,
+          "snd_wnd": 389632.0,
+          "rtt": "240.206/0.841",
+          "retrans": "8/96",
+          "busy": "4915ms",
+          "delivery_rate": "336688bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 131609,
+        "metrics": {
+          "cwnd": 11.0,
+          "bytes_sent": 11629783.0,
+          "bytes_retrans": 1213344.0,
+          "bytes_acked": 10401040.0,
+          "bytes_received": 1692984.0,
+          "unacked": 11.0,
+          "notsent": 116209.0,
+          "snd_wnd": 733184.0,
+          "rtt": "243.421/0.424",
+          "retrans": "0/878",
+          "busy": "111593ms",
+          "rwnd_limited": "958ms(0.9%)",
+          "delivery_rate": "460616bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=1.03 avg60=4.11 avg300=6.14 total=4569812555\nfull avg10=0.56 avg60=3.50 avg300=5.43 total=4020581383",
+    "io_pressure": "some avg10=4.62 avg60=10.06 avg300=12.81 total=11958953361\nfull avg10=3.57 avg60=8.64 avg300=11.07 total=10248900314"
+  },
+  {
+    "time": "2026-11-07T08:40:20.533225+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31602.0,
+          "bytes_acked": 31603.0,
+          "bytes_received": 29435.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.236/2.282",
+          "busy": "5560ms",
+          "rwnd_limited": "746ms(13.4%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467788.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7328.0,
+          "snd_wnd": 7168.0,
+          "rtt": "257.913/22.341",
+          "busy": "7795ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7326.0,
+          "snd_wnd": 7168.0,
+          "rtt": "268.732/21.827",
+          "busy": "7935ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11676.0,
+          "bytes_acked": 11677.0,
+          "bytes_received": 12489.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.714/22.446",
+          "busy": "57126ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 557604.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 94031.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 94000.0,
+          "bytes_received": 804028.0,
+          "snd_wnd": 136704.0,
+          "rtt": "252.891/23.349",
+          "retrans": "0/1",
+          "busy": "68974ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 282179.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 223665,
+        "metrics": {
+          "cwnd": 11.0,
+          "bytes_sent": 665101.0,
+          "bytes_retrans": 175208.0,
+          "bytes_acked": 453694.0,
+          "bytes_received": 5832.0,
+          "unacked": 25.0,
+          "notsent": 187465.0,
+          "snd_wnd": 408064.0,
+          "rtt": "240.396/0.442",
+          "retrans": "2/121",
+          "busy": "6946ms",
+          "delivery_rate": "676528bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 123113,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 11722183.0,
+          "bytes_retrans": 1225944.0,
+          "bytes_acked": 10475240.0,
+          "bytes_received": 1693124.0,
+          "unacked": 15.0,
+          "notsent": 102113.0,
+          "snd_wnd": 734720.0,
+          "rtt": "244.673/2.373",
+          "retrans": "3/887",
+          "busy": "113624ms",
+          "rwnd_limited": "958ms(0.8%)",
+          "delivery_rate": "259448bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=0.84 avg60=3.97 avg300=6.10 total=4569812555\nfull avg10=0.46 avg60=3.39 avg300=5.39 total=4020581383",
+    "io_pressure": "some avg10=4.14 avg60=9.80 avg300=12.73 total=11958979791\nfull avg10=3.28 avg60=8.43 avg300=11.00 total=10248925577"
+  },
+  {
+    "time": "2026-11-07T08:40:22.564390+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467788.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7328.0,
+          "snd_wnd": 7168.0,
+          "rtt": "257.913/22.341",
+          "busy": "7795ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7326.0,
+          "snd_wnd": 7168.0,
+          "rtt": "268.732/21.827",
+          "busy": "7935ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11676.0,
+          "bytes_acked": 11677.0,
+          "bytes_received": 12489.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.714/22.446",
+          "busy": "57126ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 557604.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 94031.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 94000.0,
+          "bytes_received": 809941.0,
+          "snd_wnd": 136704.0,
+          "rtt": "252.891/23.349",
+          "retrans": "0/1",
+          "busy": "68974ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 282179.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 153828,
+        "metrics": {
+          "cwnd": 9.0,
+          "bytes_sent": 807005.0,
+          "bytes_retrans": 183896.0,
+          "bytes_acked": 605734.0,
+          "bytes_received": 6182.0,
+          "unacked": 12.0,
+          "notsent": 136452.0,
+          "snd_wnd": 404480.0,
+          "rtt": "241.297/2.616",
+          "retrans": "2/127",
+          "busy": "9001ms",
+          "delivery_rate": "336720bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 121245,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 11808983.0,
+          "bytes_retrans": 1228744.0,
+          "bytes_acked": 10559240.0,
+          "bytes_received": 1693299.0,
+          "unacked": 15.0,
+          "notsent": 100245.0,
+          "snd_wnd": 734720.0,
+          "rtt": "248.099/8.474",
+          "retrans": "1/889",
+          "busy": "115679ms",
+          "rwnd_limited": "958ms(0.8%)",
+          "delivery_rate": "322384bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=0.69 avg60=3.84 avg300=6.06 total=4569845890\nfull avg10=0.38 avg60=3.28 avg300=5.35 total=4020612463",
+    "io_pressure": "some avg10=3.57 avg60=9.51 avg300=12.65 total=11959025181\nfull avg10=2.87 avg60=8.18 avg300=10.93 total=10248963623"
+  },
+  {
+    "time": "2026-11-07T08:40:24.622353+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89717.0,
+          "bytes_acked": 89718.0,
+          "bytes_received": 467816.0,
+          "snd_wnd": 164864.0,
+          "rtt": "251.206/19.898",
+          "busy": "62737ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7328.0,
+          "snd_wnd": 7168.0,
+          "rtt": "257.913/22.341",
+          "busy": "7795ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7326.0,
+          "snd_wnd": 7168.0,
+          "rtt": "268.732/21.827",
+          "busy": "7935ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11676.0,
+          "bytes_acked": 11677.0,
+          "bytes_received": 12489.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.714/22.446",
+          "busy": "57126ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 557604.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 94031.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 94000.0,
+          "bytes_received": 827147.0,
+          "snd_wnd": 136704.0,
+          "rtt": "252.891/23.349",
+          "retrans": "0/1",
+          "busy": "68974ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 282179.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 94676,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 959894.0,
+          "bytes_retrans": 183896.0,
+          "bytes_acked": 775999.0,
+          "bytes_received": 106234.0,
+          "snd_wnd": 409088.0,
+          "rtt": "247.572/10.004",
+          "retrans": "0/127",
+          "busy": "11295ms",
+          "delivery_rate": "628496bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 105,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 11991347.0,
+          "bytes_retrans": 1228744.0,
+          "bytes_acked": 10762604.0,
+          "bytes_received": 1693754.0,
+          "snd_wnd": 735744.0,
+          "rtt": "243.419/0.383",
+          "retrans": "0/889",
+          "busy": "119044ms",
+          "rwnd_limited": "958ms(0.8%)",
+          "delivery_rate": "552696bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=3.46 avg60=4.24 avg300=6.13 total=4571438950\nfull avg10=3.02 avg60=3.66 avg300=5.42 total=4022115242",
+    "io_pressure": "some avg10=7.09 avg60=9.95 avg300=12.72 total=11960866581\nfull avg10=6.15 avg60=8.60 avg300=11.00 total=10250642407"
+  },
+  {
+    "time": "2026-11-07T08:40:28.953298+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13525.0,
+          "bytes_acked": 13526.0,
+          "bytes_received": 13662.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.487/23.709",
+          "busy": "66403ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89749.0,
+          "bytes_acked": 89750.0,
+          "bytes_received": 467816.0,
+          "snd_wnd": 164864.0,
+          "rtt": "248.367/19.986",
+          "busy": "62965ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7328.0,
+          "snd_wnd": 7168.0,
+          "rtt": "257.913/22.341",
+          "busy": "7795ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5742.0,
+          "bytes_acked": 5743.0,
+          "bytes_received": 7326.0,
+          "snd_wnd": 7168.0,
+          "rtt": "268.732/21.827",
+          "busy": "7935ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11676.0,
+          "bytes_acked": 11677.0,
+          "bytes_received": 12489.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.714/22.446",
+          "busy": "57126ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 557604.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 94031.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 94000.0,
+          "bytes_received": 827147.0,
+          "snd_wnd": 136704.0,
+          "rtt": "252.891/23.349",
+          "retrans": "0/1",
+          "busy": "68974ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 282179.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38762.0,
+          "bytes_acked": 38763.0,
+          "bytes_received": 36281.0,
+          "snd_wnd": 64512.0,
+          "rtt": "247.394/22.412",
+          "busy": "60186ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 1009301.0,
+          "bytes_retrans": 183896.0,
+          "bytes_acked": 825406.0,
+          "bytes_received": 109130.0,
+          "snd_wnd": 409088.0,
+          "rtt": "246.246/9.205",
+          "retrans": "0/127",
+          "busy": "12274ms",
+          "delivery_rate": "647712bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 126239,
+        "metrics": {
+          "cwnd": 16.0,
+          "bytes_sent": 12117347.0,
+          "bytes_retrans": 1228744.0,
+          "bytes_acked": 10866204.0,
+          "bytes_received": 1693929.0,
+          "unacked": 16.0,
+          "notsent": 103839.0,
+          "snd_wnd": 735744.0,
+          "rtt": "243.463/0.511",
+          "retrans": "0/889",
+          "busy": "120427ms",
+          "rwnd_limited": "958ms(0.8%)",
+          "delivery_rate": "736232bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=33.14 avg60=9.99 avg300=7.32 total=4575159090\nfull avg10=31.05 avg60=9.09 avg300=6.54 total=4025529666",
+    "io_pressure": "some avg10=37.19 avg60=15.65 avg300=13.89 total=11964997170\nfull avg10=33.96 avg60=13.87 avg300=12.09 total=10254356391"
+  },
+  {
+    "time": "2026-11-07T08:40:31.323987+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5772.0,
+          "bytes_acked": 5773.0,
+          "bytes_received": 7354.0,
+          "snd_wnd": 7168.0,
+          "rtt": "255.441/21.702",
+          "busy": "8033ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5772.0,
+          "bytes_acked": 5773.0,
+          "bytes_received": 7352.0,
+          "snd_wnd": 7168.0,
+          "rtt": "266.725/20.383",
+          "busy": "8188ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11706.0,
+          "bytes_acked": 11707.0,
+          "bytes_received": 12515.0,
+          "snd_wnd": 7168.0,
+          "rtt": "262.214/21.834",
+          "busy": "57371ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10387.0,
+          "bytes_acked": 10388.0,
+          "bytes_received": 557604.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.871/13.434",
+          "busy": "1874ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 94031.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 94000.0,
+          "bytes_received": 827147.0,
+          "snd_wnd": 136704.0,
+          "rtt": "252.891/23.349",
+          "retrans": "0/1",
+          "busy": "68974ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 6017.0,
+          "bytes_acked": 6018.0,
+          "bytes_received": 282179.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.539/24.982",
+          "busy": "1500ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38792.0,
+          "bytes_acked": 38793.0,
+          "bytes_received": 36307.0,
+          "snd_wnd": 64512.0,
+          "rtt": "245.05/21.497",
+          "busy": "60415ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 115059,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 1045874.0,
+          "bytes_retrans": 183896.0,
+          "bytes_acked": 841987.0,
+          "bytes_received": 140986.0,
+          "unacked": 14.0,
+          "notsent": 95067.0,
+          "snd_wnd": 409088.0,
+          "rtt": "310.308/108.943",
+          "retrans": "0/127",
+          "busy": "13542ms",
+          "delivery_rate": "647712bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 123177,
+        "metrics": {
+          "cwnd": 35.0,
+          "bytes_sent": 12344147.0,
+          "bytes_retrans": 1228744.0,
+          "bytes_acked": 11066404.0,
+          "bytes_received": 1694279.0,
+          "unacked": 35.0,
+          "notsent": 74177.0,
+          "snd_wnd": 735744.0,
+          "rtt": "316.737/110.117",
+          "retrans": "0/889",
+          "busy": "122525ms",
+          "rwnd_limited": "958ms(0.8%)",
+          "delivery_rate": "555720bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=34.99 avg60=11.98 avg300=7.78 total=4575593724\nfull avg10=32.08 avg60=10.83 avg300=6.95 total=4025921372",
+    "io_pressure": "some avg10=43.72 avg60=18.47 avg300=14.52 total=11965842584\nfull avg10=39.05 avg60=16.30 avg300=12.63 total=10255115553"
+  },
+  {
+    "time": "2026-11-07T08:40:33.412436+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5772.0,
+          "bytes_acked": 5773.0,
+          "bytes_received": 7354.0,
+          "snd_wnd": 7168.0,
+          "rtt": "255.441/21.702",
+          "busy": "8033ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5772.0,
+          "bytes_acked": 5773.0,
+          "bytes_received": 7352.0,
+          "snd_wnd": 7168.0,
+          "rtt": "266.725/20.383",
+          "busy": "8188ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 32,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11707.0,
+          "bytes_received": 12543.0,
+          "unacked": 1.0,
+          "snd_wnd": 7168.0,
+          "rtt": "262.214/21.834",
+          "busy": "57512ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 557604.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98249.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98218.0,
+          "bytes_received": 843526.0,
+          "snd_wnd": 144896.0,
+          "rtt": "248.999/15.702",
+          "retrans": "0/1",
+          "busy": "69215ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 282179.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 78195,
+        "metrics": {
+          "cwnd": 2.0,
+          "bytes_sent": 1095798.0,
+          "bytes_retrans": 202444.0,
+          "bytes_acked": 879043.0,
+          "bytes_received": 198906.0,
+          "unacked": 11.0,
+          "notsent": 63883.0,
+          "snd_wnd": 408064.0,
+          "rtt": "298.715/29.13",
+          "retrans": "2/142",
+          "busy": "15604ms",
+          "delivery_rate": "68088bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 125115,
+        "metrics": {
+          "cwnd": 24.0,
+          "bytes_sent": 12475747.0,
+          "bytes_retrans": 1279144.0,
+          "bytes_acked": 11163004.0,
+          "bytes_received": 1694489.0,
+          "unacked": 24.0,
+          "notsent": 91515.0,
+          "snd_wnd": 735744.0,
+          "rtt": "250.007/12.761",
+          "retrans": "0/925",
+          "busy": "124587ms",
+          "rwnd_limited": "958ms(0.8%)",
+          "delivery_rate": "275192bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=29.20 avg60=11.69 avg300=7.75 total=4575639396\nfull avg10=26.63 avg60=10.54 avg300=6.92 total=4025962060",
+    "io_pressure": "some avg10=38.88 avg60=18.42 avg300=14.54 total=11966159211\nfull avg10=34.69 avg60=16.26 avg300=12.65 total=10255404186"
+  },
+  {
+    "time": "2026-11-07T08:40:35.471962+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5772.0,
+          "bytes_acked": 5773.0,
+          "bytes_received": 7354.0,
+          "snd_wnd": 7168.0,
+          "rtt": "255.441/21.702",
+          "busy": "8033ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5772.0,
+          "bytes_acked": 5773.0,
+          "bytes_received": 7352.0,
+          "snd_wnd": 7168.0,
+          "rtt": "266.725/20.383",
+          "busy": "8188ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 567740.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98249.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98218.0,
+          "bytes_received": 855350.0,
+          "snd_wnd": 144896.0,
+          "rtt": "248.999/15.702",
+          "retrans": "0/1",
+          "busy": "69215ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 322779.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 59599,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 1126966.0,
+          "bytes_retrans": 219644.0,
+          "bytes_acked": 897639.0,
+          "bytes_received": 198906.0,
+          "unacked": 7.0,
+          "notsent": 49915.0,
+          "snd_wnd": 409088.0,
+          "rtt": "260.761/21.506",
+          "retrans": "0/158",
+          "busy": "17651ms",
+          "delivery_rate": "184920bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 126612,
+        "metrics": {
+          "cwnd": 16.0,
+          "bytes_sent": 12666147.0,
+          "bytes_retrans": 1301544.0,
+          "bytes_acked": 11342204.0,
+          "bytes_received": 1694839.0,
+          "unacked": 16.0,
+          "notsent": 104212.0,
+          "snd_wnd": 735744.0,
+          "rtt": "245.065/2.91",
+          "retrans": "0/941",
+          "busy": "126635ms",
+          "rwnd_limited": "958ms(0.8%)",
+          "delivery_rate": "639536bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=23.91 avg60=11.31 avg300=7.70 total=4575649665\nfull avg10=21.80 avg60=10.20 avg300=6.87 total=4025971903",
+    "io_pressure": "some avg10=32.38 avg60=17.92 avg300=14.46 total=11966226687\nfull avg10=28.95 avg60=15.82 avg300=12.58 total=10255468954"
+  },
+  {
+    "time": "2026-11-07T08:40:37.522736+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5772.0,
+          "bytes_acked": 5773.0,
+          "bytes_received": 7354.0,
+          "snd_wnd": 7168.0,
+          "rtt": "255.441/21.702",
+          "busy": "8033ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 616972.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98249.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98218.0,
+          "bytes_received": 855350.0,
+          "snd_wnd": 144896.0,
+          "rtt": "248.999/15.702",
+          "retrans": "0/1",
+          "busy": "69215ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 360579.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 124149,
+        "metrics": {
+          "cwnd": 2.0,
+          "bytes_sent": 1171698.0,
+          "bytes_retrans": 231156.0,
+          "bytes_acked": 931855.0,
+          "bytes_received": 226318.0,
+          "unacked": 6.0,
+          "notsent": 115461.0,
+          "snd_wnd": 409088.0,
+          "rtt": "243.964/7.948",
+          "retrans": "2/166",
+          "busy": "19686ms",
+          "delivery_rate": "96640bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 121559,
+        "metrics": {
+          "cwnd": 9.0,
+          "bytes_sent": 12775347.0,
+          "bytes_retrans": 1316944.0,
+          "bytes_acked": 11445804.0,
+          "bytes_received": 1695049.0,
+          "unacked": 9.0,
+          "notsent": 108959.0,
+          "snd_wnd": 735744.0,
+          "rtt": "243.717/1.047",
+          "retrans": "0/952",
+          "busy": "128669ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "368056bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=19.57 avg60=10.94 avg300=7.64 total=4575668802\nfull avg10=17.85 avg60=9.86 avg300=6.82 total=4025988428",
+    "io_pressure": "some avg10=27.42 avg60=17.49 avg300=14.39 total=11966334568\nfull avg10=24.43 avg60=15.44 avg300=12.52 total=10255558023"
+  },
+  {
+    "time": "2026-11-07T08:40:39.554011+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 644484.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 32,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98281.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98218.0,
+          "bytes_received": 862792.0,
+          "unacked": 1.0,
+          "snd_wnd": 144896.0,
+          "rtt": "248.999/15.702",
+          "retrans": "0/1",
+          "busy": "69298ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 420186.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 127124,
+        "metrics": {
+          "cwnd": 5.0,
+          "bytes_sent": 1220930.0,
+          "bytes_retrans": 235500.0,
+          "bytes_acked": 978191.0,
+          "bytes_received": 226423.0,
+          "unacked": 5.0,
+          "notsent": 119884.0,
+          "snd_wnd": 406528.0,
+          "rtt": "251.042/20.518",
+          "retrans": "0/169",
+          "busy": "21721ms",
+          "delivery_rate": "193168bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 115518,
+        "metrics": {
+          "cwnd": 9.0,
+          "bytes_sent": 12864947.0,
+          "bytes_retrans": 1318344.0,
+          "bytes_acked": 11534004.0,
+          "bytes_received": 1695224.0,
+          "unacked": 9.0,
+          "notsent": 102918.0,
+          "snd_wnd": 735744.0,
+          "rtt": "243.682/0.993",
+          "retrans": "0/953",
+          "busy": "130704ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "414448bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=16.21 avg60=10.61 avg300=7.60 total=4575695667\nfull avg10=14.80 avg60=9.57 avg300=6.78 total=4026014468",
+    "io_pressure": "some avg10=23.17 avg60=17.05 avg300=14.32 total=11966450578\nfull avg10=20.73 avg60=15.06 avg300=12.46 total=10255659950"
+  },
+  {
+    "time": "2026-11-07T08:40:41.592216+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31634.0,
+          "bytes_acked": 31635.0,
+          "bytes_received": 29463.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.439/2.118",
+          "busy": "5814ms",
+          "rwnd_limited": "746ms(12.8%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 650276.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98281.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98250.0,
+          "bytes_received": 866164.0,
+          "snd_wnd": 144896.0,
+          "rtt": "247.981/13.812",
+          "retrans": "0/1",
+          "busy": "69456ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 420186.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 126264,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 1290434.0,
+          "bytes_retrans": 235500.0,
+          "bytes_acked": 1044799.0,
+          "bytes_received": 226563.0,
+          "unacked": 7.0,
+          "notsent": 116128.0,
+          "snd_wnd": 409088.0,
+          "rtt": "243.504/6.122",
+          "retrans": "0/169",
+          "busy": "23767ms",
+          "delivery_rate": "337936bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 127532,
+        "metrics": {
+          "cwnd": 13.0,
+          "bytes_sent": 13006347.0,
+          "bytes_retrans": 1318344.0,
+          "bytes_acked": 11669804.0,
+          "bytes_received": 1695539.0,
+          "unacked": 13.0,
+          "notsent": 109332.0,
+          "snd_wnd": 735744.0,
+          "rtt": "243.775/0.629",
+          "retrans": "0/953",
+          "busy": "132750ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "597608bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=13.27 avg60=10.26 avg300=7.54 total=4575695709\nfull avg10=12.12 avg60=9.26 avg300=6.74 total=4026014509",
+    "io_pressure": "some avg10=19.34 avg60=16.56 avg300=14.24 total=11966477870\nfull avg10=17.15 avg60=14.60 avg300=12.38 total=10255684605"
+  },
+  {
+    "time": "2026-11-07T08:40:43.638532+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31666.0,
+          "bytes_acked": 31667.0,
+          "bytes_received": 29491.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.6/1.91",
+          "busy": "6068ms",
+          "rwnd_limited": "746ms(12.3%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 676340.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98281.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98250.0,
+          "bytes_received": 868748.0,
+          "snd_wnd": 144896.0,
+          "rtt": "247.981/13.812",
+          "retrans": "0/1",
+          "busy": "69456ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 420186.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 118243,
+        "metrics": {
+          "cwnd": 15.0,
+          "bytes_sent": 1425098.0,
+          "bytes_retrans": 235500.0,
+          "bytes_acked": 1167879.0,
+          "bytes_received": 226808.0,
+          "unacked": 15.0,
+          "notsent": 96523.0,
+          "snd_wnd": 409088.0,
+          "rtt": "240.231/0.552",
+          "retrans": "0/169",
+          "busy": "25814ms",
+          "delivery_rate": "624440bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 124444,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 13231747.0,
+          "bytes_retrans": 1318344.0,
+          "bytes_acked": 11870004.0,
+          "bytes_received": 1695959.0,
+          "unacked": 31.0,
+          "notsent": 81044.0,
+          "snd_wnd": 735744.0,
+          "rtt": "245.301/4.227",
+          "retrans": "0/953",
+          "busy": "134798ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "1244024bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=10.87 avg60=9.93 avg300=7.49 total=4575710423\nfull avg10=9.92 avg60=8.95 avg300=6.69 total=4026028093",
+    "io_pressure": "some avg10=16.01 avg60=16.05 avg300=14.14 total=11966504712\nfull avg10=14.22 avg60=14.16 avg300=12.31 total=10255708965"
+  },
+  {
+    "time": "2026-11-07T08:40:45.682950+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31666.0,
+          "bytes_acked": 31667.0,
+          "bytes_received": 29491.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.6/1.91",
+          "busy": "6068ms",
+          "rwnd_limited": "746ms(12.3%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 695402.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98281.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98250.0,
+          "bytes_received": 891212.0,
+          "snd_wnd": 144896.0,
+          "rtt": "247.981/13.812",
+          "retrans": "0/1",
+          "busy": "69456ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 420186.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 122824,
+        "metrics": {
+          "cwnd": 13.0,
+          "bytes_sent": 1603202.0,
+          "bytes_retrans": 252876.0,
+          "bytes_acked": 1311231.0,
+          "bytes_received": 227088.0,
+          "unacked": 27.0,
+          "notsent": 83728.0,
+          "snd_wnd": 409088.0,
+          "rtt": "240.317/0.704",
+          "retrans": "4/181",
+          "busy": "27865ms",
+          "delivery_rate": "675968bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 115086,
+        "metrics": {
+          "cwnd": 19.0,
+          "bytes_sent": 13452947.0,
+          "bytes_retrans": 1382744.0,
+          "bytes_acked": 12043604.0,
+          "bytes_received": 1696239.0,
+          "unacked": 19.0,
+          "notsent": 88486.0,
+          "snd_wnd": 735744.0,
+          "rtt": "243.224/0.301",
+          "retrans": "0/999",
+          "busy": "136848ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "506192bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=8.90 avg60=9.60 avg300=7.44 total=4575713906\nfull avg10=8.12 avg60=8.66 avg300=6.64 total=4026031550",
+    "io_pressure": "some avg10=13.66 avg60=15.62 avg300=14.07 total=11966577072\nfull avg10=12.19 avg60=13.79 avg300=12.24 total=10255777390"
+  },
+  {
+    "time": "2026-11-07T08:40:47.733666+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31666.0,
+          "bytes_acked": 31667.0,
+          "bytes_received": 29491.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.6/1.91",
+          "busy": "6068ms",
+          "rwnd_limited": "746ms(12.3%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89779.0,
+          "bytes_acked": 89780.0,
+          "bytes_received": 467842.0,
+          "snd_wnd": 164864.0,
+          "rtt": "245.989/19.744",
+          "busy": "63195ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 695402.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98281.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98250.0,
+          "bytes_received": 891212.0,
+          "snd_wnd": 144896.0,
+          "rtt": "247.981/13.812",
+          "retrans": "0/1",
+          "busy": "69456ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 420186.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 130301,
+        "metrics": {
+          "cwnd": 7.0,
+          "bytes_sent": 1729178.0,
+          "bytes_retrans": 267356.0,
+          "bytes_acked": 1451687.0,
+          "bytes_received": 227368.0,
+          "unacked": 7.0,
+          "notsent": 120165.0,
+          "snd_wnd": 409088.0,
+          "rtt": "239.913/0.68",
+          "retrans": "0/191",
+          "busy": "29908ms",
+          "delivery_rate": "336432bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 115546,
+        "metrics": {
+          "cwnd": 17.0,
+          "bytes_sent": 13627947.0,
+          "bytes_retrans": 1396744.0,
+          "bytes_acked": 12207404.0,
+          "bytes_received": 1696589.0,
+          "unacked": 17.0,
+          "notsent": 91746.0,
+          "snd_wnd": 735744.0,
+          "rtt": "246.551/5.932",
+          "retrans": "0/1009",
+          "busy": "138891ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "782928bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=7.28 avg60=9.29 avg300=7.39 total=4575733091\nfull avg10=6.65 avg60=8.38 avg300=6.60 total=4026050302",
+    "io_pressure": "some avg10=11.36 avg60=15.14 avg300=13.98 total=11966958616\nfull avg10=10.16 avg60=13.37 avg300=12.16 total=10256140424"
+  },
+  {
+    "time": "2026-11-07T08:40:49.776025+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31666.0,
+          "bytes_acked": 31667.0,
+          "bytes_received": 29491.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.6/1.91",
+          "busy": "6068ms",
+          "rwnd_limited": "746ms(12.3%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13588.0,
+          "bytes_acked": 13589.0,
+          "bytes_received": 13717.0,
+          "snd_wnd": 64512.0,
+          "rtt": "256.286/22.847",
+          "busy": "66911ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89811.0,
+          "bytes_acked": 89812.0,
+          "bytes_received": 467870.0,
+          "snd_wnd": 164864.0,
+          "rtt": "248.852/20.533",
+          "busy": "63463ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 12571.0,
+          "bytes_acked": 12572.0,
+          "bytes_received": 695402.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.696/10.425",
+          "busy": "2108ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 98281.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 98250.0,
+          "bytes_received": 891212.0,
+          "snd_wnd": 144896.0,
+          "rtt": "247.981/13.812",
+          "retrans": "0/1",
+          "busy": "69456ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 8201.0,
+          "bytes_acked": 8202.0,
+          "bytes_received": 420186.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.361/19.093",
+          "busy": "1747ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 124667,
+        "metrics": {
+          "cwnd": 11.0,
+          "bytes_sent": 1839226.0,
+          "bytes_retrans": 267356.0,
+          "bytes_acked": 1555943.0,
+          "bytes_received": 227578.0,
+          "unacked": 11.0,
+          "notsent": 108739.0,
+          "snd_wnd": 409088.0,
+          "rtt": "242.63/4.943",
+          "retrans": "0/191",
+          "busy": "31946ms",
+          "delivery_rate": "481952bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 39101,
+        "metrics": {
+          "cwnd": 18.0,
+          "bytes_sent": 13804347.0,
+          "bytes_retrans": 1400944.0,
+          "bytes_acked": 12378204.0,
+          "bytes_received": 1696974.0,
+          "unacked": 18.0,
+          "notsent": 13901.0,
+          "snd_wnd": 735744.0,
+          "rtt": "250.799/13.195",
+          "retrans": "0/1012",
+          "busy": "140929ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "781072bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=7.23 avg60=9.21 avg300=7.39 total=4575918947\nfull avg10=6.53 avg60=8.30 avg300=6.59 total=4026218489",
+    "io_pressure": "some avg10=18.72 avg60=16.35 avg300=14.24 total=11967878918\nfull avg10=17.20 avg60=14.54 avg300=12.42 total=10256973359"
+  },
+  {
+    "time": "2026-11-07T08:40:51.816344+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31666.0,
+          "bytes_acked": 31667.0,
+          "bytes_received": 29491.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.6/1.91",
+          "busy": "6068ms",
+          "rwnd_limited": "746ms(12.3%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13620.0,
+          "bytes_acked": 13621.0,
+          "bytes_received": 13745.0,
+          "snd_wnd": 64512.0,
+          "rtt": "253.356/22.866",
+          "busy": "67144ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89811.0,
+          "bytes_acked": 89812.0,
+          "bytes_received": 467870.0,
+          "snd_wnd": 164864.0,
+          "rtt": "248.852/20.533",
+          "busy": "63463ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11738.0,
+          "bytes_acked": 11739.0,
+          "bytes_received": 12543.0,
+          "snd_wnd": 7168.0,
+          "rtt": "265.515/22.976",
+          "busy": "57659ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 14755.0,
+          "bytes_acked": 14756.0,
+          "bytes_received": 700153.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.548/8.115",
+          "busy": "2342ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 99131.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 99100.0,
+          "bytes_received": 904790.0,
+          "snd_wnd": 147968.0,
+          "rtt": "247.115/12.091",
+          "retrans": "0/1",
+          "busy": "69697ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10385.0,
+          "bytes_acked": 10386.0,
+          "bytes_received": 424386.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.204/14.633",
+          "busy": "1994ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38824.0,
+          "bytes_acked": 38825.0,
+          "bytes_received": 36335.0,
+          "snd_wnd": 64512.0,
+          "rtt": "248.044/22.111",
+          "busy": "60684ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 192658,
+        "metrics": {
+          "cwnd": 11.0,
+          "bytes_sent": 1956514.0,
+          "bytes_retrans": 270252.0,
+          "bytes_acked": 1670335.0,
+          "bytes_received": 227823.0,
+          "unacked": 11.0,
+          "notsent": 176730.0,
+          "snd_wnd": 409088.0,
+          "rtt": "241.8/3.589",
+          "retrans": "0/193",
+          "busy": "34010ms",
+          "delivery_rate": "482480bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 18.0,
+          "bytes_sent": 13818344.0,
+          "bytes_retrans": 1400944.0,
+          "bytes_acked": 12417401.0,
+          "bytes_received": 1722994.0,
+          "snd_wnd": 735744.0,
+          "rtt": "263.165/36.018",
+          "retrans": "0/1012",
+          "busy": "141876ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "829216bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=6.64 avg60=9.04 avg300=7.36 total=4575974410\nfull avg10=5.89 avg60=8.13 avg300=6.57 total=4026266210",
+    "io_pressure": "some avg10=19.50 avg60=16.57 avg300=14.30 total=11968192353\nfull avg10=17.52 avg60=14.68 avg300=12.46 total=10257250429"
+  },
+  {
+    "time": "2026-11-07T08:40:53.879328+08:00",
+    "sockets": [
+      {
+        "proxy_id": 1,
+        "local_port": "49114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 31666.0,
+          "bytes_acked": 31667.0,
+          "bytes_received": 29491.0,
+          "snd_wnd": 35328.0,
+          "rtt": "252.6/1.91",
+          "busy": "6068ms",
+          "rwnd_limited": "746ms(12.3%)",
+          "delivery_rate": "224728bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47542",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2847.0,
+          "bytes_acked": 2848.0,
+          "bytes_received": 6563.0,
+          "snd_wnd": 7168.0,
+          "rtt": "247.775/27.483",
+          "busy": "1504ms",
+          "delivery_rate": "184816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40700",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 13620.0,
+          "bytes_acked": 13621.0,
+          "bytes_received": 13745.0,
+          "snd_wnd": 64512.0,
+          "rtt": "253.356/22.866",
+          "busy": "67144ms",
+          "delivery_rate": "228112bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "40678",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 57.0,
+          "bytes_sent": 89811.0,
+          "bytes_acked": 89812.0,
+          "bytes_received": 467870.0,
+          "snd_wnd": 164864.0,
+          "rtt": "248.852/20.533",
+          "busy": "63463ms",
+          "delivery_rate": "979488bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56126",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7382.0,
+          "snd_wnd": 7168.0,
+          "rtt": "253.267/20.623",
+          "busy": "8271ms",
+          "delivery_rate": "179672bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "56114",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 5804.0,
+          "bytes_acked": 5805.0,
+          "bytes_received": 7380.0,
+          "snd_wnd": 7168.0,
+          "rtt": "264.986/18.767",
+          "busy": "8441ms",
+          "delivery_rate": "174256bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "51742",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 11770.0,
+          "bytes_acked": 11771.0,
+          "bytes_received": 12571.0,
+          "snd_wnd": 7168.0,
+          "rtt": "262.946/22.37",
+          "busy": "57904ms",
+          "delivery_rate": "185816bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "57372",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 2849.0,
+          "bytes_acked": 2850.0,
+          "bytes_received": 6562.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.663/26.05",
+          "busy": "1422ms",
+          "delivery_rate": "200824bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "35964",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 14755.0,
+          "bytes_acked": 14756.0,
+          "bytes_received": 750833.0,
+          "snd_wnd": 64512.0,
+          "rtt": "234.548/8.115",
+          "busy": "2342ms",
+          "delivery_rate": "148680bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "47780",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 31.0,
+          "bytes_sent": 99131.0,
+          "bytes_retrans": 32.0,
+          "bytes_acked": 99100.0,
+          "bytes_received": 919439.0,
+          "snd_wnd": 147968.0,
+          "rtt": "247.115/12.091",
+          "retrans": "0/1",
+          "busy": "69697ms",
+          "rwnd_limited": "486ms(0.7%)",
+          "delivery_rate": "681520bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "53168",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 10.0,
+          "bytes_sent": 10385.0,
+          "bytes_acked": 10386.0,
+          "bytes_received": 511186.0,
+          "snd_wnd": 7168.0,
+          "rtt": "248.204/14.633",
+          "busy": "1994ms",
+          "delivery_rate": "135648bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "37106",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 29.0,
+          "bytes_sent": 38856.0,
+          "bytes_acked": 38857.0,
+          "bytes_received": 36363.0,
+          "snd_wnd": 64512.0,
+          "rtt": "245.633/21.404",
+          "busy": "60913ms",
+          "delivery_rate": "658632bps"
+        }
+      },
+      {
+        "proxy_id": 2,
+        "local_port": "48944",
+        "recv_q": 0,
+        "send_q": 259976,
+        "metrics": {
+          "cwnd": 14.0,
+          "bytes_sent": 2107106.0,
+          "bytes_retrans": 270252.0,
+          "bytes_acked": 1816583.0,
+          "bytes_received": 228173.0,
+          "unacked": 14.0,
+          "notsent": 239704.0,
+          "snd_wnd": 409088.0,
+          "rtt": "240.543/1.322",
+          "retrans": "0/193",
+          "busy": "36044ms",
+          "delivery_rate": "676144bps"
+        }
+      },
+      {
+        "proxy_id": 1,
+        "local_port": "35864",
+        "recv_q": 0,
+        "send_q": 0,
+        "metrics": {
+          "cwnd": 18.0,
+          "bytes_sent": 13818536.0,
+          "bytes_retrans": 1400944.0,
+          "bytes_acked": 12417593.0,
+          "bytes_received": 1787394.0,
+          "snd_wnd": 735744.0,
+          "rtt": "290.103/47.757",
+          "retrans": "0/1012",
+          "busy": "142900ms",
+          "rwnd_limited": "958ms(0.7%)",
+          "delivery_rate": "829216bps"
+        }
+      }
+    ],
+    "memory_pressure": "some avg10=5.62 avg60=8.78 avg300=7.32 total=4575978453\nfull avg10=5.00 avg60=7.89 avg300=6.53 total=4026269657",
+    "io_pressure": "some avg10=17.23 avg60=16.25 avg300=14.25 total=11968268114\nfull avg10=15.43 avg60=14.40 avg300=12.42 total=10257321363"
+  }
+]
