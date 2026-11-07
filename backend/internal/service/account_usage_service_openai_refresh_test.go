@@ -455,7 +455,8 @@ func TestOpenAIUsageRefresh_ForcedFailureRetainsFreshSnapshot(t *testing.T) {
 	require.Equal(t, fresh.UpdatedAt, again.UpdatedAt)
 	require.Len(t, upstream.requestLog(), 3)
 	// A normal retry after the throttle expires must recover and clear the error.
-	svc.cache.openAIUsageCache.Store(id, &openAIUsageCacheEntry{timestamp: time.Now().Add(-11 * time.Minute), message: failed.Error, errorCode: failed.ErrorCode})
+	svc.cache.openAIUsageCache.Delete(id)
+	svc.cache.openAIFailures.Store(openAIUsageFlightKey(ctx, id), &openAIUsageCacheEntry{timestamp: time.Now().Add(-11 * time.Minute), message: failed.Error, errorCode: failed.ErrorCode})
 	upstream.mu.Lock()
 	upstream.status = 200
 	upstream.mu.Unlock()

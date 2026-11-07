@@ -98,3 +98,76 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFlightAndCancellationIsolation(t *t
 	}
 	require.Len(t, upstream.modelLog(), 1)
 }
+
+func TestOpenAIUsageRefresh_UpgradeFailureCacheIsolation(t *testing.T) {
+	for _, restrictedFirst := range []bool{false, true} {
+		t.Run(fmt.Sprintf("restricted_first=%t", restrictedFirst), func(t *testing.T) {
+			svc, _, upstream, id := quotaRefreshFixture(t, false, false)
+			upstream.status = http.StatusBadGateway
+			full, reader := context.Background(), upgradeUsageReader(true)
+			first, second := full, reader
+			firstRequests, totalRequests := 2, 3
+			if restrictedFirst {
+				first, second = reader, full
+				firstRequests = 1
+			}
+			failed, err := svc.GetUsage(first, id)
+			require.NoError(t, err)
+			require.NotEmpty(t, failed.Error)
+			throttled, err := svc.GetUsage(first, id)
+			require.NoError(t, err)
+			require.Equal(t, failed.Error, throttled.Error)
+			require.Len(t, upstream.requestLog(), firstRequests)
+			passive, err := svc.GetPassiveUsage(second, id)
+			require.NoError(t, err)
+			require.Empty(t, passive.Error, "another policy's failure must not leak into passive reads")
+			_, err = svc.GetUsage(second, id)
+			require.NoError(t, err)
+			require.Len(t, upstream.requestLog(), totalRequests, "another policy's failure must not throttle this refresh")
+			require.Len(t, upstream.modelLog(), 1)
+			_, err = svc.GetUsage(second, id)
+			require.NoError(t, err)
+			require.Len(t, upstream.requestLog(), totalRequests)
+		})
+	}
+}
+
+func TestOpenAIUsageRefresh_UpgradeRestrictedFailurePreservesSuccessfulFallback(t *testing.T) {
+	svc, repo, upstream, id := quotaRefreshFixture(t, false, false)
+	upstream.status = http.StatusBadGateway
+	upstream.modelStatus = http.StatusOK
+	upstream.modelHeaders = fallbackQuotaHeaders()
+	full, reader := context.Background(), upgradeUsageReader(true)
+	// Keep an old account object to verify that the shared successful cache survives.
+	account, err := repo.GetByID(full, id)
+	require.NoError(t, err)
+	failed, err := svc.GetUsage(reader, id)
+	require.NoError(t, err)
+	require.NotEmpty(t, failed.Error)
+	fresh, err := svc.GetUsage(full, id)
+	require.NoError(t, err)
+	require.Empty(t, fresh.Error)
+	require.Equal(t, 55.0, fresh.FiveHour.Utilization)
+	require.Len(t, upstream.modelLog(), 1)
+	shared, err := svc.GetUsage(reader, id)
+	require.NoError(t, err)
+	require.Empty(t, shared.Error, "a newer shared success supersedes an earlier failure")
+	require.Len(t, upstream.requestLog(), 3)
+	failed, err = svc.GetUsage(reader, id, true)
+	require.NoError(t, err)
+	require.NotEmpty(t, failed.Error)
+	for _, passive := range []bool{false, true} {
+		var usage *UsageInfo
+		if passive {
+			usage, err = svc.GetPassiveUsage(full, id)
+		} else {
+			usage, err = svc.GetUsageForAccount(full, account)
+		}
+		require.NoError(t, err)
+		require.Empty(t, usage.Error)
+		require.Equal(t, fresh.FiveHour.Utilization, usage.FiveHour.Utilization)
+		require.Equal(t, fresh.UpdatedAt, usage.UpdatedAt)
+	}
+	require.Len(t, upstream.requestLog(), 4)
+	require.Len(t, upstream.modelLog(), 1)
+}

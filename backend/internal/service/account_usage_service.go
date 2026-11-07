@@ -128,7 +128,8 @@ type UsageCache struct {
 	antigravityCache  sync.Map           // accountID -> *antigravityUsageCache
 	apiFlight         singleflight.Group // 防止同一账号的并发请求击穿缓存（Anthropic）
 	antigravityFlight singleflight.Group // 防止同一 Antigravity 账号的并发请求击穿缓存
-	openAIUsageCache  sync.Map           // accountID -> *openAIUsageCacheEntry
+	openAIUsageCache  sync.Map           // accountID -> last successful *openAIUsageCacheEntry
+	openAIFailures    sync.Map           // scoped flight key -> failed *openAIUsageCacheEntry
 	openAIUsageFlight singleflight.Group
 	grokProbeCache    sync.Map // accountID -> last billing probe attempt
 }
@@ -693,7 +694,7 @@ func (s *AccountUsageService) getPassiveUsageForAccount(ctx context.Context, acc
 	if account != nil && account.IsOpenAIOAuth() {
 		info := openAIUsageFromExtra(account.Extra, time.Now())
 		info.Source = "passive"
-		if entry := s.cachedOpenAIUsage(account.ID); entry != nil {
+		if entry := s.cachedOpenAIUsageForContext(ctx, account.ID); entry != nil {
 			info.Error, info.ErrorCode = entry.message, entry.errorCode
 		}
 		return info, nil
@@ -873,6 +874,29 @@ func (s *AccountUsageService) cachedOpenAIUsage(accountID int64) *openAIUsageCac
 	return nil
 }
 
+// Successes describe the account, while failures describe a refresh policy.
+// A read-only failure must not throttle a privileged model fallback.
+func openAIUsageFlightKey(ctx context.Context, accountID int64) string {
+	scope := "full"
+	if adminaccess.RestrictedFromContext(ctx) != nil {
+		scope = "read-only"
+	}
+	return fmt.Sprintf("usage:%d:%s", accountID, scope)
+}
+
+func (s *AccountUsageService) cachedOpenAIUsageForContext(ctx context.Context, accountID int64) *openAIUsageCacheEntry {
+	success := s.cachedOpenAIUsage(accountID)
+	if s.cache != nil {
+		if value, ok := s.cache.openAIFailures.Load(openAIUsageFlightKey(ctx, accountID)); ok {
+			failure, _ := value.(*openAIUsageCacheEntry)
+			if failure != nil && (success == nil || !failure.timestamp.Before(success.timestamp)) {
+				return failure
+			}
+		}
+	}
+	return success
+}
+
 func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Account, force bool) (*UsageInfo, error) {
 	if err := scopedAccountAccess(ctx, s.accountRepo, account, "accounts.usage.read", true); err != nil {
 		return nil, err
@@ -885,25 +909,26 @@ func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Accou
 	}
 	now := time.Now()
 	usage := openAIUsageFromExtra(account.Extra, now)
-	entry := s.cachedOpenAIUsage(account.ID)
+	entry := s.cachedOpenAIUsageForContext(ctx, account.ID)
 	if force || shouldRefreshOpenAICodexSnapshot(account, usage, now) || (entry != nil && entry.message != "") {
 		refresh := func(refreshCtx context.Context) *openAIUsageCacheEntry {
-			if cached := s.cachedOpenAIUsage(account.ID); !force && cached != nil && time.Since(cached.timestamp) < openAIUsageCacheTTL {
+			if cached := s.cachedOpenAIUsageForContext(ctx, account.ID); !force && cached != nil && time.Since(cached.timestamp) < openAIUsageCacheTTL {
 				return cached
 			}
 			result := s.queryOpenAIUsageSnapshot(refreshCtx, account)
 			if s.cache != nil {
-				s.cache.openAIUsageCache.Store(account.ID, result)
+				if result.message != "" {
+					s.cache.openAIFailures.Store(openAIUsageFlightKey(ctx, account.ID), result)
+				} else {
+					s.cache.openAIUsageCache.Store(account.ID, result)
+					s.cache.openAIFailures.Delete(openAIUsageFlightKey(ctx, account.ID))
+				}
 			}
 			return result
 		}
 		if s.cache != nil {
 			// Restricted readers must never join a privileged model fallback.
-			flightScope := "full"
-			if adminaccess.RestrictedFromContext(ctx) != nil {
-				flightScope = "read-only"
-			}
-			ch := s.cache.openAIUsageFlight.DoChan(fmt.Sprintf("usage:%d:%s", account.ID, flightScope), func() (any, error) {
+			ch := s.cache.openAIUsageFlight.DoChan(openAIUsageFlightKey(ctx, account.ID), func() (any, error) {
 				refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), openAIUsageRefreshTimeout)
 				defer cancel()
 				return refresh(refreshCtx), nil
