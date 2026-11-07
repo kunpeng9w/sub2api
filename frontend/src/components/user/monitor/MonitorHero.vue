@@ -34,6 +34,16 @@
 
       <button
         type="button"
+        data-testid="run-all-monitors"
+        class="btn btn-secondary h-8 !px-3 !py-1 text-xs disabled:opacity-50"
+        :disabled="runAllDisabled"
+        @click="emit('runAll')"
+      >
+        {{ runningAll ? t('channelStatus.runAllProgress', { done: runAllDone, total: runAllTotal }) : t('channelStatus.runAll') }}
+      </button>
+
+      <button
+        type="button"
         class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-dark-700 transition-colors disabled:opacity-50"
         :disabled="loading"
         :title="t('common.refresh')"
@@ -64,6 +74,10 @@ export type MonitorWindow = '7d' | '15d' | '30d'
 export type OverallStatus = 'operational' | 'degraded'
 
 const props = defineProps<{
+  runningAll?: boolean
+  runAllDisabled?: boolean
+  runAllDone?: number
+  runAllTotal?: number
   overallStatus: OverallStatus
   intervalSeconds: number
   window: MonitorWindow
@@ -81,6 +95,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:window', value: MonitorWindow): void
   (e: 'refresh'): void
+  (e: 'runAll'): void
 }>()
 
 const { t } = useI18n()

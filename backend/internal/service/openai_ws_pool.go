@@ -216,6 +216,15 @@ func (l *openAIWSConnLease) WriteJSONWithContextTimeout(ctx context.Context, val
 	return conn.writeJSONWithTimeout(ctx, value, timeout)
 }
 
+// The audit context lets the production encoder count bytes during its existing
+// serialization, without serializing large request bodies a second time.
+func (l *openAIWSConnLease) writeJSONWithEgressAudit(ctx context.Context, value any, timeout time.Duration, audit *EgressAuditAttempt) error {
+	audit.beginWSWrite()
+	err := l.WriteJSONWithContextTimeout(withEgressWriteAudit(ctx, audit), value, timeout)
+	audit.endWSWrite(err)
+	return err
+}
+
 func (l *openAIWSConnLease) WriteJSONContext(ctx context.Context, value any) error {
 	conn, err := l.activeConn()
 	if err != nil {
@@ -2545,5 +2554,5 @@ func (l *openAIWSConnLease) beginEgressAudit(ctx context.Context, turn int) *Egr
 	// Reused describes acquisition of the lease. Later response turns on that
 	// same lease also reuse its connection, even when it was initially new.
 	previousTurn := l.auditTurnStarted.Swap(true)
-	return l.pool.auditor.Begin(ctx, l.auditAccount, l.auditRoute, l.auditTarget, "websocket", "conn_id", l.ConnID(), "connection_reused", l.Reused() || previousTurn, "turn_id", turn)
+	return l.pool.auditor.Begin(ctx, l.auditAccount, l.auditRoute, l.auditTarget, "websocket", "conn_id", l.ConnID(), "connection_reused", l.Reused() || previousTurn, "turn_id", turn, "pool_queue_wait_ms", float64(l.QueueWaitDuration().Microseconds())/1000, "pool_connection_pick_ms", float64(l.ConnPickDuration().Microseconds())/1000)
 }

@@ -562,7 +562,7 @@ func openAILongContextBillingGate(account *Account) *bool {
 }
 
 // openAISubscriptionLongContextExempt 按实际凭据和最终发送模型判断订阅豁免。
-// GPT-6.1 Sol 的订阅请求不再收取模型长上下文附加费；API Key 仍使用 API 价卡。
+// GPT-6.1 Sol / Terra 的订阅请求不再收取模型长上下文附加费；API Key 仍使用 API 价卡。
 // 使用发送模型，避免客户别名、渠道计费模型或响应模型计费切换改变上游订阅规则。
 func openAISubscriptionLongContextExempt(account *Account, result *OpenAIForwardResult) bool {
 	if !account.IsOpenAIOAuthLike() || result == nil {
@@ -572,7 +572,7 @@ func openAISubscriptionLongContextExempt(account *Account, result *OpenAIForward
 	if model == "" {
 		model = result.Model
 	}
-	return openai.IsGPT61SolModelSpelling(model)
+	return openai.IsGPT61SolModelSpelling(model) || openai.IsGPT61TerraModelSpelling(model)
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
@@ -1114,8 +1114,10 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 
 	// 归一化到 5h/7d 规范字段
 	if normalized := snapshot.Normalize(); normalized != nil {
+		stampCodexWindowCompleteness(updates, normalized)
 		if normalized.Used5hPercent != nil {
 			updates["codex_5h_used_percent"] = *normalized.Used5hPercent
+			updates["codex_5h_sampled_at"] = baseTime.UTC().Format(time.RFC3339Nano)
 		}
 		if normalized.Reset5hSeconds != nil {
 			updates["codex_5h_reset_after_seconds"] = *normalized.Reset5hSeconds
@@ -1125,6 +1127,7 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 		}
 		if normalized.Used7dPercent != nil {
 			updates["codex_7d_used_percent"] = *normalized.Used7dPercent
+			updates["codex_7d_sampled_at"] = baseTime.UTC().Format(time.RFC3339Nano)
 		}
 		if normalized.Reset7dSeconds != nil {
 			updates["codex_7d_reset_after_seconds"] = *normalized.Reset7dSeconds
@@ -1141,6 +1144,25 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 	}
 
 	return updates
+}
+
+// stampCodexWindowCompleteness records whether the fields came from one response.
+// Omitted windows retain their observation; partial windows invalidate it even
+// though UpdateExtra preserves the omitted raw fields for diagnostics.
+func stampCodexWindowCompleteness(updates map[string]any, limits *NormalizedCodexLimits) {
+	for _, window := range []struct {
+		key     string
+		used    *float64
+		reset   *int
+		minutes *int
+	}{
+		{"5h", limits.Used5hPercent, limits.Reset5hSeconds, limits.Window5hMinutes},
+		{"7d", limits.Used7dPercent, limits.Reset7dSeconds, limits.Window7dMinutes},
+	} {
+		if window.used != nil || window.reset != nil || window.minutes != nil {
+			updates["codex_"+window.key+"_sample_complete"] = window.used != nil && window.reset != nil && window.minutes != nil
+		}
+	}
 }
 
 // updateCodexUsageSnapshot saves the Codex usage snapshot to account's Extra field

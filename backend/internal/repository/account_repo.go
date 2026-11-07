@@ -54,6 +54,7 @@ type accountRepository struct {
 
 var schedulerNeutralExtraKeyPrefixes = []string{
 	"codex_primary_",
+	service.QuotaEstimateSnapshotPrefix,
 	"codex_secondary_",
 	"codex_5h_",
 	"codex_7d_",
@@ -1969,7 +1970,7 @@ func (r *accountRepository) BindGroups(ctx context.Context, accountID int64, gro
 	if scoped := r.accountTransactionScope(ctx); scoped != r {
 		return scoped.BindGroups(ctx, accountID, groupIDs)
 	}
-	if adminaccess.FromContext(ctx) != nil {
+	if adminaccess.RestrictedFromContext(ctx) != nil {
 		return r.scopedAdminBindGroups(ctx, accountID, groupIDs)
 	}
 	existingGroupIDs, err := r.loadAccountGroupIDs(ctx, accountID)

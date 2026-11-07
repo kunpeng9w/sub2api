@@ -14,6 +14,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/announcementread"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
+	"github.com/Wei-Shaw/sub2api/ent/channelmonitor"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
@@ -446,6 +447,21 @@ func (_u *UserUpdate) AddRpmLimit(v int) *UserUpdate {
 	return _u
 }
 
+// AddChannelMonitorIDs adds the "channel_monitors" edge to the ChannelMonitor entity by IDs.
+func (_u *UserUpdate) AddChannelMonitorIDs(ids ...int64) *UserUpdate {
+	_u.mutation.AddChannelMonitorIDs(ids...)
+	return _u
+}
+
+// AddChannelMonitors adds the "channel_monitors" edges to the ChannelMonitor entity.
+func (_u *UserUpdate) AddChannelMonitors(v ...*ChannelMonitor) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChannelMonitorIDs(ids...)
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *UserUpdate) AddAPIKeyIDs(ids ...int64) *UserUpdate {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -644,6 +660,27 @@ func (_u *UserUpdate) AddPlatformQuotas(v ...*UserPlatformQuota) *UserUpdate {
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearChannelMonitors clears all "channel_monitors" edges to the ChannelMonitor entity.
+func (_u *UserUpdate) ClearChannelMonitors() *UserUpdate {
+	_u.mutation.ClearChannelMonitors()
+	return _u
+}
+
+// RemoveChannelMonitorIDs removes the "channel_monitors" edge to ChannelMonitor entities by IDs.
+func (_u *UserUpdate) RemoveChannelMonitorIDs(ids ...int64) *UserUpdate {
+	_u.mutation.RemoveChannelMonitorIDs(ids...)
+	return _u
+}
+
+// RemoveChannelMonitors removes "channel_monitors" edges to ChannelMonitor entities.
+func (_u *UserUpdate) RemoveChannelMonitors(v ...*ChannelMonitor) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChannelMonitorIDs(ids...)
 }
 
 // ClearAPIKeys clears all "api_keys" edges to the APIKey entity.
@@ -1115,6 +1152,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(user.FieldRpmLimit, field.TypeInt, value)
+	}
+	if _u.mutation.ChannelMonitorsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   user.ChannelMonitorsTable,
+			Columns: user.ChannelMonitorsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmonitor.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChannelMonitorsIDs(); len(nodes) > 0 && !_u.mutation.ChannelMonitorsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   user.ChannelMonitorsTable,
+			Columns: user.ChannelMonitorsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmonitor.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelMonitorsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   user.ChannelMonitorsTable,
+			Columns: user.ChannelMonitorsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmonitor.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2139,6 +2221,21 @@ func (_u *UserUpdateOne) AddRpmLimit(v int) *UserUpdateOne {
 	return _u
 }
 
+// AddChannelMonitorIDs adds the "channel_monitors" edge to the ChannelMonitor entity by IDs.
+func (_u *UserUpdateOne) AddChannelMonitorIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.AddChannelMonitorIDs(ids...)
+	return _u
+}
+
+// AddChannelMonitors adds the "channel_monitors" edges to the ChannelMonitor entity.
+func (_u *UserUpdateOne) AddChannelMonitors(v ...*ChannelMonitor) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChannelMonitorIDs(ids...)
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *UserUpdateOne) AddAPIKeyIDs(ids ...int64) *UserUpdateOne {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -2337,6 +2434,27 @@ func (_u *UserUpdateOne) AddPlatformQuotas(v ...*UserPlatformQuota) *UserUpdateO
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearChannelMonitors clears all "channel_monitors" edges to the ChannelMonitor entity.
+func (_u *UserUpdateOne) ClearChannelMonitors() *UserUpdateOne {
+	_u.mutation.ClearChannelMonitors()
+	return _u
+}
+
+// RemoveChannelMonitorIDs removes the "channel_monitors" edge to ChannelMonitor entities by IDs.
+func (_u *UserUpdateOne) RemoveChannelMonitorIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.RemoveChannelMonitorIDs(ids...)
+	return _u
+}
+
+// RemoveChannelMonitors removes "channel_monitors" edges to ChannelMonitor entities.
+func (_u *UserUpdateOne) RemoveChannelMonitors(v ...*ChannelMonitor) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChannelMonitorIDs(ids...)
 }
 
 // ClearAPIKeys clears all "api_keys" edges to the APIKey entity.
@@ -2838,6 +2956,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(user.FieldRpmLimit, field.TypeInt, value)
+	}
+	if _u.mutation.ChannelMonitorsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   user.ChannelMonitorsTable,
+			Columns: user.ChannelMonitorsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmonitor.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChannelMonitorsIDs(); len(nodes) > 0 && !_u.mutation.ChannelMonitorsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   user.ChannelMonitorsTable,
+			Columns: user.ChannelMonitorsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmonitor.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelMonitorsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   user.ChannelMonitorsTable,
+			Columns: user.ChannelMonitorsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmonitor.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{

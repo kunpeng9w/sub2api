@@ -41,6 +41,7 @@ const (
 
 // Options 定义共享 HTTP 客户端的构建参数
 type Options struct {
+	IsolationKey          string        // Optional account/proxy revision; never logged.
 	ProxyURL              string        // 代理 URL（支持 http/https/socks5/socks5h）
 	Timeout               time.Duration // 请求总超时时间
 	ResponseHeaderTimeout time.Duration // 等待响应头超时时间
@@ -144,7 +145,7 @@ func buildTransport(opts Options) (*http.Transport, error) {
 }
 
 func buildClientKey(opts Options) string {
-	return fmt.Sprintf("%s|%s|%s|%t|%t|%t|%d|%d|%d",
+	return fmt.Sprintf("%s|%s|%s|%t|%t|%t|%d|%d|%d|%s",
 		strings.TrimSpace(opts.ProxyURL),
 		opts.Timeout.String(),
 		opts.ResponseHeaderTimeout.String(),
@@ -153,7 +154,7 @@ func buildClientKey(opts Options) string {
 		opts.AllowPrivateHosts,
 		opts.MaxIdleConns,
 		opts.MaxIdleConnsPerHost,
-		opts.MaxConnsPerHost,
+		opts.MaxConnsPerHost, opts.IsolationKey,
 	)
 }
 

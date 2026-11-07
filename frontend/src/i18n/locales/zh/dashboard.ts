@@ -168,10 +168,10 @@ export default {
       openai: {
         description: '将以下配置文件添加到 Codex CLI 配置目录中。',
         authModeTitle: 'Codex 认证模式',
-        authModeDescription: '兼容模式保留旧版 Codex 配置；API Key Mode 用于授权客户端图片执行器。',
+        authModeDescription: '配置默认启用实时联网搜索；API Key 模式支持 Codex 原生生图，旧版客户端可选择兼容模式。',
         authModeLegacy: '兼容模式',
-        authModeApiKey: 'API Key Mode',
-        authModeApiKeyRestartNotice: '保存此配置后，必须完全退出并重启 Codex Desktop 或 CLI，然后新建 task，让客户端重新构建工具注册表。',
+        authModeApiKey: 'API Key 模式（推荐）',
+        authModeApiKeyRestartNotice: '此配置包含 API 密钥，请勿共享或提交到仓库。保存后新建会话验证；若配置未加载，再重启 Codex。生图仍需分组权限、可用余额和上游支持。',
         configTomlHint: '请确保以下内容位于 config.toml 文件的开头部分',
         note: '请确保配置目录存在。macOS/Linux 用户可运行 mkdir -p ~/.codex 创建目录。',
         noteWindows:
@@ -358,6 +358,7 @@ export default {
     accountBilled: '账号计费',
     resetNow: '现在',
     resetPending: '待刷新',
+    windowInactive: '窗口未激活',
     accountMultiplier: '账号倍率',
     avgDuration: '平均耗时',
     inSelectedRange: '所选范围内',
@@ -459,6 +460,7 @@ export default {
     noDataToExport: '没有可导出的数据',
     exportSuccess: '使用数据导出成功',
     exportFailed: '使用数据导出失败',
+    exportRateLimited: '请求过于频繁，{seconds} 秒后自动继续导出',
     exportExcelSuccess: '使用数据导出成功（Excel格式）',
     exportExcelFailed: '使用数据导出失败',
     imageUnit: '张',
@@ -501,6 +503,8 @@ export default {
 
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
+    controls: {"noAccount": '不关联账号（手动选择代理）',"proxy": "出口代理", "chooseProxy": "请选择代理（未配置时无法检测）", "accountProxy": "出口严格使用关联账号当前绑定的代理；不可用时停止请求。", "visibility": "可见范围", "adminOnly": "仅管理员", "selected": "指定用户", "allUsers": "所有用户", "searchUsers": "搜索用户名或邮箱", "viewersRequired": "请至少选择一名用户", "autoCheck": "自动检测", "neverChecked": "尚未检测", "running": "检测中…", "runNow": "立即检测", "sampleAvailability": "检测样本可用率", "egressMissing": "出口未配置或不可用"},
+    estimate: {"total": "预计总额度 ${value}", "remaining": "剩余 ${value}", "sevenDayShare": "占比7d {value}%", "historical": "沿用历史总额度（采样于 {time}）", "unavailable": "暂无法估算", "sampled": "采样于 {time}", "note": "按本系统记录用量估算"},
     status: {
       operational: '正常',
       degraded: '降级',
@@ -555,7 +559,14 @@ export default {
     dialogLatency: '对话延迟',
     endpointPing: '端点 PING',
     history60pts: '近 {n} 次记录',
-    nextUpdateIn: '{n}s 后刷新',
+    nextUpdateIn: '{n}s 后更新展示',
+    checkSchedule: {
+      automatic: '自动',
+      automaticInterval: '自动 · {interval}',
+      manual: '手动',
+      automaticHint: '自动检测，配置间隔为 {interval}',
+      manualHint: '仅手动触发检测',
+    },
     past: 'PAST',
     now: 'NOW',
     maintenancePaused: '维护中 · 已暂停时间线采集',
@@ -570,6 +581,9 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    runAll: '一键全部检测',
+    runAllProgress: '检测中 {done}/{total}',
+    runAllSummary: '检测完成 {completed}，执行失败 {failed}，跳过 {skipped}',
     title: '渠道状态',
     description: '查看渠道可用性、延迟和近期状态',
     searchPlaceholder: '搜索渠道...',

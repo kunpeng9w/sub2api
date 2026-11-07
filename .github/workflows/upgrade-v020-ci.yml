@@ -1,0 +1,140 @@
+name: Upgrade v0.2.20 verification
+on:
+  push:
+    branches: [codex/merge-upstream-v0.2.20]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: upgrade-v020-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  generated:
+    name: Generate source and lockfile for review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Resolve the locked frontend dependencies
+        run: pnpm --dir frontend install --lockfile-only
+      - name: Generate Ent, Wire and format tracked Go files
+        working-directory: backend
+        run: |
+          go generate ./ent
+          GOFLAGS=-mod=mod go generate ./cmd/server
+          git ls-files -z '*.go' | xargs -0 gofmt -w
+      - name: Save reviewable changes
+        if: always()
+        run: git diff --binary > "$RUNNER_TEMP/upgrade-generated.patch"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: upgrade-generated-${{ github.sha }}
+          path: ${{ runner.temp }}/upgrade-generated.patch
+      - name: Require generated changes to be committed
+        run: git diff --exit-code
+  frontend-full:
+    name: Complete frontend unit suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - name: Full frontend tests including MCP, permissions and all exports
+        run: |
+          set -o pipefail
+          bash ops/changes/20261105-channel-monitor/test-isolated.sh pnpm --dir frontend exec vitest run --maxWorkers=2 --minWorkers=1 2>&1 | tee "$RUNNER_TEMP/frontend-full.log"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: upgrade-frontend-${{ github.sha }}
+          path: ${{ runner.temp }}/frontend-full.log
+  migrations:
+    name: Empty database and custom baseline upgrade with repeated startup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.1-alpine3.23
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Extract the immutable custom baseline migrations
+        run: |
+          mkdir -p "$RUNNER_TEMP/baseline"
+          git archive 56ef3746843ba857d281b39049a36fa82d9cad56 backend/migrations | tar -x -C "$RUNNER_TEMP/baseline"
+          git diff --exit-code 56ef3746843ba857d281b39049a36fa82d9cad56 -- backend/migrations/249_channel_monitor_manual_access.sql backend/migrations/250_channel_monitor_sort_order.sql
+          git diff --exit-code dab829a4e9b7d1cc307189aea8b0319eb29e29d0 -- backend/migrations/249_mcp_oauth.sql
+      - name: Run real migration runner against disposable databases
+        working-directory: backend
+        env:
+          UPGRADE_TEST_DSN: host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable
+          SCOPED_ADMIN_TEST_DSN: host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable
+          UPGRADE_BASELINE_MIGRATIONS: ${{ runner.temp }}/baseline/backend/migrations
+          GOMAXPROCS: '2'
+        run: |
+          set -o pipefail
+          go test -v -tags=unit -p 1 ./internal/repository -run 'TestUpgradeV020Migrations|TestScopedAdmin.*Postgres|TestAdminFullAccessPostgres|TestProxySamplePostgres' -count=1 -timeout=8m 2>&1 | tee "$RUNNER_TEMP/upgrade-migrations.log"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: upgrade-migrations-${{ github.sha }}
+          path: ${{ runner.temp }}/upgrade-migrations.log
+  cross-regressions:
+    name: Permission, cancellation, drain, resources, bridge and image regressions
+    env:
+      SUB2API_MONITOR_ISOLATED_TESTS: "1"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Download dependencies before isolating network access
+        working-directory: backend
+        run: go mod download
+      - name: Cross-component regression and race checks with mock upstreams
+        working-directory: backend
+        env:
+          GOMAXPROCS: '2'
+        run: |
+          set -o pipefail
+          bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -race -v -tags=unit -p 1 -count=1 ./internal/service ./internal/repository ./internal/pkg/httputil ./internal/handler ./internal/handler/admin ./internal/server/routes \
+            -run 'TestOpenAIUsageRefresh_Upgrade|TestScopedAdmin|TestEgressAudit|TestHTTPUpstreamDrain|TestStrictEgress|TestChannelMonitor|TestQuotaEstimate|TestUsageWindow|TestOpenAISevenDay|TestAccountUsageService_SetupToken|Test.*(BodyBudget|BodyMemory|ReadTimeout|WriteTimeout|NonStream|WSHTTPBridge|Images)' \
+            -timeout=20m 2>&1 | tee "$RUNNER_TEMP/upgrade-cross-regressions.log"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: upgrade-cross-regressions-${{ github.sha }}
+          path: ${{ runner.temp }}/upgrade-cross-regressions.log

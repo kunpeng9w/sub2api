@@ -310,6 +310,11 @@ func (c *coderOpenAIWSClientConn) WriteJSON(ctx context.Context, value any) erro
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if audit := egressWriteAuditFromContext(ctx); audit != nil {
+		return writeEgressAuditJSON(value, audit, func(payload []byte) error {
+			return c.conn.Write(ctx, coderws.MessageText, payload)
+		})
+	}
 	return wsjson.Write(ctx, c.conn, value)
 }
 

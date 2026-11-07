@@ -10,7 +10,7 @@ cleanup_audit_test() {
 import pathlib, sys
 p = pathlib.Path(sys.argv[1])
 assert p.name.startswith("egressaudittest.") and p.parent.name == "internal"
-for name in ("egress_audit.go", "egress_audit_ws.go", "egress_audit_ws_dial.go", "egress_audit_test.go", "model_test.go"):
+for name in ("egress_audit.go", "egress_audit_ws.go", "egress_audit_ws_dial.go", "egress_audit_test.go", "egress_audit_network.go", "egress_audit_ws_network.go", "egress_audit_network_test.go", "model_test.go"):
     (p / name).unlink(missing_ok=True)
 p.rmdir()
 PY_CLEANUP
@@ -19,6 +19,9 @@ trap cleanup_audit_test EXIT
 cp "$backend_dir/internal/service/egress_audit.go" \
    "$backend_dir/internal/service/egress_audit_ws.go" \
    "$backend_dir/internal/service/egress_audit_ws_dial.go" \
+   "$backend_dir/internal/service/egress_audit_network.go" \
+   "$backend_dir/internal/service/egress_audit_ws_network.go" \
+   "$backend_dir/internal/service/egress_audit_network_test.go" \
    "$backend_dir/internal/service/egress_audit_test.go" "$audit_test_dir/"
 cat > "$audit_test_dir/model_test.go" <<'GO'
 package service

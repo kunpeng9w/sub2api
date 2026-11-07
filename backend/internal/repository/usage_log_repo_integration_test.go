@@ -1698,3 +1698,33 @@ func (s *UsageLogRepoSuite) TestListWithFilters_CombinedFilters() {
 	s.Require().Len(logs, 2)
 	s.Require().Equal(int64(2), page.Total)
 }
+
+// TestMonitorUsageWindowStatsBatch exercises the actual PostgreSQL aggregation,
+// including mapped upstream models and the immutable quota sampling cutoff.
+func (s *UsageLogRepoSuite) TestMonitorUsageWindowStatsBatch() {
+	user := mustCreateUser(s.T(), s.client, &service.User{Email: "monitor-window-stats@test.invalid"})
+	key := mustCreateApiKey(s.T(), s.client, &service.APIKey{UserID: user.ID, Key: "fixture-monitor-window", Name: "fixture"})
+	account := mustCreateAccount(s.T(), s.client, &service.Account{Name: "monitor-window-fixture"})
+	sample := time.Now().UTC().Add(-time.Minute)
+	sonnet := s.createUsageLog(user, key, account, 10, 20, 100, sample.Add(-5*time.Minute))
+	fable := s.createUsageLog(user, key, account, 10, 20, 4, sample.Add(-4*time.Minute))
+	legacy := s.createUsageLog(user, key, account, 10, 20, 2, sample.Add(-3*time.Minute))
+	future := s.createUsageLog(user, key, account, 10, 20, 99, sample.Add(time.Minute))
+	s.Require().NoError(s.client.UsageLog.UpdateOneID(sonnet.ID).SetModel("requested-alias").SetUpstreamModel("claude-sonnet-fixture").SetAccountRateMultiplier(2).Exec(s.ctx))
+	_, err := s.tx.ExecContext(s.ctx, "UPDATE usage_logs SET account_stats_cost=$1 WHERE id=$2", 6, sonnet.ID)
+	s.Require().NoError(err)
+	s.Require().NoError(s.client.UsageLog.UpdateOneID(fable.ID).SetModel("claude-sonnet-requested").SetUpstreamModel("claude-fable-fixture").Exec(s.ctx))
+	s.Require().NoError(s.client.UsageLog.UpdateOneID(legacy.ID).SetModel("claude-sonnet-legacy").ClearUpstreamModel().Exec(s.ctx))
+	s.Require().NoError(s.client.UsageLog.UpdateOneID(future.ID).SetUpstreamModel("claude-sonnet-fixture").Exec(s.ctx))
+	queries := []service.UsageWindowQuery{
+		{Key: "all", AccountID: account.ID, Start: sample.Add(-7 * 24 * time.Hour), End: sample},
+		{Key: "sonnet", AccountID: account.ID, Start: sample.Add(-7 * 24 * time.Hour), End: sample, Family: "sonnet"},
+		{Key: "fable", AccountID: account.ID, Start: sample.Add(-7 * 24 * time.Hour), End: sample, Family: "fable"},
+	}
+	stats, err := s.repo.GetUsageWindowStatsBatch(s.ctx, queries)
+	s.Require().NoError(err)
+	s.Require().InDelta(18, stats["all"].Cost, 1e-9)
+	s.Require().InDelta(14, stats["sonnet"].Cost, 1e-9)
+	s.Require().InDelta(4, stats["fable"].Cost, 1e-9)
+	s.Require().Equal(int64(3), stats["all"].Requests)
+}

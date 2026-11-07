@@ -39,6 +39,9 @@
         v-for="item in items"
         :key="item.id"
         :item="item"
+        :running="runningIDs?.has(item.id)"
+        :run-disabled="runDisabled"
+        @run="emit('run', item)"
         :window="window"
         :availability-value="resolveAvailability(item)"
         :countdown-seconds="countdownSeconds"
@@ -55,6 +58,8 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import MonitorCard from './MonitorCard.vue'
 
 const props = defineProps<{
+  runDisabled?: boolean
+  runningIDs?: Set<number>
   items: UserMonitorView[]
   window: '7d' | '15d' | '30d'
   countdownSeconds: number
@@ -64,6 +69,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'cardClick', item: UserMonitorView): void
+  (e: 'run', item: UserMonitorView): void
 }>()
 
 const { t } = useI18n()

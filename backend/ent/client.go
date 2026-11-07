@@ -2212,6 +2212,22 @@ func (c *ChannelMonitorClient) GetX(ctx context.Context, id int64) *ChannelMonit
 	return obj
 }
 
+// QueryViewers queries the viewers edge of a ChannelMonitor.
+func (c *ChannelMonitorClient) QueryViewers(_m *ChannelMonitor) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channelmonitor.Table, channelmonitor.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, channelmonitor.ViewersTable, channelmonitor.ViewersPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryHistory queries the history edge of a ChannelMonitor.
 func (c *ChannelMonitorClient) QueryHistory(_m *ChannelMonitor) *ChannelMonitorHistoryQuery {
 	query := (&ChannelMonitorHistoryClient{config: c.config}).Query()
@@ -5803,6 +5819,22 @@ func (c *UserClient) GetX(ctx context.Context, id int64) *User {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryChannelMonitors queries the channel_monitors edge of a User.
+func (c *UserClient) QueryChannelMonitors(_m *User) *ChannelMonitorQuery {
+	query := (&ChannelMonitorClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(channelmonitor.Table, channelmonitor.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, user.ChannelMonitorsTable, user.ChannelMonitorsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // QueryAPIKeys queries the api_keys edge of a User.

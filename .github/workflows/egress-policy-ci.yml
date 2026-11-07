@@ -34,11 +34,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install PyYAML==6.0.3
-      - name: Format candidate source only
+      - name: Verify committed source formatting
         if: ${{ !inputs.network_only }}
         run: |
-          git diff --name-only -z HEAD^ HEAD -- '*.go' | xargs -0 -r gofmt -w
-          git diff --binary > "$RUNNER_TEMP/format.patch"
+          unformatted=$(git diff --name-only -z HEAD^ HEAD -- '*.go' | xargs -0 -r gofmt -l)
+          test -z "$unformatted" || { echo "$unformatted"; exit 1; }
       - name: Compile and run simulated account egress regressions
         if: ${{ !inputs.network_only }}
         working-directory: backend
@@ -57,7 +57,6 @@ jobs:
         with:
           name: egress-simulation-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/format.patch
             ${{ runner.temp }}/egress-go-tests.log
             ${{ runner.temp }}/egress-policy-tests.log
           if-no-files-found: warn

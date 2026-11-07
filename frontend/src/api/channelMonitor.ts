@@ -22,6 +22,10 @@ export interface MonitorTimelinePoint {
 }
 
 export interface UserMonitorView {
+  auto_check_enabled?: boolean
+  interval_seconds?: number
+  can_run?: boolean
+  last_checked_at?: string | null
   id: number
   name: string
   provider: Provider
@@ -55,6 +59,7 @@ export interface UserMonitorModelDetail {
 }
 
 export interface UserMonitorDetail {
+  auto_check_enabled?: boolean
   id: number
   name: string
   provider: Provider
@@ -80,7 +85,13 @@ export async function status(id: number): Promise<UserMonitorDetail> {
   return data
 }
 
+export async function run(id: number): Promise<void> {
+  // Allow the backend's 90-second execution budget and result persistence.
+  await apiClient.post(`/channel-monitors/${id}/run`, undefined, { timeout: 120000 })
+}
+
 export const channelMonitorUserAPI = {
+  run,
   list,
   status,
 }
