@@ -19,7 +19,7 @@ import (
 func swapMonitorHTTPClient(t *testing.T) {
 	t.Helper()
 	orig := monitorHTTPClient
-	monitorHTTPClient = &http.Client{Timeout: 5 * time.Second}
+	monitorHTTPClient = &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{}}
 	t.Cleanup(func() { monitorHTTPClient = orig })
 }
 

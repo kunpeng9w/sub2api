@@ -28,6 +28,8 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claudedomain"
+	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyurl"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/proxyutil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/servertiming"
@@ -214,6 +216,9 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
+	if err := monitorrequest.CheckRequest(req, route); err != nil {
+		return nil, err
+	}
 	proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
 	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)
@@ -229,15 +234,17 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 	}
 
 	// 获取或创建对应的客户端，并标记请求占用
-	entry, err := s.acquireClientWithProfile(proxyURL, accountID, accountConcurrency, profile)
+	entry, err := s.acquireClientWithProfile(proxyURL, accountID, accountConcurrency, profile, monitorrequest.CacheKey(req.Context()))
 	if err != nil {
 		return nil, err
 	}
 
 	// 执行请求
 	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
-	client = httpClientWithGrokAccessDeniedFallback(client)
-	resp, err = doUpstreamRequest(client, req)
+	if !monitorrequest.Active(req.Context()) {
+		client = httpClientWithGrokAccessDeniedFallback(client)
+	}
+	resp, err = doUpstreamRequest(client, req, s.upstreamDrainTimeout())
 	if err != nil {
 		s.recordOpenAIHTTP2Failure(profile, entry.protocolMode, entry.proxyKey, err)
 		// 请求失败，立即减少计数
@@ -273,6 +280,9 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 		s.audit.Rejected(req.Context(), account, proxyURL, req.URL.String(), "http")
 		return nil, routeErr
 	}
+	if err := monitorrequest.CheckRequest(req, route); err != nil {
+		return nil, err
+	}
 	proxyURL = route
 	service.RecordAccountEgress(req.Context(), route)
 	attempt := s.audit.Begin(req.Context(), account, route, req.URL.String(), "http", "method", req.Method)
@@ -298,15 +308,17 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 		return nil, err
 	}
 
-	entry, err := s.acquireClientWithTLS(proxyURL, accountID, accountConcurrency, profile, upstreamProfile)
+	entry, err := s.acquireClientWithTLS(proxyURL, accountID, accountConcurrency, profile, upstreamProfile, monitorrequest.CacheKey(req.Context()))
 	if err != nil {
 		slog.Debug("tls_fingerprint_acquire_client_failed", "account_id", accountID, "error", err)
 		return nil, err
 	}
 
 	client := s.httpClientForUpstreamRequest(entry.client, req, proxyURL)
-	client = httpClientWithGrokAccessDeniedFallback(client)
-	resp, err = doUpstreamRequest(client, req)
+	if !monitorrequest.Active(req.Context()) {
+		client = httpClientWithGrokAccessDeniedFallback(client)
+	}
+	resp, err = doUpstreamRequest(client, req, s.upstreamDrainTimeout())
 	if err != nil {
 		atomic.AddInt64(&entry.inFlight, -1)
 		atomic.StoreInt64(&entry.lastUsed, time.Now().UnixNano())
@@ -322,10 +334,21 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	return resp, nil
 }
 
+func (s *httpUpstreamService) upstreamDrainTimeout() time.Duration {
+	if s.cfg != nil && s.cfg.Gateway.StreamDataIntervalTimeout > 0 {
+		return time.Duration(s.cfg.Gateway.StreamDataIntervalTimeout) * time.Second
+	}
+	return pkghttputil.DefaultUpstreamDrainTimeout
+}
+
 // doUpstreamRequest owns cancellation for one attempt, without cancelling the
 // caller's context (which may be detached for billing or reused for retries).
-func doUpstreamRequest(client *http.Client, req *http.Request) (*http.Response, error) {
-	ctx, cancel := context.WithCancel(req.Context())
+func doUpstreamRequest(client *http.Client, req *http.Request, drainTimeouts ...time.Duration) (*http.Response, error) {
+	var drainTimeout time.Duration
+	if len(drainTimeouts) > 0 {
+		drainTimeout = drainTimeouts[0]
+	}
+	ctx, cancel := pkghttputil.NewUpstreamAttemptContext(req.Context(), drainTimeout)
 	resp, err := servertiming.Do(client, req.WithContext(ctx))
 	if err != nil {
 		cancel()
@@ -379,6 +402,11 @@ func (s *httpUpstreamService) httpClientForUpstreamRequest(client *http.Client, 
 		return client
 	}
 	ctx := req.Context()
+	if monitorrequest.Active(ctx) {
+		clone := *client
+		clone.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		return &clone
+	}
 	if s.cfg != nil && s.cfg.Gateway.ClaudeEgress.Enabled && len(routes) > 0 && !service.HTTPUpstreamRedirectsDisabled(ctx) {
 		clone := *client
 		selected := routes[0]
@@ -594,13 +622,13 @@ func isSupportedGrokCLIVersion(version string) bool {
 }
 
 // acquireClientWithTLS 获取或创建带 TLS 指纹的客户端
-func (s *httpUpstreamService) acquireClientWithTLS(proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile, upstreamProfile service.HTTPUpstreamProfile) (*upstreamClientEntry, error) {
-	return s.getClientEntryWithTLS(proxyURL, accountID, accountConcurrency, profile, upstreamProfile, true, true)
+func (s *httpUpstreamService) acquireClientWithTLS(proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile, upstreamProfile service.HTTPUpstreamProfile, isolationKeys ...string) (*upstreamClientEntry, error) {
+	return s.getClientEntryWithTLS(proxyURL, accountID, accountConcurrency, profile, upstreamProfile, true, true, isolationKeys...)
 }
 
 // getClientEntryWithTLS 获取或创建带 TLS 指纹的客户端条目
 // TLS 指纹客户端使用独立的缓存键，与普通客户端隔离
-func (s *httpUpstreamService) getClientEntryWithTLS(proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile, upstreamProfile service.HTTPUpstreamProfile, markInFlight bool, enforceLimit bool) (*upstreamClientEntry, error) {
+func (s *httpUpstreamService) getClientEntryWithTLS(proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile, upstreamProfile service.HTTPUpstreamProfile, markInFlight bool, enforceLimit bool, isolationKeys ...string) (*upstreamClientEntry, error) {
 	isolation := s.getIsolationMode()
 	proxyKey, parsedProxy, err := normalizeProxyURL(proxyURL)
 	if err != nil {
@@ -610,6 +638,9 @@ func (s *httpUpstreamService) getClientEntryWithTLS(proxyURL string, accountID i
 	settings = s.applyProfilePoolSettings(settings, upstreamProfile)
 	// TLS 指纹客户端使用独立的缓存键，加 "tls:" 前缀
 	cacheKey := "tls:" + buildCacheKey(isolation, proxyKey, accountID, upstreamProtocolModeDefault)
+	if len(isolationKeys) > 0 && isolationKeys[0] != "" {
+		cacheKey += ":" + isolationKeys[0]
+	}
 	poolKey := buildPoolKey(settings, upstreamProtocolModeDefault) + ":tls"
 
 	now := time.Now()
@@ -733,8 +764,8 @@ func (s *httpUpstreamService) acquireClient(proxyURL string, accountID int64, ac
 }
 
 // acquireClientWithProfile 获取或创建客户端，并按请求 profile 选择协议策略。
-func (s *httpUpstreamService) acquireClientWithProfile(proxyURL string, accountID int64, accountConcurrency int, profile service.HTTPUpstreamProfile) (*upstreamClientEntry, error) {
-	return s.getClientEntry(proxyURL, accountID, accountConcurrency, profile, true, true)
+func (s *httpUpstreamService) acquireClientWithProfile(proxyURL string, accountID int64, accountConcurrency int, profile service.HTTPUpstreamProfile, isolationKeys ...string) (*upstreamClientEntry, error) {
+	return s.getClientEntry(proxyURL, accountID, accountConcurrency, profile, true, true, isolationKeys...)
 }
 
 // getOrCreateClient 获取或创建客户端
@@ -759,7 +790,7 @@ func (s *httpUpstreamService) getOrCreateClient(proxyURL string, accountID int64
 // getClientEntry 获取或创建客户端条目
 // markInFlight=true 时会标记进行中请求，用于请求路径防止被淘汰
 // enforceLimit=true 时会限制客户端数量，超限且无法淘汰时返回错误
-func (s *httpUpstreamService) getClientEntry(proxyURL string, accountID int64, accountConcurrency int, profile service.HTTPUpstreamProfile, markInFlight bool, enforceLimit bool) (*upstreamClientEntry, error) {
+func (s *httpUpstreamService) getClientEntry(proxyURL string, accountID int64, accountConcurrency int, profile service.HTTPUpstreamProfile, markInFlight bool, enforceLimit bool, isolationKeys ...string) (*upstreamClientEntry, error) {
 	// 获取隔离模式
 	isolation := s.getIsolationMode()
 	// 标准化代理 URL 并解析
@@ -773,6 +804,9 @@ func (s *httpUpstreamService) getClientEntry(proxyURL string, accountID int64, a
 	settings = s.applyProfilePoolSettings(settings, profile)
 	// 构建缓存键（根据隔离策略不同）
 	cacheKey := buildCacheKey(isolation, proxyKey, accountID, protocolMode)
+	if len(isolationKeys) > 0 && isolationKeys[0] != "" {
+		cacheKey += ":" + isolationKeys[0]
+	}
 	// 构建连接池配置键（用于检测配置变更）
 	poolKey := buildPoolKey(settings, protocolMode)
 

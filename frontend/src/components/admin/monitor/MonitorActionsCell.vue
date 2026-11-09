@@ -2,7 +2,7 @@
   <div class="flex items-center gap-1">
     <button
       @click="$emit('run', row)"
-      :disabled="running"
+      :disabled="running || !row.enabled || row.egress_configured === false"
       class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
     >
       <Icon name="refresh" size="sm" :class="running ? 'animate-spin' : ''" />

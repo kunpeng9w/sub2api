@@ -631,7 +631,11 @@ var (
 		{Name: "api_key_encrypted", Type: field.TypeString},
 		{Name: "primary_model", Type: field.TypeString, Size: 200},
 		{Name: "extra_models", Type: field.TypeJSON},
+		{Name: "sort_order", Type: field.TypeInt, Default: 0},
 		{Name: "group_name", Type: field.TypeString, Nullable: true, Size: 100, Default: ""},
+		{Name: "auto_check_enabled", Type: field.TypeBool, Default: false},
+		{Name: "visibility", Type: field.TypeString, Default: "all"},
+		{Name: "proxy_id", Type: field.TypeInt64, Nullable: true},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "interval_seconds", Type: field.TypeInt},
 		{Name: "jitter_seconds", Type: field.TypeInt, Default: 0},
@@ -650,7 +654,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_monitors_channel_monitor_request_templates_request_template",
-				Columns:    []*schema.Column{ChannelMonitorsColumns[21]},
+				Columns:    []*schema.Column{ChannelMonitorsColumns[25]},
 				RefColumns: []*schema.Column{ChannelMonitorRequestTemplatesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -659,7 +663,7 @@ var (
 			{
 				Name:    "channelmonitor_enabled_last_checked_at",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelMonitorsColumns[13], ChannelMonitorsColumns[16]},
+				Columns: []*schema.Column{ChannelMonitorsColumns[17], ChannelMonitorsColumns[20]},
 			},
 			{
 				Name:    "channelmonitor_provider",
@@ -674,12 +678,12 @@ var (
 			{
 				Name:    "channelmonitor_group_name",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelMonitorsColumns[12]},
+				Columns: []*schema.Column{ChannelMonitorsColumns[13]},
 			},
 			{
 				Name:    "channelmonitor_template_id",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelMonitorsColumns[21]},
+				Columns: []*schema.Column{ChannelMonitorsColumns[25]},
 			},
 			{
 				Name:    "channelmonitor_account_id",
@@ -2089,6 +2093,31 @@ var (
 			},
 		},
 	}
+	// ChannelMonitorUsersColumns holds the columns for the "channel_monitor_users" table.
+	ChannelMonitorUsersColumns = []*schema.Column{
+		{Name: "monitor_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// ChannelMonitorUsersTable holds the schema information for the "channel_monitor_users" table.
+	ChannelMonitorUsersTable = &schema.Table{
+		Name:       "channel_monitor_users",
+		Columns:    ChannelMonitorUsersColumns,
+		PrimaryKey: []*schema.Column{ChannelMonitorUsersColumns[0], ChannelMonitorUsersColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "channel_monitor_users_monitor_id",
+				Columns:    []*schema.Column{ChannelMonitorUsersColumns[0]},
+				RefColumns: []*schema.Column{ChannelMonitorsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "channel_monitor_users_user_id",
+				Columns:    []*schema.Column{ChannelMonitorUsersColumns[1]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
@@ -2130,6 +2159,7 @@ var (
 		UserAttributeValuesTable,
 		UserPlatformQuotasTable,
 		UserSubscriptionsTable,
+		ChannelMonitorUsersTable,
 	}
 )
 
@@ -2287,4 +2317,6 @@ func init() {
 	UserSubscriptionsTable.Annotation = &entsql.Annotation{
 		Table: "user_subscriptions",
 	}
+	ChannelMonitorUsersTable.ForeignKeys[0].RefTable = ChannelMonitorsTable
+	ChannelMonitorUsersTable.ForeignKeys[1].RefTable = UsersTable
 }

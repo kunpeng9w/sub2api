@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
+	"github.com/Wei-Shaw/sub2api/ent/user"
 )
 
 // ChannelMonitorQuery is the builder for querying ChannelMonitor entities.
@@ -27,6 +28,7 @@ type ChannelMonitorQuery struct {
 	order               []channelmonitor.OrderOption
 	inters              []Interceptor
 	predicates          []predicate.ChannelMonitor
+	withViewers         *UserQuery
 	withHistory         *ChannelMonitorHistoryQuery
 	withDailyRollups    *ChannelMonitorDailyRollupQuery
 	withRequestTemplate *ChannelMonitorRequestTemplateQuery
@@ -65,6 +67,28 @@ func (_q *ChannelMonitorQuery) Unique(unique bool) *ChannelMonitorQuery {
 func (_q *ChannelMonitorQuery) Order(o ...channelmonitor.OrderOption) *ChannelMonitorQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryViewers chains the current query on the "viewers" edge.
+func (_q *ChannelMonitorQuery) QueryViewers() *UserQuery {
+	query := (&UserClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channelmonitor.Table, channelmonitor.FieldID, selector),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, channelmonitor.ViewersTable, channelmonitor.ViewersPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // QueryHistory chains the current query on the "history" edge.
@@ -325,6 +349,7 @@ func (_q *ChannelMonitorQuery) Clone() *ChannelMonitorQuery {
 		order:               append([]channelmonitor.OrderOption{}, _q.order...),
 		inters:              append([]Interceptor{}, _q.inters...),
 		predicates:          append([]predicate.ChannelMonitor{}, _q.predicates...),
+		withViewers:         _q.withViewers.Clone(),
 		withHistory:         _q.withHistory.Clone(),
 		withDailyRollups:    _q.withDailyRollups.Clone(),
 		withRequestTemplate: _q.withRequestTemplate.Clone(),
@@ -332,6 +357,17 @@ func (_q *ChannelMonitorQuery) Clone() *ChannelMonitorQuery {
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithViewers tells the query-builder to eager-load the nodes that are connected to
+// the "viewers" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ChannelMonitorQuery) WithViewers(opts ...func(*UserQuery)) *ChannelMonitorQuery {
+	query := (&UserClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withViewers = query
+	return _q
 }
 
 // WithHistory tells the query-builder to eager-load the nodes that are connected to
@@ -445,7 +481,8 @@ func (_q *ChannelMonitorQuery) sqlAll(ctx context.Context, hooks ...queryHook) (
 	var (
 		nodes       = []*ChannelMonitor{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
+			_q.withViewers != nil,
 			_q.withHistory != nil,
 			_q.withDailyRollups != nil,
 			_q.withRequestTemplate != nil,
@@ -472,6 +509,13 @@ func (_q *ChannelMonitorQuery) sqlAll(ctx context.Context, hooks ...queryHook) (
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := _q.withViewers; query != nil {
+		if err := _q.loadViewers(ctx, query, nodes,
+			func(n *ChannelMonitor) { n.Edges.Viewers = []*User{} },
+			func(n *ChannelMonitor, e *User) { n.Edges.Viewers = append(n.Edges.Viewers, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withHistory; query != nil {
 		if err := _q.loadHistory(ctx, query, nodes,
 			func(n *ChannelMonitor) { n.Edges.History = []*ChannelMonitorHistory{} },
@@ -497,6 +541,67 @@ func (_q *ChannelMonitorQuery) sqlAll(ctx context.Context, hooks ...queryHook) (
 	return nodes, nil
 }
 
+func (_q *ChannelMonitorQuery) loadViewers(ctx context.Context, query *UserQuery, nodes []*ChannelMonitor, init func(*ChannelMonitor), assign func(*ChannelMonitor, *User)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[int64]*ChannelMonitor)
+	nids := make(map[int64]map[*ChannelMonitor]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(channelmonitor.ViewersTable)
+		s.Join(joinT).On(s.C(user.FieldID), joinT.C(channelmonitor.ViewersPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(channelmonitor.ViewersPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(channelmonitor.ViewersPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullInt64)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := values[0].(*sql.NullInt64).Int64
+				inValue := values[1].(*sql.NullInt64).Int64
+				if nids[inValue] == nil {
+					nids[inValue] = map[*ChannelMonitor]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*User](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "viewers" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
 func (_q *ChannelMonitorQuery) loadHistory(ctx context.Context, query *ChannelMonitorHistoryQuery, nodes []*ChannelMonitor, init func(*ChannelMonitor), assign func(*ChannelMonitor, *ChannelMonitorHistory)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int64]*ChannelMonitor)

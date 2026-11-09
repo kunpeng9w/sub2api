@@ -552,6 +552,7 @@ export default {
       primaryModelRequired: '请输入主模型',
       linkedAccountRequired: '请选择关联账号',
       columns: {
+        sortOrder: '显示顺序',
         name: '名称',
         provider: '供应商',
         primaryModel: '主模型',
@@ -561,6 +562,9 @@ export default {
         actions: '操作'
       },
       form: {
+        sortOrder: '显示顺序',
+        sortOrderHint: '数字越小越靠前，相同数字按创建先后排列',
+        sortOrderInvalid: '显示顺序须为 0 到 2147483647 之间的整数',
         name: '名称',
         namePlaceholder: '输入监控名称',
         provider: '平台',

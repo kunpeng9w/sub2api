@@ -37,8 +37,16 @@ const (
 	FieldPrimaryModel = "primary_model"
 	// FieldExtraModels holds the string denoting the extra_models field in the database.
 	FieldExtraModels = "extra_models"
+	// FieldSortOrder holds the string denoting the sort_order field in the database.
+	FieldSortOrder = "sort_order"
 	// FieldGroupName holds the string denoting the group_name field in the database.
 	FieldGroupName = "group_name"
+	// FieldAutoCheckEnabled holds the string denoting the auto_check_enabled field in the database.
+	FieldAutoCheckEnabled = "auto_check_enabled"
+	// FieldVisibility holds the string denoting the visibility field in the database.
+	FieldVisibility = "visibility"
+	// FieldProxyID holds the string denoting the proxy_id field in the database.
+	FieldProxyID = "proxy_id"
 	// FieldEnabled holds the string denoting the enabled field in the database.
 	FieldEnabled = "enabled"
 	// FieldIntervalSeconds holds the string denoting the interval_seconds field in the database.
@@ -57,6 +65,8 @@ const (
 	FieldBodyOverrideMode = "body_override_mode"
 	// FieldBodyOverride holds the string denoting the body_override field in the database.
 	FieldBodyOverride = "body_override"
+	// EdgeViewers holds the string denoting the viewers edge name in mutations.
+	EdgeViewers = "viewers"
 	// EdgeHistory holds the string denoting the history edge name in mutations.
 	EdgeHistory = "history"
 	// EdgeDailyRollups holds the string denoting the daily_rollups edge name in mutations.
@@ -65,6 +75,11 @@ const (
 	EdgeRequestTemplate = "request_template"
 	// Table holds the table name of the channelmonitor in the database.
 	Table = "channel_monitors"
+	// ViewersTable is the table that holds the viewers relation/edge. The primary key declared below.
+	ViewersTable = "channel_monitor_users"
+	// ViewersInverseTable is the table name for the User entity.
+	// It exists in this package in order to avoid circular dependency with the "user" package.
+	ViewersInverseTable = "users"
 	// HistoryTable is the table that holds the history relation/edge.
 	HistoryTable = "channel_monitor_histories"
 	// HistoryInverseTable is the table name for the ChannelMonitorHistory entity.
@@ -102,7 +117,11 @@ var Columns = []string{
 	FieldAPIKeyEncrypted,
 	FieldPrimaryModel,
 	FieldExtraModels,
+	FieldSortOrder,
 	FieldGroupName,
+	FieldAutoCheckEnabled,
+	FieldVisibility,
+	FieldProxyID,
 	FieldEnabled,
 	FieldIntervalSeconds,
 	FieldJitterSeconds,
@@ -113,6 +132,12 @@ var Columns = []string{
 	FieldBodyOverrideMode,
 	FieldBodyOverride,
 }
+
+var (
+	// ViewersPrimaryKey and ViewersColumn2 are the table columns denoting the
+	// primary key for the viewers relation (M2M).
+	ViewersPrimaryKey = []string{"monitor_id", "user_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -149,10 +174,18 @@ var (
 	PrimaryModelValidator func(string) error
 	// DefaultExtraModels holds the default value on creation for the "extra_models" field.
 	DefaultExtraModels []string
+	// DefaultSortOrder holds the default value on creation for the "sort_order" field.
+	DefaultSortOrder int
+	// SortOrderValidator is a validator for the "sort_order" field. It is called by the builders before save.
+	SortOrderValidator func(int) error
 	// DefaultGroupName holds the default value on creation for the "group_name" field.
 	DefaultGroupName string
 	// GroupNameValidator is a validator for the "group_name" field. It is called by the builders before save.
 	GroupNameValidator func(string) error
+	// DefaultAutoCheckEnabled holds the default value on creation for the "auto_check_enabled" field.
+	DefaultAutoCheckEnabled bool
+	// DefaultVisibility holds the default value on creation for the "visibility" field.
+	DefaultVisibility string
 	// DefaultEnabled holds the default value on creation for the "enabled" field.
 	DefaultEnabled bool
 	// IntervalSecondsValidator is a validator for the "interval_seconds" field. It is called by the builders before save.
@@ -258,9 +291,29 @@ func ByPrimaryModel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPrimaryModel, opts...).ToFunc()
 }
 
+// BySortOrder orders the results by the sort_order field.
+func BySortOrder(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSortOrder, opts...).ToFunc()
+}
+
 // ByGroupName orders the results by the group_name field.
 func ByGroupName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGroupName, opts...).ToFunc()
+}
+
+// ByAutoCheckEnabled orders the results by the auto_check_enabled field.
+func ByAutoCheckEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAutoCheckEnabled, opts...).ToFunc()
+}
+
+// ByVisibility orders the results by the visibility field.
+func ByVisibility(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVisibility, opts...).ToFunc()
+}
+
+// ByProxyID orders the results by the proxy_id field.
+func ByProxyID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProxyID, opts...).ToFunc()
 }
 
 // ByEnabled orders the results by the enabled field.
@@ -298,6 +351,20 @@ func ByBodyOverrideMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBodyOverrideMode, opts...).ToFunc()
 }
 
+// ByViewersCount orders the results by viewers count.
+func ByViewersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newViewersStep(), opts...)
+	}
+}
+
+// ByViewers orders the results by viewers terms.
+func ByViewers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newViewersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByHistoryCount orders the results by history count.
 func ByHistoryCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -331,6 +398,13 @@ func ByRequestTemplateField(field string, opts ...sql.OrderTermOption) OrderOpti
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newRequestTemplateStep(), sql.OrderByField(field, opts...))
 	}
+}
+func newViewersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ViewersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, ViewersTable, ViewersPrimaryKey...),
+	)
 }
 func newHistoryStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

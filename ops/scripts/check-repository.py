@@ -32,7 +32,7 @@ def main():
                     'c104f7ec58f8618d4c220b997300ca7cc1a989ed', 'HEAD'], check=True)
     runtime_prefixes = ('bin/', 'data/', 'backups/', '.operator/', 'release/',
                         'scripts/', 'validation/logs/', 'ops/validation/logs/',
-                        'ops/scripts/ubuntu-packages/')
+                        'ops/scripts/ubuntu-packages/', 'ops/audits/')
     for name in tracked:
         require(not name.startswith(runtime_prefixes), f'Runtime file tracked: {name}')
     ignored_examples = [
@@ -42,7 +42,7 @@ def main():
         'ops/validation/logs/sub2api.log', 'ops/scripts/ubuntu-packages/package.deb',
         'ops/scripts/__pycache__/module.pyc', 'frontend/node_modules/test/index.js',
         'backend/internal/web/dist/index.html', 'ops/config/private.key',
-        'ops/config/mihomo/config.local.yaml', '.env',
+        'ops/config/mihomo/config.local.yaml', '.env', 'ops/audits/README.md',
     ]
     for name in ignored_examples:
         result = subprocess.run(['git', '-C', str(ROOT), 'check-ignore', '--no-index',
@@ -82,7 +82,8 @@ def main():
             and 'proxy_set_header Connection $sub2api_connection_upgrade;' in nginx,
             'Nginx template lost the deployed WebSocket forwarding configuration.')
     # Check relative links in the maintained entry points (dated evidence is archival).
-    docs = ['ops/README.md', 'ops/audits/README.md', 'ops/validation/README.md',
+    docs = ['ops/README.md', 'ops/validation/README.md',
+            'ops/changes/20261107-upgrade-v0.2.20/README.md',
             'ops/scripts/egress-guard/README.md']
     for name in docs:
         path = ROOT / name

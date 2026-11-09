@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/egresstrace"
+
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/proxy"
 )
@@ -168,7 +170,9 @@ func (d *SOCKS5ProxyDialer) DialTLSContext(ctx context.Context, network, addr st
 
 	// Step 2: Establish SOCKS5 tunnel to target
 	slog.Debug("tls_fingerprint_socks5_establishing_tunnel", "target", addr)
+	tunnelDone := egresstrace.Start(ctx, "proxy_tunnel")
 	conn, err := socksDialer.Dial("tcp", addr)
+	tunnelDone(err)
 	if err != nil {
 		slog.Debug("tls_fingerprint_socks5_connect_failed", "error", err)
 		return nil, fmt.Errorf("SOCKS5 connect: %w", err)
@@ -269,7 +273,9 @@ func (d *Dialer) DialTLSContext(ctx context.Context, network, addr string) (net.
 // performTLSHandshake performs the uTLS handshake on an established connection.
 // It builds a ClientHello spec from the profile, applies it, and completes the handshake.
 // On failure, conn is closed and an error is returned.
-func performTLSHandshake(ctx context.Context, conn net.Conn, profile *Profile, addr string) (net.Conn, error) {
+func performTLSHandshake(ctx context.Context, conn net.Conn, profile *Profile, addr string) (result net.Conn, handshakeErr error) {
+	tlsDone := egresstrace.Start(ctx, "fingerprint_tls")
+	defer func() { tlsDone(handshakeErr) }()
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		host = addr

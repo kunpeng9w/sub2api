@@ -168,10 +168,10 @@ export default {
       openai: {
         description: 'Add the following configuration files to your Codex CLI config directory.',
         authModeTitle: 'Codex authentication mode',
-        authModeDescription: 'Compatibility mode keeps the existing setup for older Codex clients. API Key Mode authorizes the client-side image executor.',
+        authModeDescription: 'The configuration enables live web search. API Key mode supports native Codex image generation by default. Choose compatibility mode for older clients.',
         authModeLegacy: 'Compatibility mode',
-        authModeApiKey: 'API Key Mode',
-        authModeApiKeyRestartNotice: 'After saving this configuration, completely quit and restart Codex Desktop or CLI, then create a new task so the client can rebuild its tool registry.',
+        authModeApiKey: 'API Key Mode (recommended)',
+        authModeApiKeyRestartNotice: 'This configuration contains your API key; do not share it or commit it. Save it and test in a new conversation; restart Codex if it has not loaded. Image generation still requires group permission, available balance, and upstream support.',
         configTomlHint: 'Make sure the following content is at the beginning of the config.toml file',
         note: 'Make sure the config directory exists. macOS/Linux users can run mkdir -p ~/.codex to create it.',
         noteWindows: 'Press Win+R and enter %userprofile%\\.codex to open the config directory. Create it manually if it does not exist.',
@@ -353,6 +353,7 @@ export default {
     accountBilled: 'Account billed',
     resetNow: 'Now',
     resetPending: 'Pending refresh',
+    windowInactive: 'Window not active',
     accountMultiplier: 'Account rate',
     avgDuration: 'Avg Duration',
     inSelectedRange: 'in selected range',
@@ -454,6 +455,7 @@ export default {
     noDataToExport: 'No data to export',
     exportSuccess: 'Usage data exported successfully',
     exportFailed: 'Failed to export usage data',
+    exportRateLimited: 'Too many requests, export will resume in {seconds} seconds',
     exportExcelSuccess: 'Usage data exported successfully (Excel format)',
     exportExcelFailed: 'Failed to export usage data',
     imageUnit: ' images',
@@ -496,6 +498,8 @@ export default {
 
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
+    controls: {"noAccount": 'No linked account (select a proxy)',"proxy": "Egress proxy", "chooseProxy": "Select a proxy (required to run)", "accountProxy": "Uses the linked account’s current proxy. Requests stop if it is unavailable.", "visibility": "Visibility", "adminOnly": "Administrators only", "selected": "Selected users", "allUsers": "All users", "searchUsers": "Search username or email", "viewersRequired": "Select at least one user", "autoCheck": "Automatic checks", "neverChecked": "Never checked", "running": "Checking…", "runNow": "Run check", "sampleAvailability": "Check sample availability", "egressMissing": "Proxy missing or unavailable"},
+    estimate: {"total": "Estimated total ${value}", "remaining": "Remaining ${value}", "sevenDayShare": "{value}% of 7d", "historical": "Using historical total (sampled {time})", "unavailable": "Estimate unavailable", "sampled": "Sampled {time}", "note": "Estimated from usage recorded by this system"},
     status: {
       operational: 'Operational',
       degraded: 'Degraded',
@@ -550,7 +554,14 @@ export default {
     dialogLatency: 'Dialog Latency',
     endpointPing: 'Endpoint PING',
     history60pts: 'HISTORY ({n} PTS)',
-    nextUpdateIn: 'NEXT UPDATE IN {n}s',
+    nextUpdateIn: 'DISPLAY UPDATES IN {n}s',
+    checkSchedule: {
+      automatic: 'Auto',
+      automaticInterval: 'Auto · {interval}',
+      manual: 'Manual',
+      automaticHint: 'Automatic checks with a configured interval of {interval}',
+      manualHint: 'Checks are triggered manually only',
+    },
     past: 'PAST',
     now: 'NOW',
     maintenancePaused: 'Maintenance · timeline paused',
@@ -565,6 +576,9 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    runAll: 'Check all',
+    runAllProgress: 'Checking {done}/{total}',
+    runAllSummary: 'Checks completed: {completed}; execution failures: {failed}; skipped: {skipped}',
     title: 'Channel Status',
     description: 'Inspect channel availability, latency and recent status',
     searchPlaceholder: 'Search channels...',

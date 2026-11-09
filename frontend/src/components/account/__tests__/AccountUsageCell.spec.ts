@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import AccountUsageCell from '../AccountUsageCell.vue'
+import UsageProgressBar from '../UsageProgressBar.vue'
 import type { Account } from '@/types'
 
 const { getUsage } = vi.hoisted(() => ({
@@ -113,6 +114,24 @@ const cnUsageCellStubs = {
 }
 
 describe('AccountUsageCell', () => {
+  it('OpenAI 未激活状态传递到两个用量窗口', async () => {
+    getUsage.mockResolvedValue({
+      five_hour: { utilization: 0, resets_at: null, remaining_seconds: 0, window_inactive: true },
+      seven_day: { utilization: 0, resets_at: null, remaining_seconds: 0, window_inactive: true }
+    })
+    const wrapper = mount(AccountUsageCell, {
+      props: { account: makeAccount({ id: 2004, platform: 'openai', type: 'oauth' }) },
+      global: { stubs: { OpenAIQuotaResetCell: true } }
+    })
+    await flushPromises()
+    const bars = wrapper.findAllComponents(UsageProgressBar)
+    expect(bars).toHaveLength(2)
+    expect(bars.every((bar) => bar.props('windowInactive') === true)).toBe(true)
+    expect(wrapper.text().match(/usage.windowInactive/g)).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('usage.resetNow')
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     getUsage.mockReset()
     Object.defineProperty(window, 'matchMedia', {
@@ -450,6 +469,66 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).toContain('admin.accounts.usageWindow.gemini3Image|70|2026-03-01T09:00:00Z')
   })
 
+  it('Antigravity shows the 5-hour and weekly window of each quota group when the summary is present', async () => {
+    getUsage.mockResolvedValue({
+      antigravity_quota: {
+        'gemini-3-flash': { utilization: 99, reset_time: '2026-11-11T15:52:48Z' }
+      },
+      antigravity_quota_groups: [
+        {
+          key: 'gemini',
+          name: 'Gemini Models',
+          windows: [
+            { window: '5h', utilization: 60, resets_at: '2026-11-04T20:52:48Z' },
+            { window: 'weekly', utilization: 25, resets_at: '2026-11-11T15:52:48Z' }
+          ]
+        },
+        {
+          key: '3p',
+          name: 'Claude and GPT models',
+          windows: [
+            { window: '5h', utilization: 0, resets_at: null },
+            { window: 'weekly', utilization: 10, resets_at: '2026-11-11T15:52:48Z' }
+          ]
+        },
+        {
+          key: 'gemini-argon-wtu',
+          name: 'Gemini 4 Argon',
+          windows: [{ window: 'weekly', utilization: 20, resets_at: '2026-11-11T17:11:15Z' }]
+        }
+      ]
+    })
+
+    const wrapper = mount(AccountUsageCell, {
+      props: {
+        account: makeAccount({ id: 1003, platform: 'antigravity', type: 'oauth', extra: {} })
+      },
+      global: {
+        stubs: {
+          UsageProgressBar: {
+            props: ['label', 'utilization', 'resetsAt', 'color'],
+            template: '<div class="usage-bar">{{ label }}|{{ utilization }}|{{ resetsAt }}</div>'
+          },
+          AccountQuotaInfo: true
+        }
+      }
+    })
+
+    await flushPromises()
+
+    const bars = wrapper.findAll('.usage-bar').map((bar) => bar.text())
+    expect(bars).toEqual([
+      'admin.accounts.usageWindow.antigravityGemini5h|60|2026-11-04T20:52:48Z',
+      'admin.accounts.usageWindow.antigravityGeminiWeekly|25|2026-11-11T15:52:48Z',
+      'admin.accounts.usageWindow.antigravityOther5h|0|',
+      'admin.accounts.usageWindow.antigravityOtherWeekly|10|2026-11-11T15:52:48Z',
+      // Pro plans' separate Argon quota is its own row, not a second Claude/GPT week.
+      'admin.accounts.usageWindow.antigravityArgonWeekly|20|2026-11-11T17:11:15Z'
+    ])
+    // The per-model figure (one tighter window per model) is not shown next to the real windows.
+    expect(wrapper.text()).not.toContain('gemini3Flash')
+  })
+
   it('Antigravity 会显示 AI Credits 余额信息', async () => {
     getUsage.mockResolvedValue({
       ai_credits: [
@@ -608,7 +687,7 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).toContain('7d|36|900')
   })
 
-  it('仅为 OpenAI OAuth 7d 窗口计算预计总费用', async () => {
+  it('保留账号页原有 OpenAI OAuth 7d 费用估算', async () => {
     getUsage.mockResolvedValue({
       five_hour: {
         utilization: 25,
@@ -620,7 +699,8 @@ describe('AccountUsageCell', () => {
         utilization: 40,
         resets_at: null,
         remaining_seconds: 0,
-        window_stats: { requests: 2, tokens: 200, cost: 12 }
+        window_stats: { requests: 2, tokens: 200, cost: 12 },
+        estimate: { total_cost: 99, remaining_cost: 59.4 }
       }
     })
 
@@ -651,7 +731,7 @@ describe('AccountUsageCell', () => {
     { id: 6803, utilization: Number.NaN, cost: 12 },
     { id: 6804, utilization: 40, cost: 0 },
     { id: 6805, utilization: 40, cost: Number.POSITIVE_INFINITY }
-  ])('OpenAI OAuth 7d 输入无效时不显示预计总费用 (%o)', async ({ id, utilization, cost }) => {
+  ])('窗口费用或使用率无效时不显示预计总费用 (%o)', async ({ id, utilization, cost }) => {
     getUsage.mockResolvedValue({
       seven_day: {
         utilization,

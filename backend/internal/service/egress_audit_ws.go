@@ -46,7 +46,14 @@ func (c *egressAuditFrameConn) WriteFrame(ctx context.Context, kind coderws.Mess
 		c.active = attempt
 		c.mu.Unlock()
 	}
+	attempt.beginWSWrite()
+	if attempt != nil {
+		attempt.observeRequestBytes(len(payload))
+	}
 	err := c.inner.WriteFrame(ctx, kind, payload)
+	if attempt != nil {
+		attempt.endWSWrite(err)
+	}
 	if err != nil {
 		c.finish(err)
 	}
@@ -57,6 +64,10 @@ func (c *egressAuditFrameConn) ReadFrame(ctx context.Context) (coderws.MessageTy
 	if err != nil {
 		c.finish(err)
 	} else {
+		c.mu.Lock()
+		active := c.active
+		c.mu.Unlock()
+		active.observeResponseBytes(len(payload))
 		switch strings.TrimSpace(gjson.GetBytes(payload, "type").String()) {
 		case "response.completed", "response.done":
 			c.finish(nil)

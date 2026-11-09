@@ -8,7 +8,7 @@ import (
 
 // SSRF 防护 helper：
 //   - validateEndpoint 在 admin 提交时阻止 http/loopback/私网/云元数据 URL
-//   - safeDialContext 在 socket 层再次校验真实 IP，防止 DNS rebinding
+//   - proxy-scoped transports apply the shared resolved-IP validation policy
 //
 // 已知 cloud metadata hostname 拒绝列表（小写比较）。
 var monitorBlockedHostnames = map[string]struct{}{
@@ -36,12 +36,6 @@ var monitorBlockedCIDRs = mustParseCIDRs([]string{
 	"fe80::/10",      // IPv6 link-local
 	"::/128",         // IPv6 unspecified
 })
-
-// monitorDialer 共享 Dialer，与 net/http 默认值对齐。
-var monitorDialer = &net.Dialer{
-	Timeout:   monitorDialTimeout,
-	KeepAlive: monitorDialKeepAlive,
-}
 
 // mustParseCIDRs 在包初始化时解析 CIDR 字符串，失败 panic。
 func mustParseCIDRs(cidrs []string) []*net.IPNet {
@@ -93,8 +87,7 @@ func isPrivateOrLoopbackHost(ctx context.Context, hostname string) (bool, error)
 	if ip := net.ParseIP(hostname); ip != nil {
 		return isPrivateIP(ip), nil
 	}
-	resolver := net.DefaultResolver
-	addrs, err := resolver.LookupIPAddr(ctx, hostname)
+	addrs, err := monitorLookupIPAddr(ctx, hostname)
 	if err != nil {
 		return false, err
 	}
@@ -109,44 +102,5 @@ func isPrivateOrLoopbackHost(ctx context.Context, hostname string) (bool, error)
 	return false, nil
 }
 
-// safeDialContext 在真实 dial 前再次校验目标 IP，防止 DNS rebinding。
-// 解析 hostname 后逐个 IP 尝试连接，命中私网即拒绝（即便 validateEndpoint 时返回的是公网 IP）。
-func safeDialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	host, port, err := net.SplitHostPort(address)
-	if err != nil {
-		return nil, err
-	}
-	// 字面量 IP 走快速路径。
-	if ip := net.ParseIP(host); ip != nil {
-		if isPrivateIP(ip) {
-			return nil, &net.AddrError{Err: "blocked by SSRF policy", Addr: address}
-		}
-		return monitorDialer.DialContext(ctx, network, address)
-	}
-	if isBlockedHostname(host) {
-		return nil, &net.AddrError{Err: "blocked by SSRF policy", Addr: address}
-	}
-	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-	if err != nil {
-		return nil, err
-	}
-	if len(addrs) == 0 {
-		return nil, &net.AddrError{Err: "no addresses for host", Addr: host}
-	}
-	var lastErr error
-	for _, a := range addrs {
-		if isPrivateIP(a.IP) {
-			lastErr = &net.AddrError{Err: "blocked by SSRF policy", Addr: a.IP.String()}
-			continue
-		}
-		conn, err := monitorDialer.DialContext(ctx, network, net.JoinHostPort(a.IP.String(), port))
-		if err == nil {
-			return conn, nil
-		}
-		lastErr = err
-	}
-	if lastErr == nil {
-		lastErr = &net.AddrError{Err: "no usable addresses", Addr: host}
-	}
-	return nil, lastErr
-}
+// Injectable only for deterministic DNS fixtures in unit tests.
+var monitorLookupIPAddr = net.DefaultResolver.LookupIPAddr

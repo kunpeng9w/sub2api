@@ -65,6 +65,8 @@ const (
 	FieldTotalRecharged = "total_recharged"
 	// FieldRpmLimit holds the string denoting the rpm_limit field in the database.
 	FieldRpmLimit = "rpm_limit"
+	// EdgeChannelMonitors holds the string denoting the channel_monitors edge name in mutations.
+	EdgeChannelMonitors = "channel_monitors"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
 	EdgeAPIKeys = "api_keys"
 	// EdgeRedeemCodes holds the string denoting the redeem_codes edge name in mutations.
@@ -95,6 +97,11 @@ const (
 	EdgeUserAllowedGroups = "user_allowed_groups"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// ChannelMonitorsTable is the table that holds the channel_monitors relation/edge. The primary key declared below.
+	ChannelMonitorsTable = "channel_monitor_users"
+	// ChannelMonitorsInverseTable is the table name for the ChannelMonitor entity.
+	// It exists in this package in order to avoid circular dependency with the "channelmonitor" package.
+	ChannelMonitorsInverseTable = "channel_monitors"
 	// APIKeysTable is the table that holds the api_keys relation/edge.
 	APIKeysTable = "api_keys"
 	// APIKeysInverseTable is the table name for the APIKey entity.
@@ -224,6 +231,9 @@ var Columns = []string{
 }
 
 var (
+	// ChannelMonitorsPrimaryKey and ChannelMonitorsColumn2 are the table columns denoting the
+	// primary key for the channel_monitors relation (M2M).
+	ChannelMonitorsPrimaryKey = []string{"monitor_id", "user_id"}
 	// AllowedGroupsPrimaryKey and AllowedGroupsColumn2 are the table columns denoting the
 	// primary key for the allowed_groups relation (M2M).
 	AllowedGroupsPrimaryKey = []string{"user_id", "group_id"}
@@ -430,6 +440,20 @@ func ByRpmLimit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRpmLimit, opts...).ToFunc()
 }
 
+// ByChannelMonitorsCount orders the results by channel_monitors count.
+func ByChannelMonitorsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChannelMonitorsStep(), opts...)
+	}
+}
+
+// ByChannelMonitors orders the results by channel_monitors terms.
+func ByChannelMonitors(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChannelMonitorsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAPIKeysCount orders the results by api_keys count.
 func ByAPIKeysCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -624,6 +648,13 @@ func ByUserAllowedGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newUserAllowedGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
+}
+func newChannelMonitorsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChannelMonitorsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ChannelMonitorsTable, ChannelMonitorsPrimaryKey...),
+	)
 }
 func newAPIKeysStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

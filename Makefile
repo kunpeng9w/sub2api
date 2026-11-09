@@ -1,6 +1,10 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical test-frontend-openai-usage
 
 FRONTEND_OPENAI_USAGE_VITEST := \
+	src/components/common/__tests__/QuotaEstimateView.spec.ts \
+	src/views/user/__tests__/ChannelStatusV1View.bulkRun.spec.ts \
+	src/views/user/__tests__/ChannelStatusV1View.refresh.spec.ts \
+	src/views/user/__tests__/ChannelStatusV1View.details.spec.ts \
 	src/components/account/__tests__/AccountUsageCell.spec.ts \
 	src/components/account/__tests__/UsageProgressBar.spec.ts \
 	src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \

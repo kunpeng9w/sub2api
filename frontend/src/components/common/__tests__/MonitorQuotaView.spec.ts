@@ -23,6 +23,19 @@ function makeSnapshot(overrides: Partial<MonitorQuotaSnapshot> = {}): MonitorQuo
 }
 
 describe('MonitorQuotaView', () => {
+  it('shows the inactive window status instead of a reset countdown', () => {
+    const wrapper = mount(MonitorQuotaView, {
+      props: {
+        snapshot: makeSnapshot({
+          tiers: [{ window: '5h', used_percent: 0, window_inactive: true }],
+        }),
+      },
+    })
+    expect(wrapper.text()).toContain('0%')
+    expect(wrapper.text()).toContain('usage.windowInactive')
+    wrapper.unmount()
+  })
+
   it('renders nothing without a snapshot', () => {
     const wrapper = mount(MonitorQuotaView, { props: { snapshot: null } })
     expect(wrapper.find('[data-testid="monitor-quota-view"]').exists()).toBe(false)

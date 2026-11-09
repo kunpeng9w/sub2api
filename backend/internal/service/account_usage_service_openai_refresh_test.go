@@ -455,7 +455,8 @@ func TestOpenAIUsageRefresh_ForcedFailureRetainsFreshSnapshot(t *testing.T) {
 	require.Equal(t, fresh.UpdatedAt, again.UpdatedAt)
 	require.Len(t, upstream.requestLog(), 3)
 	// A normal retry after the throttle expires must recover and clear the error.
-	svc.cache.openAIUsageCache.Store(id, &openAIUsageCacheEntry{timestamp: time.Now().Add(-11 * time.Minute), message: failed.Error, errorCode: failed.ErrorCode})
+	svc.cache.openAIUsageCache.Delete(id)
+	svc.cache.openAIFailures.Store(openAIUsageFlightKey(ctx, id), &openAIUsageCacheEntry{timestamp: time.Now().Add(-11 * time.Minute), message: failed.Error, errorCode: failed.ErrorCode})
 	upstream.mu.Lock()
 	upstream.status = 200
 	upstream.mu.Unlock()
@@ -627,8 +628,12 @@ func (c *quotaRefreshWaitContext) Done() <-chan struct{} {
 }
 
 func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *testing.T) {
-	for _, cancelLeader := range []bool{true, false} {
-		t.Run(fmt.Sprintf("cancelLeader=%t", cancelLeader), func(t *testing.T) {
+	for _, tc := range []struct{ cancelLeader, restricted bool }{{true, false}, {false, false}, {true, true}, {false, true}} {
+		t.Run(fmt.Sprintf("cancelLeader=%t/restricted=%t", tc.cancelLeader, tc.restricted), func(t *testing.T) {
+			ctx := context.Background()
+			if tc.restricted {
+				ctx = upgradeUsageReader(true)
+			}
 			svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
 			started := make(chan struct{}, 1)
 			release := make(chan struct{})
@@ -659,7 +664,7 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 				}
 			}
 			startCaller := func() (context.CancelFunc, <-chan result) {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(ctx)
 				t.Cleanup(cancel)
 				tracked := &quotaRefreshWaitContext{Context: ctx, waiting: make(chan struct{})}
 				results := make(chan result, 1)
@@ -674,7 +679,7 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 			waitFor(started)
 			cancelSecond, second := startCaller()
 			canceled, survivor := first, second
-			if cancelLeader {
+			if tc.cancelLeader {
 				cancelFirst()
 			} else {
 				cancelSecond()
@@ -688,7 +693,7 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 			require.NotNil(t, got.usage)
 			require.Empty(t, got.usage.Error)
 			require.Equal(t, 12.0, got.usage.FiveHour.Utilization)
-			again, err := svc.GetUsage(context.Background(), id)
+			again, err := svc.GetUsage(ctx, id)
 			require.NoError(t, err)
 			require.Empty(t, again.Error)
 			require.Equal(t, got.usage.UpdatedAt, again.UpdatedAt)
@@ -766,6 +771,7 @@ func TestOpenAIUsageRefresh_ExplicitZeroWithMissingOtherWindow(t *testing.T) {
 		for _, primaryZero := range []bool{false, true} {
 			t.Run(fmt.Sprintf("shadow=%t/primaryZero=%t", shadow, primaryZero), func(t *testing.T) {
 				svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
+				repo.accounts[id].Extra["codex_7d_sampled_at"] = "2020-01-01T00:00:00Z"
 				zero := `{"used_percent":0,"limit_window_seconds":18000,"reset_after_seconds":3600}`
 				missing := `{"used_percent":null,"limit_window_seconds":604800}`
 				primary, secondary := zero, missing
@@ -785,6 +791,8 @@ func TestOpenAIUsageRefresh_ExplicitZeroWithMissingOtherWindow(t *testing.T) {
 				require.NotNil(t, usage.FiveHour.ResetsAt)
 				require.Nil(t, usage.SevenDay)
 				require.Nil(t, repo.accounts[id].Extra["codex_7d_used_percent"])
+				require.Nil(t, repo.accounts[id].Extra["codex_7d_sampled_at"])
+				require.Equal(t, usage.UpdatedAt, usage.FiveHour.SampledAt)
 				require.NotNil(t, usage.UpdatedAt)
 				require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
 			})

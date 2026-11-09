@@ -510,6 +510,61 @@ func TestQuotaFetcher_NilDependenciesProduceErrorSnapshots(t *testing.T) {
 
 // --- TTL 缓存 ---
 
+type monitorDeadlineUsageSource struct {
+	started chan context.Context
+}
+
+func (s *monitorDeadlineUsageSource) GetUsageForAccount(ctx context.Context, _ *Account, _ ...bool) (*UsageInfo, error) {
+	s.started <- ctx
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestMonitorQuotaFetchRetainsDeadlineAfterCallerCancellation(t *testing.T) {
+	fetcher, _, _, _, accounts := newQuotaFetcherTestSetup(t)
+	accounts.accounts[8] = &Account{ID: 8, Platform: domain.PlatformOpenAI}
+	usage := &monitorDeadlineUsageSource{started: make(chan context.Context, 1)}
+	fetcher.usage = usage
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	done := make(chan *domain.MonitorQuotaSnapshot, 1)
+	go func() { done <- fetcher.Fetch(ctx, 8) }()
+	var shared context.Context
+	select {
+	case shared = <-usage.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shared fetch did not start")
+	}
+	want, _ := ctx.Deadline()
+	got, ok := shared.Deadline()
+	require.True(t, ok)
+	require.Equal(t, want, got)
+	cancel()
+	require.NoError(t, shared.Err(), "caller cancellation must not cancel another monitor's shared fetch")
+	select {
+	case <-done:
+		t.Fatal("fetch returned before the shared query finished")
+	case <-time.After(50 * time.Millisecond):
+	}
+	select {
+	case snapshot := <-done:
+		require.False(t, snapshot.Success)
+		require.ErrorIs(t, shared.Err(), context.DeadlineExceeded)
+	case <-time.After(2 * time.Second):
+		t.Fatal("shared fetch exceeded its execution deadline")
+	}
+}
+
+func TestMonitorQuotaFetchCanceledBeforeStartDoesNotQuery(t *testing.T) {
+	fetcher, usage, _, _, _ := newQuotaFetcherTestSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	snapshot := fetcher.Fetch(ctx, 8)
+	require.False(t, snapshot.Success)
+	require.Contains(t, snapshot.Error, "context canceled")
+	require.Zero(t, usage.getCalls())
+}
+
 func TestQuotaFetcher_CachesSuccessSnapshotPerAccount(t *testing.T) {
 	fetcher, usage, _, _, accounts := newQuotaFetcherTestSetup(t)
 	accounts.accounts[8] = &Account{ID: 8, Platform: domain.PlatformOpenAI}
@@ -591,7 +646,7 @@ func TestQuotaFetcher_ConcurrentFetchesShareSingleFlight(t *testing.T) {
 // 上面那条并发用例只能以极低概率撞上真正的缺陷窗口（实测约 300 次一次），
 // 所以这里直接钉住窗口本身。
 //
-// 窗口在 Fetch 顶部的 cachedSnapshot 与 flight.DoChan 之间：一个 goroutine 判定
+// 窗口在 Fetch 顶部的 cachedSnapshot 与 flight.Do 之间：一个 goroutine 判定
 // 缓存未命中之后、真正入队之前，另一个 goroutine 的 flight 可能已经跑完、写好缓存
 // 并被摘掉 key，于是前者不会并入那次飞行，而是另起一次新的，对同一账号重复打上游。
 // fetchShared 就是 flight 的执行体，直接调用它等价于「已经越过顶层缓存判定、拿到了

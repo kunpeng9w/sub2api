@@ -12,6 +12,7 @@
       {{ t('channelStatus.detailLoadError') }}
     </div>
     <div v-else class="overflow-x-auto">
+      <p v-if="detail.auto_check_enabled === false" class="mb-2 text-xs text-gray-500">{{ t('monitorCommon.controls.sampleAvailability') }}</p>
       <table class="w-full text-left text-sm">
         <thead class="border-b border-gray-200 dark:border-dark-700">
           <tr class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -72,6 +73,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
 
 const props = defineProps<{
+  refreshVersion?: number
   show: boolean
   monitorId: number | null
   title: string
@@ -105,7 +107,7 @@ async function load(id: number) {
 }
 
 watch(
-  () => [props.show, props.monitorId] as const,
+  () => [props.show, props.monitorId, props.refreshVersion] as const,
   ([show, id], _, onCleanup) => {
     onCleanup(() => { requestVersion++ })
     if (!show) {

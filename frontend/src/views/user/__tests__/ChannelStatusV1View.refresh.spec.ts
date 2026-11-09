@@ -2,8 +2,8 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ChannelStatusV1View from '../ChannelStatusV1View.vue'
 
-const { list } = vi.hoisted(() => ({ list: vi.fn() }))
-vi.mock('@/api/channelMonitor', () => ({ list, status: vi.fn() }))
+const { list, run } = vi.hoisted(() => ({ list: vi.fn(), run: vi.fn() }))
+vi.mock('@/api/channelMonitor', () => ({ list, run, status: vi.fn() }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ cachedPublicSettings: { channel_monitor_enabled: true }, showError: vi.fn() }) }))
 vi.mock('vue-i18n', async () => ({
   ...await vi.importActual<typeof import('vue-i18n')>('vue-i18n'),
@@ -20,10 +20,21 @@ const mountView = () => shallowMount(ChannelStatusV1View, {
   } },
 })
 let wrapper: ReturnType<typeof mountView>
-beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); list.mockReset().mockResolvedValue({ items: [] }) })
+beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); list.mockReset().mockResolvedValue({ items: [] }); run.mockReset().mockResolvedValue(undefined) })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); localStorage.clear() })
 
 describe('channel monitor refresh interval', () => {
+  it('only runs checks after the explicit per-monitor action', async () => {
+    wrapper = mountView(); await flushPromises()
+    await wrapper.get('.refresh').trigger('click'); await flushPromises()
+    await vi.advanceTimersByTimeAsync(120000)
+    expect(run).not.toHaveBeenCalled()
+    wrapper.findComponent({ name: 'MonitorCardGrid' }).vm.$emit('run', { id: 7 })
+    await flushPromises()
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run).toHaveBeenCalledWith(7)
+  })
+
   it('keeps automatic refresh disabled after reopening the page', async () => {
     wrapper = mountView(); await flushPromises()
     await wrapper.get('.disable').trigger('click')

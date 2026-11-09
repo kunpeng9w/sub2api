@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"io"
 	"log/slog"
 	"net"
@@ -59,6 +60,7 @@ type EgressAuditAttempt struct {
 	started time.Time
 	once    sync.Once
 	noProbe bool
+	network egressNetworkMetrics
 }
 
 func (a *EgressAuditor) Begin(ctx context.Context, account *Account, route, target, protocol string, extra ...any) *EgressAuditAttempt {
@@ -107,8 +109,11 @@ func (a *EgressAuditor) begin(ctx context.Context, account *Account, route, targ
 			fields = append(fields, labels[key], v)
 		}
 	}
+	if p, ok := monitorrequest.From(ctx); ok {
+		fields = append(fields, "monitor_id", p.MonitorID, "actor_id", p.ActorID, "trigger", p.Trigger)
+	}
 	fields = append(fields, extra...)
-	p := &EgressAuditAttempt{auditor: a, route: route, fields: fields, started: time.Now(), noProbe: noProbe}
+	p := &EgressAuditAttempt{auditor: a, route: route, fields: fields, started: time.Now(), noProbe: noProbe || monitorrequest.Active(ctx)}
 	if noProbe {
 		p.log("upstream_egress_blocked")
 	} else {
@@ -220,6 +225,9 @@ func (p *EgressAuditAttempt) log(event string, extra ...any) {
 		checkedAt = obs.CheckedAt
 	}
 	fields = append(fields, "exit_ip_probe_id", obs.ProbeID, "exit_ip", obs.IP, "exit_ip_source", "probe", "exit_ip_status", obs.Status, "exit_ip_checked_at", checkedAt, "elapsed_ms", time.Since(p.started).Milliseconds())
+	if event == "upstream_egress_completed" || event == "upstream_egress_response" {
+		fields = append(fields, p.networkFields()...)
+	}
 	fields = append(fields, extra...)
 	slog.Info(event, fields...)
 }
@@ -239,6 +247,7 @@ func (p *EgressAuditAttempt) Finish(err error) {
 				outcome = "timeout"
 			}
 		}
+		p.finishNetwork(err)
 		p.log("upstream_egress_completed", "outcome", outcome)
 	})
 }
@@ -257,6 +266,9 @@ func (p *EgressAuditAttempt) FinishHTTP(resp *http.Response, err error) {
 		p.Finish(io.ErrUnexpectedEOF)
 		return
 	}
+	p.network.mu.Lock()
+	p.network.headers = time.Now()
+	p.network.mu.Unlock()
 	p.log("upstream_egress_response", "status_code", resp.StatusCode)
 	if resp.Body == nil {
 		p.Finish(nil)
@@ -272,6 +284,7 @@ type egressAuditBody struct {
 
 func (b *egressAuditBody) Read(data []byte) (int, error) {
 	n, err := b.ReadCloser.Read(data)
+	b.attempt.observeResponseBytes(n)
 	if err == io.EOF {
 		b.attempt.Finish(nil)
 	} else if err != nil {
@@ -286,6 +299,7 @@ func (b *egressAuditBody) Close() error {
 		if err != nil {
 			outcome = "close_error"
 		}
+		b.attempt.finishNetwork(err)
 		b.attempt.log("upstream_egress_completed", "outcome", outcome)
 	})
 	return err
@@ -299,18 +313,16 @@ func withEgressAuditor(ctx context.Context, upstream HTTPUpstream) context.Conte
 
 // TraceRequest logs the local socket peer, which is not the public NAT exit.
 func (p *EgressAuditAttempt) TraceRequest(req *http.Request) *http.Request {
-	if p == nil {
-		return req
+	return p.traceHTTPRequest(req)
+}
+
+func (p *EgressAuditAttempt) logConnection(info httptrace.GotConnInfo) {
+	if info.Conn == nil {
+		return
 	}
-	trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) {
-		if info.Conn == nil {
-			return
-		}
-		local, peer := info.Conn.LocalAddr().String(), info.Conn.RemoteAddr().String()
-		id := sha256.Sum256([]byte(local + "|" + peer))
-		p.log("upstream_egress_connection", "conn_id", fmt.Sprintf("tcp_%x", id[:8]), "local_endpoint", local, "peer_endpoint", peer, "connection_reused", info.Reused)
-	}}
-	return req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	local, peer := info.Conn.LocalAddr().String(), info.Conn.RemoteAddr().String()
+	id := sha256.Sum256([]byte(local + "|" + peer))
+	p.log("upstream_egress_connection", "conn_id", fmt.Sprintf("tcp_%x", id[:8]), "local_endpoint", local, "peer_endpoint", peer, "connection_reused", info.Reused, "connection_was_idle", info.WasIdle, "connection_idle_ms", float64(info.IdleTime.Microseconds())/1000)
 }
 
 func isPublicExitIP(value string) bool {

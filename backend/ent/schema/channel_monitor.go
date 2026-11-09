@@ -71,10 +71,18 @@ func (ChannelMonitor) Fields() []ent.Field {
 		field.JSON("extra_models", []string{}).
 			Default([]string{}).
 			Comment("Additional model names to test alongside primary_model"),
+		field.Int("sort_order").
+			Default(0).
+			NonNegative().
+			Max(2147483647).
+			Comment("Display order, lower values first; ties use ID ascending"),
 		field.String("group_name").
 			Optional().
 			Default("").
 			MaxLen(100),
+		field.Bool("auto_check_enabled").Default(false),
+		field.String("visibility").Default("all"),
+		field.Int64("proxy_id").Optional().Nillable(),
 		field.Bool("enabled").
 			Default(true),
 		field.Int("interval_seconds").
@@ -112,6 +120,7 @@ func (ChannelMonitor) Fields() []ent.Field {
 
 func (ChannelMonitor) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.To("viewers", User.Type).StorageKey(edge.Table("channel_monitor_users"), edge.Columns("monitor_id", "user_id")),
 		edge.To("history", ChannelMonitorHistory.Type).
 			Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("daily_rollups", ChannelMonitorDailyRollup.Type).

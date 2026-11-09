@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '../client'
+import type { QuotaEstimate } from '@/types'
 
 export type Provider =
   | 'openai'
@@ -27,6 +28,9 @@ export type CheckMode = 'probe' | 'quota' | 'quota_probe'
 
 /** 配额快照中的单个用量窗口（与后端 domain.MonitorQuotaTier 一致）。 */
 export interface MonitorQuotaTier {
+  window_inactive?: boolean
+  sampled_at?: string | null
+  estimate?: QuotaEstimate | null
   /** 5h | 7d | 7d-sonnet | 7d-fable | 30d | daily | weekly | total */
   window: string
   /** 同窗口多档时的机器标识（gemini shared/pro/flash、grok requests/tokens、antigravity 模型名） */
@@ -60,6 +64,11 @@ export interface MonitorQuotaSnapshot {
 }
 
 export interface ChannelMonitor {
+  auto_check_enabled?: boolean
+  visibility?: 'all' | 'selected' | 'admin_only'
+  allowed_user_ids?: number[]
+  proxy_id?: number | null
+  egress_configured?: boolean
   id: number
   name: string
   provider: Provider
@@ -75,6 +84,7 @@ export interface ChannelMonitor {
   primary_model: string
   extra_models: string[]
   group_name: string
+  sort_order?: number
   enabled: boolean
   interval_seconds: number
   /** 每次调度在 interval 基础上 ± [0, jitter] 的随机偏移（秒），0 = 固定间隔 */
@@ -127,6 +137,10 @@ export interface ListResponse {
 }
 
 export interface CreateParams {
+  auto_check_enabled?: boolean
+  visibility?: 'all' | 'selected' | 'admin_only'
+  allowed_user_ids?: number[]
+  proxy_id?: number | null
   name: string
   provider: Provider
   api_mode?: APIMode
@@ -143,6 +157,7 @@ export interface CreateParams {
   primary_model: string
   extra_models?: string[]
   group_name?: string
+  sort_order?: number
   enabled?: boolean
   interval_seconds: number
   jitter_seconds?: number
@@ -327,7 +342,9 @@ export async function del(id: number): Promise<void> {
  * Returns the latest check results for primary + extra models.
  */
 export async function runNow(id: number): Promise<RunNowResponse> {
-  const { data } = await apiClient.post<RunNowResponse>(`/admin/channel-monitors/${id}/run`)
+  const { data } = await apiClient.post<RunNowResponse>(`/admin/channel-monitors/${id}/run`, undefined, {
+    timeout: 120000,
+  })
   return data
 }
 
