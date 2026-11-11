@@ -18,6 +18,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  network-status:
+    if: ${{ !inputs.build_only }}
+    name: Independent network monitor and read-only PostgreSQL adapter
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: network-status-ci
+          POSTGRES_DB: network_status_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the monitor runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y curl postgresql-client
+      - name: Verify monitor behavior without public network requests
+        env:
+          NETWORK_STATUS_TEST_PG: '1'
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGDATABASE: network_status_test
+          PGUSER: postgres
+          PGPASSWORD: network-status-ci
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: bash ops/changes/20261105-channel-monitor/test-isolated.sh python3 -m unittest discover -s ops/network-status -p 'test_*.py' -v
+
   operations:
     if: ${{ !inputs.build_only }}
     name: Operations configuration and existing unit tests
@@ -104,6 +140,11 @@ jobs:
         run: |
           set -o pipefail
           pnpm --dir frontend exec vitest run src/components/keys/__tests__/UseKeyModal.spec.ts 2>&1 | tee "$RUNNER_TEMP/template-tests.log"
+      - name: Verify network status access, interaction and frontend conventions
+        if: ${{ !inputs.build_only }}
+        run: |
+          pnpm --dir frontend exec vitest run src/views/user/__tests__/NetworkStatusView.spec.ts
+          pnpm --dir frontend exec eslint src/api/networkStatus.ts src/views/user/NetworkStatusView.vue src/views/user/__tests__/NetworkStatusView.spec.ts src/i18n/locales/en/networkStatus.ts src/i18n/locales/zh/networkStatus.ts
       - name: Build frontend before the backend embeds it
         run: |
           if [ "${{ inputs.build_only }}" = "true" ]; then
