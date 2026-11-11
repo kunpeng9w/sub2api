@@ -208,7 +208,10 @@ async function loadSnapshot(silent = false) {
     if (disposed || controller.signal.aborted) return
     snapshot.value = data
     loadError.value = false
-    if (selectedID.value !== null && !data.items.some(item => item.id === selectedID.value)) closeDetail()
+    if (selectedID.value !== null) {
+      if (!data.items.some(item => item.id === selectedID.value)) closeDetail()
+      else void loadDetail(selectedID.value)
+    }
   } catch {
     if (!disposed && !controller.signal.aborted) loadError.value = true
   } finally {
@@ -280,7 +283,7 @@ function closeDetail() { detailController?.abort(); selectedID.value = null; det
 
 onMounted(() => {
   void loadSnapshot()
-  timer = setInterval(() => { if (!document.hidden && !loading.value && !showRules.value && !loadError.value) void loadSnapshot(true) }, 30000)
+  timer = setInterval(() => { if (!document.hidden && !snapshotController && !showRules.value) void loadSnapshot(true) }, 30000)
 })
 onBeforeUnmount(() => { disposed = true; snapshotController?.abort(); detailController?.abort(); if (timer) clearInterval(timer) })
 </script>

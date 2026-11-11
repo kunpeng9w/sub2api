@@ -150,6 +150,101 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(result[0]['sample_count'], 0)
         self.assertEqual(result[1]['status'], 'disabled')
 
+    def test_inventory_sync_continues_while_a_probe_is_blocked(self):
+        service = monitor.Monitor(self.store, TOKEN)
+        entered, release, synced = threading.Event(), threading.Event(), threading.Event()
+        updated = inventory()
+        updated[1]['available'] = False
+        updated[1]['unavailable_reason'] = 'inactive'
+        updated[1]['accounts'] = [{'id': 9, 'name': 'Updated during probe'}]
+        rows = self.routes
+        original_inventory = self.store.inventory
+
+        def save_inventory(value):
+            original_inventory(value)
+            if value is updated:
+                synced.set()
+
+        def blocked_probe(route, kind, *_):
+            entered.set()
+            if not release.wait(5):
+                raise RuntimeError('Test did not release probe')
+            return sample(kind)
+
+        worker = threading.Thread(target=service.run_round)
+        sync_worker = threading.Thread(target=service.inventory_loop)
+        with patch('monitor.load_inventory', side_effect=lambda _: rows), \
+                patch.object(self.store, 'inventory', side_effect=save_inventory), \
+                patch('monitor.probe', side_effect=blocked_probe) as probe:
+            try:
+                worker.start()
+                self.assertTrue(entered.wait(5))
+                rows = updated
+                sync_worker.start()
+                self.assertTrue(synced.wait(5))
+                snapshot = service.snapshot(7)
+                self.assertEqual(snapshot['items'][1]['status'], 'disabled')
+                self.assertEqual(snapshot['items'][1]['accounts'][0]['name'], 'Updated during probe')
+                self.assertTrue(worker.is_alive())
+                release.set()
+                worker.join(5)
+                self.assertFalse(worker.is_alive())
+                self.assertEqual([call.args[0]['id'] for call in probe.call_args_list], [0, 0])
+            finally:
+                service.stop.set()
+                release.set()
+                worker.join(5)
+                if sync_worker.ident is not None:
+                    sync_worker.join(5)
+
+    def test_next_route_uses_fresh_configuration_or_is_skipped(self):
+        for change in ('credentials', 'disabled', 'deleted', 'sync_failure'):
+            with self.subTest(change=change):
+                service = monitor.Monitor(self.store, TOKEN)
+                updated = inventory()
+                updated[1]['host'] = 'replacement.proxy.invalid'
+                updated[1]['revision'] = 'replacement-revision'
+                if change == 'disabled':
+                    updated[1]['available'] = False
+                if change == 'deleted':
+                    updated = updated[:1]
+                third_read = ValueError('Unavailable') if change == 'sync_failure' else updated
+                with patch('monitor.load_inventory', side_effect=[self.routes, self.routes, third_read]), \
+                        patch.object(self.store, 'reserve', return_value=True), \
+                        patch('monitor.probe', side_effect=lambda _, kind, *_args: sample(kind)) as probe:
+                    service.run_round()
+                ids = [call.args[0]['id'] for call in probe.call_args_list]
+                self.assertEqual(ids, [0, 0, 2, 2] if change == 'credentials' else [0, 0])
+                if change == 'credentials':
+                    self.assertEqual(probe.call_args_list[2].args[0]['host'], 'replacement.proxy.invalid')
+
+    def test_mid_route_change_or_sync_failure_stops_remaining_samples(self):
+        for change in ('revision', 'expired', 'sync_failure'):
+            with self.subTest(change=change):
+                service = monitor.Monitor(self.store, TOKEN)
+
+                def changed_probe(route, kind, *_):
+                    if route['id'] == 2:
+                        with service.lock:
+                            if change == 'sync_failure':
+                                service.inventory_error = 'Unavailable'
+                            else:
+                                replacement = dict(service.inventory[1])
+                                if change == 'revision':
+                                    replacement['revision'] = 'changed-during-probe'
+                                else:
+                                    replacement['expires_at'] = time.time() - 1
+                                service.inventory = [service.inventory[0], replacement]
+                    return sample(kind)
+
+                with patch('monitor.load_inventory', side_effect=lambda _: inventory()), \
+                        patch.object(self.store, 'reserve', return_value=True), \
+                        patch('monitor.probe', side_effect=changed_probe) as probe:
+                    service.run_round()
+                self.assertEqual([(c.args[0]['id'], c.args[1]) for c in probe.call_args_list],
+                                 [(0, 'download'), (0, 'upload'), (2, 'download')])
+                self.assertEqual(self.store.history(2, 7, time.time())['runs'], [])
+
     def test_private_api_requires_token_and_deduplicates_pending_rounds(self):
         service = monitor.Monitor(self.store, TOKEN)
         server = ThreadingHTTPServer(('127.0.0.1', 0), monitor.make_handler(service))

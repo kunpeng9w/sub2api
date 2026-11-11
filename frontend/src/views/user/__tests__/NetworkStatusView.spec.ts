@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { fetchNetworkHistory, fetchNetworkSnapshot, runNetworkDetection, saveNetworkRules, type NetworkSnapshot } from '@/api/networkStatus'
@@ -24,6 +24,10 @@ function render() {
 }
 
 describe('NetworkStatusView', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     user.isAdmin = false
@@ -89,5 +93,81 @@ describe('NetworkStatusView', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain('上次加载的数据')
     expect(wrapper.text()).toContain('Linked account')
     wrapper.unmount()
+  })
+
+  it('automatically recovers from initial and later transient failures', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    vi.mocked(fetchNetworkSnapshot).mockRejectedValueOnce(new Error('unavailable'))
+    const wrapper = render()
+    try {
+      await flushPromises()
+      expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+      await vi.advanceTimersByTimeAsync(30000)
+      await flushPromises()
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('Linked account')
+
+      vi.mocked(fetchNetworkSnapshot).mockRejectedValueOnce(new Error('unavailable'))
+      await vi.advanceTimersByTimeAsync(30000)
+      await flushPromises()
+      expect(wrapper.get('[role="alert"]').text()).toContain('上次加载的数据')
+      const recovered = fixture()
+      recovered.items[0].accounts[0].name = 'Recovered account'
+      vi.mocked(fetchNetworkSnapshot).mockResolvedValue(recovered)
+      await vi.advanceTimersByTimeAsync(30000)
+      await flushPromises()
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('Recovered account')
+      expect(runNetworkDetection).not.toHaveBeenCalled()
+    } finally { wrapper.unmount() }
+  })
+
+  it('refreshes open history and discards an older in-flight response', async () => {
+    const wrapper = render()
+    try {
+      await flushPromises()
+      let resolveOld!: (value: Awaited<ReturnType<typeof fetchNetworkHistory>>) => void
+      vi.mocked(fetchNetworkHistory).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
+      await wrapper.findAll('button').find(button => button.text() === '详情')!.trigger('click')
+      const oldSignal = vi.mocked(fetchNetworkHistory).mock.calls[0][2]!
+      const history = {
+        route: { id: 0, name: 'Direct', protocol: 'direct', accounts: [] },
+        runs: [{ id: 1, checked_at: '2026-11-11T08:00:00Z', status: 'normal' as const, rule_version: 'new',
+          route: { id: 0, name: 'Direct', protocol: 'direct', accounts: [{ id: 2, name: 'New history account' }] },
+          rules: fixture().rules, samples: [], skipped: '' }],
+      }
+      vi.mocked(fetchNetworkHistory).mockResolvedValue(history)
+      await wrapper.findAll('button').find(button => button.text() === '刷新结果')!.trigger('click')
+      await flushPromises()
+      expect(oldSignal.aborted).toBe(true)
+      expect(wrapper.get('[data-testid="route-detail"]').text()).toContain('New history account')
+      resolveOld({ ...history, runs: [] })
+      await flushPromises()
+      expect(wrapper.get('[data-testid="route-detail"]').text()).toContain('New history account')
+
+      // The same ID now has a different connection configuration and no history.
+      vi.mocked(fetchNetworkHistory).mockResolvedValue({ ...history, runs: [] })
+      await wrapper.findAll('button').find(button => button.text() === '刷新结果')!.trigger('click')
+      await flushPromises()
+      expect(wrapper.get('[data-testid="route-detail"]').text()).not.toContain('New history account')
+      expect(wrapper.get('[data-testid="route-detail"]').text()).toContain('尚无当前代理配置')
+    } finally { wrapper.unmount() }
+  })
+
+  it('refreshes open history on polling and closes it when the route disappears', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const wrapper = render()
+    try {
+      await flushPromises()
+      await wrapper.findAll('button').find(button => button.text() === '详情')!.trigger('click')
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(30000)
+      await flushPromises()
+      expect(fetchNetworkHistory).toHaveBeenCalledTimes(2)
+      vi.mocked(fetchNetworkSnapshot).mockResolvedValue({ ...fixture(), items: [] })
+      await vi.advanceTimersByTimeAsync(30000)
+      await flushPromises()
+      expect(wrapper.find('[data-testid="route-detail"]').exists()).toBe(false)
+    } finally { wrapper.unmount() }
   })
 })

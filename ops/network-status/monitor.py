@@ -362,6 +362,7 @@ class Monitor:
     def __init__(self, store, token):
         self.store, self.token = store, token
         self.lock = threading.RLock()
+        self.inventory_lock = threading.Lock()
         self.wake = threading.Event()
         self.stop = threading.Event()
         self.inventory = []
@@ -391,16 +392,35 @@ class Monitor:
             return result
 
     def refresh_inventory(self):
-        try:
-            inventory = load_inventory(self.token)
-            self.store.inventory(inventory)
-            with self.lock:
-                self.inventory, self.inventory_error, self.last_sync = inventory, '', time.time()
-            return True
-        except ValueError as error:
-            with self.lock:
-                self.inventory_error = str(error)
-            return False
+        # Serialize periodic and pre-route reads so an older read cannot
+        # overwrite a newer configuration. Never hold this lock while probing.
+        with self.inventory_lock:
+            try:
+                inventory = load_inventory(self.token)
+                with self.lock:
+                    self.store.inventory(inventory)
+                    self.inventory, self.inventory_error, self.last_sync = inventory, '', time.time()
+                return True
+            except Exception:
+                with self.lock:
+                    self.inventory_error = 'Inventory unavailable; check the read-only database connection and inventory view'
+                return False
+
+    def inventory_loop(self):
+        while not self.stop.is_set():
+            self.refresh_inventory()
+            self.stop.wait(60)
+
+    def current_route(self, route_id):
+        with self.lock:
+            if self.inventory_error:
+                return None
+            route = next((r for r in self.inventory if r['id'] == route_id), None)
+            if route is None or not route['available']:
+                return None
+            if route.get('expires_at') is not None and route['expires_at'] <= time.time():
+                return None
+            return route
 
     def snapshot(self, days):
         with self.lock:
@@ -413,6 +433,8 @@ class Monitor:
         # old credentials or silently substitute a direct connection.
         if not self.refresh_inventory():
             return
+        with self.lock:
+            route_ids = [route['id'] for route in self.inventory]
         rules = self.store.rules()
         deadline = time.monotonic() + rules['round_timeout_seconds']
         with tempfile.TemporaryDirectory(prefix='network-status-') as temporary:
@@ -423,12 +445,22 @@ class Monitor:
                     chunk = os.urandom(min(65536, remaining))
                     stream.write(chunk)
                     remaining -= len(chunk)
-            for route in self.inventory:
-                if not route['available'] or self.stop.is_set():
+            for route_id in route_ids:
+                if self.stop.is_set():
+                    break
+                if not self.refresh_inventory():
+                    return
+                route = self.current_route(route_id)
+                if route is None:
                     continue
                 samples, skipped = [], ''
+                invalidated = False
                 for _ in range(rules['repetitions']):
                     for kind in ('download', 'upload'):
+                        current = self.current_route(route_id)
+                        if current is None or current['revision'] != route['revision']:
+                            invalidated = True
+                            break
                         remaining = deadline - time.monotonic()
                         if remaining < 1 or self.stop.is_set():
                             skipped = 'deadline'
@@ -437,12 +469,12 @@ class Monitor:
                             skipped = 'budget'
                             break
                         samples.append(probe(route, kind, rules, payload, remaining))
-                    if skipped:
+                    if skipped or invalidated:
                         break
-                self.store.record(route, rules, samples, skipped)
+                if not invalidated:
+                    self.store.record(route, rules, samples, skipped)
 
     def loop(self):
-        next_sync = 0
         next_prune = 0
         while not self.stop.is_set():
             self.wake.clear()
@@ -451,9 +483,6 @@ class Monitor:
                 if now >= next_prune:
                     self.store.prune(now)
                     next_prune = now + 86400
-                if now >= next_sync:
-                    self.refresh_inventory()
-                    next_sync = now + 60
                 with self.lock:
                     due = self.pending or (self.next_run is not None and now >= self.next_run)
                     if due:
@@ -554,6 +583,8 @@ def main():
     server = ThreadingHTTPServer((args.host, args.port), make_handler(monitor))
     server.daemon_threads = True
     worker = threading.Thread(target=monitor.loop, name='network-status-worker', daemon=True)
+    inventory_worker = threading.Thread(target=monitor.inventory_loop, name='network-status-inventory', daemon=True)
+    inventory_worker.start()
     worker.start()
 
     def shutdown(*_):
@@ -569,6 +600,7 @@ def main():
         monitor.stop.set()
         monitor.wake.set()
         worker.join(timeout=125)
+        inventory_worker.join(timeout=15)
         server.server_close()
 
 
