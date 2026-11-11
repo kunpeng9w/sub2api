@@ -144,3 +144,8 @@ jobs:
         with:
           name: upgrade-cross-regressions-${{ github.sha }}
           path: ${{ runner.temp }}/upgrade-cross-regressions.log
+      - name: Repeat asynchronous probe expiry regression under race detection
+        working-directory: backend
+        env:
+          GOMAXPROCS: '2'
+        run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -race -tags=unit -p 1 -count=50 ./internal/service -run '^TestEgressAuditProbeNonblockingIsolationAndExpiry$' -timeout=2m
