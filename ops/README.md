@@ -82,3 +82,5 @@ sha256sum /home/pk/workspace/sub2api/bin/sub2api
 ```
 
 健康检查只证明本机应用响应，不代替上游模型、流式、WebSocket、公网链路或整机重启验收。审计和验证中的历史时间保留原始时区，当前操作记录使用 Asia/Singapore。
+
+后续上游升级统一遵循 [保留定制模块的同步流程](upstream-sync.md)，包含合并历史、模块边界、迁移与 Actions 验收要求。

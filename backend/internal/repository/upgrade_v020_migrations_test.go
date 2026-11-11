@@ -55,7 +55,7 @@ INSERT INTO channel_monitor_users(monitor_id,user_id) VALUES(903,901);`)
 			}
 			for restart := 0; restart < 3; restart++ {
 				require.NoError(t, ApplyMigrations(ctx, db), "startup %d", restart)
-				for _, file := range []string{"249_channel_monitor_manual_access.sql", "249_mcp_oauth.sql", "250_channel_monitor_sort_order.sql"} {
+				for _, file := range []string{"249_channel_monitor_manual_access.sql", "249_mcp_oauth.sql", "250_channel_monitor_sort_order.sql", "249_add_usage_logs_api_key_cost_index_notx.sql", "250_openai_cache_write_ttl.sql"} {
 					content, err := fs.ReadFile(migrations.FS, file)
 					require.NoError(t, err)
 					digest := sha256.Sum256([]byte(strings.TrimSpace(string(content))))

@@ -1,12 +1,14 @@
-name: Upgrade v0.2.20 verification
+name: Upstream upgrade verification
 on:
   push:
-    branches: [codex/merge-upstream-v0.2.20]
+    branches: ['codex/merge-upstream-*']
   workflow_dispatch:
+  pull_request:
+    branches: [main]
 permissions:
   contents: read
 concurrency:
-  group: upgrade-v020-${{ github.ref }}
+  group: upstream-upgrade-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   generated:
@@ -67,7 +69,11 @@ jobs:
           name: upgrade-frontend-${{ github.sha }}
           path: ${{ runner.temp }}/frontend-full.log
   migrations:
-    name: Empty database and custom baseline upgrade with repeated startup
+    name: Migration upgrade from ${{ matrix.baseline }}
+    strategy:
+      fail-fast: false
+      matrix:
+        baseline: ['56ef3746843ba857d281b39049a36fa82d9cad56', '6ddd5af468e3e808574de32c51c9662bdcc9754d']
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -91,7 +97,7 @@ jobs:
       - name: Extract the immutable custom baseline migrations
         run: |
           mkdir -p "$RUNNER_TEMP/baseline"
-          git archive 56ef3746843ba857d281b39049a36fa82d9cad56 backend/migrations | tar -x -C "$RUNNER_TEMP/baseline"
+          git archive "${{ matrix.baseline }}" backend/migrations | tar -x -C "$RUNNER_TEMP/baseline"
           git diff --exit-code 56ef3746843ba857d281b39049a36fa82d9cad56 -- backend/migrations/249_channel_monitor_manual_access.sql backend/migrations/250_channel_monitor_sort_order.sql
           git diff --exit-code dab829a4e9b7d1cc307189aea8b0319eb29e29d0 -- backend/migrations/249_mcp_oauth.sql
       - name: Run real migration runner against disposable databases
@@ -107,7 +113,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: upgrade-migrations-${{ github.sha }}
+          name: upgrade-migrations-${{ matrix.baseline }}-${{ github.sha }}
           path: ${{ runner.temp }}/upgrade-migrations.log
   cross-regressions:
     name: Permission, cancellation, drain, resources, bridge and image regressions
@@ -138,3 +144,8 @@ jobs:
         with:
           name: upgrade-cross-regressions-${{ github.sha }}
           path: ${{ runner.temp }}/upgrade-cross-regressions.log
+      - name: Repeat asynchronous probe expiry regression under race detection
+        working-directory: backend
+        env:
+          GOMAXPROCS: '2'
+        run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -race -tags=unit -p 1 -count=50 ./internal/service -run '^TestEgressAuditProbeNonblockingIsolationAndExpiry$' -timeout=2m

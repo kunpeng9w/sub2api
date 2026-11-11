@@ -126,6 +126,10 @@ func TestEgressAuditProbeNonblockingIsolationAndExpiry(t *testing.T) {
 	require.Equal(t, "203.0.113.20", obs.IP)
 	require.False(t, obs.CheckedAt.IsZero())
 	require.Equal(t, int64(2), prober.calls.Load())
+	// A fresh cache entry is published before the probe releases its slot.
+	// Wait for both initial probes to finish before expiring their entries;
+	// otherwise the single refresh below can be rejected by the concurrency cap.
+	require.Eventually(t, func() bool { return len(a.slots) == 0 }, time.Second, time.Millisecond)
 	a.mu.Lock()
 	for k, v := range a.cache {
 		v.CheckedAt = time.Now().Add(-6 * time.Minute)
