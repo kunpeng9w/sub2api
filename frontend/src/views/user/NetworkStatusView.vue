@@ -112,7 +112,7 @@
             <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs"><span>{{ formatTime(run.checked_at) }} <span :class="['network-badge ml-2', statusClass(run.status)]">{{ statusLabel(run.status) }}</span></span><span class="text-gray-500 dark:text-gray-400">{{ t('networkStatus.ruleVersion', { version: run.rule_version }) }}</span></div>
             <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">{{ t('networkStatus.accountNames') }}：{{ run.route.accounts.map(account => account.name).join('、') || t('networkStatus.noAccounts') }}</p>
             <p v-if="run.skipped" class="mb-2 text-xs text-amber-700 dark:text-amber-400">{{ t('networkStatus.skipped', { reason: t(run.skipped === 'budget' ? 'networkStatus.budgetLimit' : 'networkStatus.deadline') }) }}</p>
-            <div class="overflow-x-auto"><table class="network-sample-table"><thead><tr><th>{{ t('networkStatus.time') }}</th><th>{{ t('networkStatus.download') }} / {{ t('networkStatus.upload') }}</th><th>{{ t('networkStatus.payload') }}</th><th>{{ t('networkStatus.duration') }}</th><th>{{ t('networkStatus.result') }}</th></tr></thead><tbody><tr v-for="(sample, index) in run.samples" :key="index"><td>{{ formatTime(sample.checked_at) }}</td><td>{{ t(`networkStatus.${sample.kind}`) }} · {{ value(sample.speed_mbps) }} Mbps</td><td>{{ value(sample.transferred_bytes / 1000000, 2) }} / {{ value(sample.requested_bytes / 1000000, 2) }} MB</td><td>{{ value(sample.duration_ms / 1000, 2) }} s</td><td :class="sample.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">{{ sample.ok ? t('networkStatus.success') : t('networkStatus.sampleError', { reason: sample.error }) }}</td></tr></tbody></table></div>
+            <div class="overflow-x-auto"><table class="network-sample-table"><thead><tr><th>{{ t('networkStatus.time') }}</th><th>{{ t('networkStatus.download') }} / {{ t('networkStatus.upload') }}</th><th>{{ t('networkStatus.payload') }}</th><th>{{ t('networkStatus.duration') }}</th><th>{{ t('networkStatus.result') }}</th></tr></thead><tbody><tr v-for="(sample, index) in run.samples" :key="index"><td>{{ formatTime(sample.checked_at) }}</td><td>{{ t(`networkStatus.${sample.kind}`) }} · {{ value(sample.speed_mbps) }} Mbps</td><td>{{ value(sample.transferred_bytes / 1000000, 2) }} / {{ value(sample.requested_bytes / 1000000, 2) }} MB</td><td>{{ value(sample.duration_ms / 1000, 2) }} s</td><td :class="sample.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">{{ sample.ok ? t('networkStatus.success') : t('networkStatus.sampleError', { reason: errorLabel(sample.error) }) }}</td></tr></tbody></table></div>
           </article>
         </div>
       </section>
@@ -183,6 +183,10 @@ const numericFields: { key: NumericRule; min: number; max: number; step?: number
 ]
 
 function statusLabel(status: NetworkStatus) { return t(`networkStatus.${status}`) }
+function errorLabel(reason: string) {
+  const known = ['connect', 'dns', 'timeout', 'tls', 'http', 'size', 'transport']
+  return t(`networkStatus.errors.${known.includes(reason) ? reason : 'transport'}`)
+}
 function statusClass(status: NetworkStatus) {
   return ({ normal: 'network-badge-normal', degraded: 'network-badge-degraded', failed: 'network-badge-failed', stale: 'network-badge-muted', disabled: 'network-badge-muted', paused: 'network-badge-muted', untested: 'network-badge-muted' })[status]
 }

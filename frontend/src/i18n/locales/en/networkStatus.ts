@@ -80,6 +80,10 @@ export default {
   budgetLimit: 'Daily payload budget exhausted',
   deadline: 'Round time limit',
   sampleError: 'Failed ({reason})',
+  errors: {
+    connect: 'Connection failed', dns: 'DNS resolution failed', timeout: 'Request timed out', tls: 'TLS handshake or certificate verification failed',
+    http: 'Unexpected HTTP status', size: 'Payload size mismatch', transport: 'Transport failed',
+  },
   tooltip: '{from} — {to}: {status}, {count} rounds',
   ruleVersion: 'Rule version: {version}',
   detailLimit: 'Showing up to 20 recent rounds, each with its original rules and account relationships.',

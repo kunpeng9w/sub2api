@@ -41,17 +41,6 @@ DEFAULT_RULES = {
     'address_family': 'ipv4',
     'http_version': 'http1.1',
 }
-ERRORS = {
-    'connect': 'Proxy or destination connection failed',
-    'dns': 'DNS resolution failed',
-    'timeout': 'Request timed out',
-    'tls': 'TLS verification or handshake failed',
-    'http': 'Unexpected HTTP response',
-    'size': 'Transferred payload size does not match',
-    'transport': 'Transport failed',
-    'budget': 'Daily payload budget exhausted',
-    'deadline': 'Round time limit reached',
-}
 INVENTORY_SQL = "SELECT COALESCE(json_agg(row_to_json(r) ORDER BY r.id), '[]'::json) FROM network_status.inventory r"
 
 
@@ -205,7 +194,7 @@ def probe(route, kind, rules, payload, remaining):
         command.append(f'https://speed.cloudflare.com/__down?bytes={size}')
     else:
         command += ['-H', 'Expect:', '-H', 'Content-Type: application/octet-stream',
-                    '--data-binary', '@' + str(payload), 'https://speed.cloudflare.com/__up']
+                    '--request', 'POST', '--upload-file', str(payload), 'https://speed.cloudflare.com/__up']
     raw, code = {}, 1
     try:
         # Credentials use stdin, never argv, logs, result files or shell commands.
@@ -317,7 +306,7 @@ class Store:
         latency = statistics.median([s['ttfb_ms'] for s in good]) if good else None
         with self.connect() as db:
             db.execute('INSERT INTO runs(route_id,revision,checked_at,status,download_mbps,upload_mbps,latency_ms,successes,total,rule_version,details) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-                       (route['id'], route['revision'], time.time(), status, download, upload, latency, len(good), expected, version(rules), json.dumps(details)))
+                       (route['id'], route['revision'], time.time(), status, download, upload, latency, len(good), len(samples), version(rules), json.dumps(details)))
 
     def prune(self, now):
         with self.connect() as db:
@@ -454,10 +443,14 @@ class Monitor:
 
     def loop(self):
         next_sync = 0
+        next_prune = 0
         while not self.stop.is_set():
             self.wake.clear()
             try:
                 now = time.time()
+                if now >= next_prune:
+                    self.store.prune(now)
+                    next_prune = now + 86400
                 if now >= next_sync:
                     self.refresh_inventory()
                     next_sync = now + 60

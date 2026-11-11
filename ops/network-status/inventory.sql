@@ -21,5 +21,6 @@ DO $$ BEGIN
 END $$;
 GRANT USAGE ON SCHEMA network_status TO sub2api_network_reader;
 GRANT SELECT ON network_status.inventory TO sub2api_network_reader;
+SELECT format('GRANT CONNECT ON DATABASE %I TO sub2api_network_reader', current_database()) \gexec
 ALTER ROLE sub2api_network_reader SET default_transaction_read_only=on;
 ALTER ROLE sub2api_network_reader SET statement_timeout='5s';

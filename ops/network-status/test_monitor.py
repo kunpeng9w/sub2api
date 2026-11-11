@@ -1,5 +1,4 @@
 import base64
-import copy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -118,6 +117,8 @@ class MonitorTests(unittest.TestCase):
         self.assertIn('secret-password', run.call_args.kwargs['input'])
         self.assertIn('socks5h://', run.call_args.kwargs['input'])
         self.assertNotIn('--location', command)
+        self.assertIn('--upload-file', command)
+        self.assertNotIn('--data-binary', command)
         self.assertEqual(result['speed_mbps'], 4)
         self.assertEqual(monitor.curl_config(self.routes[0]), 'proxy = ""\nnoproxy = "*"\n')
 
@@ -145,6 +146,8 @@ class MonitorTests(unittest.TestCase):
         probe.assert_not_called()
         result = service.snapshot(7)['items']
         self.assertEqual(result[0]['status'], 'paused')
+        self.assertIsNone(result[0]['success_rate'])
+        self.assertEqual(result[0]['sample_count'], 0)
         self.assertEqual(result[1]['status'], 'disabled')
 
     def test_private_api_requires_token_and_deduplicates_pending_rounds(self):

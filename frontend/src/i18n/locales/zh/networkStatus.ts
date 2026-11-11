@@ -80,6 +80,10 @@ export default {
   budgetLimit: '每日负载预算已耗尽',
   deadline: '整轮时间上限',
   sampleError: '失败（{reason}）',
+  errors: {
+    connect: '连接失败', dns: 'DNS 解析失败', timeout: '请求超时', tls: 'TLS 握手或证书验证失败',
+    http: 'HTTP 状态异常', size: '传输大小不符', transport: '传输失败',
+  },
   tooltip: '{from} — {to}：{status}，{count} 轮',
   ruleVersion: '规则版本：{version}',
   detailLimit: '最多展示最近 20 轮；每轮保留当时的规则与账号关联快照。',

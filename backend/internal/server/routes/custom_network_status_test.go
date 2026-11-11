@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/adminaccess"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -50,6 +51,26 @@ func TestNetworkStatusGatewayAuthenticationAndSecretBoundary(t *testing.T) {
 	require.Equal(t, http.StatusOK, result.Code)
 	require.Equal(t, "no-store", result.Header().Get("Cache-Control"))
 	require.Equal(t, 1, calls)
+}
+
+func TestNetworkStatusRestrictedAdministratorCannotControlMonitor(t *testing.T) {
+	router := gin.New()
+	admin := router.Group("/admin")
+	admin.Use(func(c *gin.Context) {
+		principal := &adminaccess.Principal{Policy: adminaccess.Policy{GlobalPermissions: []string{"proxies.read"}}}
+		c.Request = c.Request.WithContext(adminaccess.WithPrincipal(c.Request.Context(), principal))
+		c.Next()
+	})
+	registerNetworkStatusAdminRoutes(admin)
+	for _, method := range []string{http.MethodPut, http.MethodPost} {
+		path := "/admin/network-status/rules"
+		if method == http.MethodPost {
+			path = "/admin/network-status/run"
+		}
+		result := httptest.NewRecorder()
+		router.ServeHTTP(result, httptest.NewRequest(method, path, nil))
+		require.Equal(t, http.StatusForbidden, result.Code)
+	}
 }
 
 func TestNetworkStatusGatewayDoesNotFollowRedirectsOrReturnPrivateErrors(t *testing.T) {
