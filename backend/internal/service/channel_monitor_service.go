@@ -673,6 +673,7 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 	// 请求断开或执行超时后仍保存已完成的结果；写库有独立的短期限，且仍持有执行锁。
 	persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer persistCancel()
+	s.applyLinkedAccountSchedulingStatus(persistCtx, m, results)
 	s.persistCheckResults(persistCtx, m, results)
 	return results, nil
 }
@@ -708,6 +709,35 @@ func attachQuotaSnapshot(results []*CheckResult, snapshot *domain.MonitorQuotaSn
 	primary.Quota = snapshot
 	if !snapshot.Success && strings.TrimSpace(primary.Message) == "" {
 		primary.Message = truncateMessage("quota fetch failed: " + snapshot.Error)
+	}
+}
+
+// applyLinkedAccountSchedulingStatus 在入库前读取实时停调状态，避免配额缓存或成功探活掩盖账号故障。
+func (s *ChannelMonitorService) applyLinkedAccountSchedulingStatus(ctx context.Context, m *ChannelMonitor, results []*CheckResult) {
+	if m.AccountID == nil || s.quotaFetcher == nil {
+		return
+	}
+	account, err := s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
+	if err != nil || account == nil {
+		slog.Warn("channel_monitor: load linked account scheduling status failed", "monitor_id", m.ID, "error", err)
+		return
+	}
+	blocked := account.TempUnschedulableUntil != nil && time.Now().Before(*account.TempUnschedulableUntil)
+	for _, res := range results {
+		// 保留已有故障及其具体原因。
+		if res.Status != MonitorStatusOperational && res.Status != MonitorStatusDegraded {
+			continue
+		}
+		message := ""
+		if blocked {
+			message = "linked account temporarily unschedulable"
+		} else if account.isModelRateLimitedWithContext(ctx, res.Model) {
+			message = "linked account temporarily unschedulable for this model"
+		}
+		if message != "" {
+			res.Status = MonitorStatusFailed
+			res.Message = message
+		}
 	}
 }
 
