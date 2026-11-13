@@ -503,7 +503,7 @@ export default {
 
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
-    controls: {"noAccount": '不关联账号（手动选择代理）',"proxy": "出口代理", "chooseProxy": "请选择代理（未配置时无法检测）", "accountProxy": "出口严格使用关联账号当前绑定的代理；不可用时停止请求。", "visibility": "可见范围", "adminOnly": "仅管理员", "selected": "指定用户", "allUsers": "所有用户", "searchUsers": "搜索用户名或邮箱", "viewersRequired": "请至少选择一名用户", "autoCheck": "自动检测", "neverChecked": "尚未检测", "running": "检测中…", "runNow": "立即检测", "sampleAvailability": "检测样本可用率", "egressMissing": "出口未配置或不可用"},
+    controls: {"noAccount": '不关联账号',"proxy": "出口代理", "chooseProxy": "直连（不使用代理）", "accountProxy": "跟随关联账号的出口：账号直连则直连，使用代理则使用同一代理；代理不可用时停止请求。", "visibility": "可见范围", "adminOnly": "仅管理员", "selected": "指定用户", "allUsers": "所有用户", "searchUsers": "搜索用户名或邮箱", "viewersRequired": "请至少选择一名用户", "autoCheck": "自动检测", "neverChecked": "尚未检测", "running": "检测中…", "runNow": "立即检测", "sampleAvailability": "检测样本可用率", "egressMissing": "账号或出口不可用"},
     estimate: {"total": "预计总额度 ${value}", "remaining": "剩余 ${value}", "sevenDayShare": "占比7d {value}%", "historical": "沿用历史总额度（采样于 {time}）", "unavailable": "暂无法估算", "sampled": "采样于 {time}", "note": "按本系统记录用量估算"},
     status: {
       operational: '正常',

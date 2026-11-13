@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/stretchr/testify/require"
 )
@@ -160,8 +161,8 @@ func TestMonitorVisibilityAndRevocation(t *testing.T) {
 	m.Enabled = false
 	require.False(t, monitorVisibleTo(m, 30))
 }
-func TestMonitorMissingProxyAndUnauthorizedNeverReachQuota(t *testing.T) {
-	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Enabled: true, Visibility: "selected", AllowedUserIDs: []int64{10}, CheckMode: MonitorCheckModeQuota, Provider: MonitorProviderOpenAI}}
+func TestMonitorMissingAccountAndUnauthorizedNeverReachQuota(t *testing.T) {
+	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Enabled: true, Visibility: "selected", AllowedUserIDs: []int64{10}, CheckMode: MonitorCheckModeQuota, Provider: MonitorProviderOpenAI, AccountID: int64Ptr(9)}}
 	svc := NewChannelMonitorService(repo, &duplicateChannelMonitorEncryptor{})
 	svc.SetRuntimeReader(channelMonitorRuntimeStub{rt: ChannelMonitorRuntime{Enabled: true, Mode: ChannelMonitorModeV1}})
 	_, err := svc.RunManual(context.Background(), 1, 20, false)
@@ -192,4 +193,66 @@ func TestMonitorRouteRevocationInvalidatesPinnedContext(t *testing.T) {
 	proxies.broken = false
 	repo.monitor.ProxyID = nil
 	require.Error(t, monitorrequest.Check(ctx, policy.Route))
+}
+
+func TestMonitorDirectAccountQuotaAndRouteChanges(t *testing.T) {
+	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{
+		ID: 1, Enabled: true, Provider: MonitorProviderOpenAI,
+		CheckMode: MonitorCheckModeQuota, AccountID: int64Ptr(9), PrimaryModel: "quota",
+	}}
+	svc := newQuotaModeService(t, repo)
+	account := &Account{ID: 9, Platform: MonitorProviderOpenAI}
+	usage := &stubMonitorUsageSource{usage: &UsageInfo{}}
+	fetcher := newQuotaModeFetcher(map[int64]*Account{9: account}, usage)
+	account.ProxyID = nil
+	svc.SetQuotaFetcher(fetcher)
+	svc.proxies = nil // Direct accounts do not require a proxy repository.
+
+	results, err := svc.RunManual(context.Background(), 1, 10, true)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.True(t, results[0].Quota.Success)
+	require.Equal(t, 1, usage.getCalls())
+	require.Len(t, repo.history, 1)
+
+	direct, err := svc.monitorContext(context.Background(), repo.monitor, 10)
+	require.NoError(t, err)
+	require.NoError(t, monitorrequest.Check(direct, ""))
+	proxies := &monitorFixtureProxyRepo{}
+	svc.proxies = proxies
+	account.ProxyID = int64Ptr(71)
+	require.ErrorIs(t, monitorrequest.Check(direct, ""), ErrChannelMonitorEgress)
+	proxied, err := svc.monitorContext(context.Background(), repo.monitor, 10)
+	require.NoError(t, err)
+	policy, _ := monitorrequest.From(proxied)
+	require.Equal(t, "http://proxy.invalid:8080", policy.Route)
+	require.NotEqual(t, monitorrequest.CacheKey(direct), monitorrequest.CacheKey(proxied))
+	require.NoError(t, monitorrequest.Check(proxied, policy.Route))
+	proxies.broken = true
+	_, err = svc.monitorContext(context.Background(), repo.monitor, 10)
+	require.ErrorIs(t, err, ErrChannelMonitorEgress)
+	require.ErrorIs(t, monitorrequest.Check(proxied, policy.Route), ErrChannelMonitorEgress)
+	account.ProxyID = nil
+	require.ErrorIs(t, monitorrequest.Check(proxied, policy.Route), ErrChannelMonitorEgress)
+	fresh, err := svc.monitorContext(context.Background(), repo.monitor, 10)
+	require.NoError(t, err)
+	require.NoError(t, monitorrequest.Check(fresh, ""))
+}
+
+func TestMonitorUnboundClaudeFollowsAccountDefault(t *testing.T) {
+	account := &Account{ID: 9, Platform: MonitorProviderAnthropic, Type: AccountTypeOAuth}
+	svc := NewChannelMonitorService(nil, nil)
+	svc.cfg = &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{
+		Enabled: true, ProxyURL: "http://127.0.0.1:7890",
+	}}}
+	svc.SetQuotaFetcher(&ChannelMonitorQuotaFetcher{accounts: &stubMonitorAccountSource{
+		accounts: map[int64]*Account{9: account},
+	}})
+	monitor := &ChannelMonitor{Provider: MonitorProviderAnthropic, AccountID: int64Ptr(9)}
+	route, err := svc.resolveMonitorRoute(context.Background(), monitor)
+	require.NoError(t, err)
+	expected, err := ResolveAccountProxyURL(account, svc.cfg)
+	require.NoError(t, err)
+	require.Equal(t, expected, route)
+	require.Equal(t, svc.cfg.Gateway.ClaudeEgress.ProxyURL, route)
 }

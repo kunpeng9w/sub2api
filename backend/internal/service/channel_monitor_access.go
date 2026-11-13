@@ -14,7 +14,7 @@ import (
 
 var (
 	ErrChannelMonitorInvalidVisibility = infraerrors.BadRequest("CHANNEL_MONITOR_INVALID_VISIBILITY", "select a valid visibility and at least one existing viewer for selected visibility")
-	ErrChannelMonitorEgress            = infraerrors.New(http.StatusServiceUnavailable, "CHANNEL_MONITOR_EGRESS_UNAVAILABLE", "monitor proxy binding is unavailable")
+	ErrChannelMonitorEgress            = infraerrors.New(http.StatusServiceUnavailable, "CHANNEL_MONITOR_EGRESS_UNAVAILABLE", "monitor account or egress is unavailable")
 	ErrChannelMonitorBusy              = infraerrors.New(http.StatusConflict, "CHANNEL_MONITOR_BUSY", "monitor is already running or execution capacity is full")
 	ErrChannelMonitorCoordination      = infraerrors.New(http.StatusServiceUnavailable, "CHANNEL_MONITOR_COORDINATION_UNAVAILABLE", "monitor execution lock is unavailable")
 	ErrChannelMonitorCooldown          = infraerrors.New(http.StatusTooManyRequests, "CHANNEL_MONITOR_COOLDOWN", "retry after 60 seconds")
@@ -99,13 +99,23 @@ func (s *ChannelMonitorService) monitorRouteSnapshot(ctx context.Context, m *Cha
 			return "", "", ErrChannelMonitorEgress
 		}
 		account, err := s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
-		if err != nil || account == nil || account.Platform != m.Provider || account.ProxyID == nil {
+		if err != nil || account == nil || account.Platform != m.Provider {
 			return "", "", ErrChannelMonitorEgress
+		}
+		if account.ProxyID == nil {
+			route, err := ResolveAccountProxyURL(account, s.cfg)
+			if err != nil {
+				return "", "", ErrChannelMonitorEgress
+			}
+			return route, fmt.Sprintf("%d:0", account.ID), nil
 		}
 		binding = account.ProxyID
 		accountID = account.ID
 	}
-	if binding == nil || s.proxies == nil {
+	if binding == nil {
+		return "", "0:0", nil
+	}
+	if s.proxies == nil {
 		return "", "", ErrChannelMonitorEgress
 	}
 	proxy, err := s.proxies.GetByID(ctx, *binding)

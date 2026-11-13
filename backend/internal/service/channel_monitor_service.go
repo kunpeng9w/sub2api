@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"golang.org/x/sync/errgroup"
@@ -71,6 +72,7 @@ type channelMonitorRuntimeReader interface {
 
 // ChannelMonitorService 渠道监控管理服务。
 type ChannelMonitorService struct {
+	cfg       *config.Config
 	proxies   ProxyRepository
 	runLocks  LeaderLockCache
 	runSlots  chan struct{}

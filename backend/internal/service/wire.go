@@ -1042,8 +1042,10 @@ func ProvideChannelMonitorService(
 	repo ChannelMonitorRepository,
 	encryptor SecretEncryptor,
 	settingService *SettingService,
+	cfg *config.Config,
 ) *ChannelMonitorService {
 	svc := NewChannelMonitorService(repo, encryptor)
+	svc.cfg = cfg
 	svc.SetRuntimeReader(settingService)
 	return svc
 }
