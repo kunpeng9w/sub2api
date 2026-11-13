@@ -67,7 +67,8 @@ func (s *ChannelMonitorService) monitorDisplayStatus(ctx context.Context, m *Cha
 	_, _, routeErr := s.monitorRouteSnapshot(ctx, m, account)
 	m.EgressConfigured = routeErr == nil
 	return func(model string, latest *ChannelMonitorLatest) string {
-		if !m.Enabled || !m.AutoCheckEnabled {
+		// 自动检测开关仅控制定时采集，不代表关联账号暂停调度。
+		if !m.Enabled {
 			return MonitorStatusPaused
 		}
 		if m.AccountID != nil {

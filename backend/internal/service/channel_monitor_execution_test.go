@@ -304,8 +304,27 @@ func TestMonitorCurrentStatusAcrossViews(t *testing.T) {
 		{"quota probe requires decrypted key", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
 			m.CheckMode, m.APIKey, m.APIKeyDecryptFailed = MonitorCheckModeQuotaProbe, "invalid ciphertext", true
 		}},
-		{"monitor paused", MonitorStatusPaused, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+		{"manual detection keeps latest status", MonitorStatusOperational, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
 			m.AutoCheckEnabled = false
+		}},
+		{"manual detection keeps failed sample", MonitorStatusFailed, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, l.Status = false, MonitorStatusFailed
+		}},
+		{"manual detection with stale sample", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, l.CheckedAt = false, past
+		}},
+		{"manual detection without sample", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) {
+			m.AutoCheckEnabled = false
+			svc.repo.(*monitorStatusRepo).latest = nil
+		}},
+		{"manual detection honors scheduling pause", MonitorStatusPaused, func(m *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, a.Schedulable = false, false
+		}},
+		{"manual detection honors account error", MonitorStatusFailed, func(m *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, a.Status = false, StatusError
+		}},
+		{"manual detection honors expiry", MonitorStatusFailed, func(m *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, a.AutoPauseOnExpired, a.ExpiresAt, a.Schedulable = false, true, &past, false
 		}},
 		{"disabled", MonitorStatusPaused, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
 			a.Status = StatusDisabled
