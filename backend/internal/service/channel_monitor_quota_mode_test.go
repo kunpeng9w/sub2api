@@ -669,7 +669,9 @@ func TestRunCheck_LinkedAccountTemporaryUnschedulable(t *testing.T) {
 			svc := newQuotaModeService(t, repo)
 			account := &Account{
 				ID: 9, Platform: MonitorProviderOpenAI,
-				Credentials: map[string]any{"model_mapping": map[string]any{"gpt-test": "gpt-upstream"}},
+				Credentials: map[string]any{"model_mapping": map[string]any{
+					"gpt-test": "gpt-upstream", "gpt-extra": "gpt-extra", "*": "gpt-upstream",
+				}},
 			}
 			usage := &stubMonitorUsageSource{usage: &UsageInfo{FiveHour: &UsageProgress{Utilization: 20}}}
 			svc.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{9: account}, usage))

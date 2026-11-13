@@ -731,7 +731,7 @@ func (s *ChannelMonitorService) applyLinkedAccountSchedulingStatus(ctx context.C
 		message := ""
 		if blocked {
 			message = "linked account temporarily unschedulable"
-		} else if account.isModelRateLimitedWithContext(ctx, res.Model) {
+		} else if res.Model != MonitorDefaultQuotaModel && account.isModelRateLimitedWithContext(ctx, res.Model) {
 			message = "linked account temporarily unschedulable for this model"
 		}
 		if message != "" {
