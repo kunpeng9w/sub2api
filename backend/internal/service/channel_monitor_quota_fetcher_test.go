@@ -804,7 +804,7 @@ func TestDeriveQuotaCheckResult_StatusMatrix(t *testing.T) {
 func TestMonitorQuotaExhaustion(t *testing.T) {
 	for _, tc := range []struct {
 		name, model, want string
-		snapshot domain.MonitorQuotaSnapshot
+		snapshot          domain.MonitorQuotaSnapshot
 	}{
 		{"warning", "quota", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 90}}}},
 		{"global exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 100}}}},

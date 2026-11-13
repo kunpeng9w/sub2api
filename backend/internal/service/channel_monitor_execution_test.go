@@ -292,26 +292,66 @@ func TestMonitorCurrentStatusAcrossViews(t *testing.T) {
 	future, past := now.Add(time.Hour), now.Add(-time.Hour)
 	for _, tc := range []struct {
 		name, want string
-		mutate func(*ChannelMonitor, *Account, *ChannelMonitorLatest, *ChannelMonitorService)
+		mutate     func(*ChannelMonitor, *Account, *ChannelMonitorLatest, *ChannelMonitorService)
 	}{
 		{"healthy", MonitorStatusOperational, func(*ChannelMonitor, *Account, *ChannelMonitorLatest, *ChannelMonitorService) {}},
-		{"monitor paused", MonitorStatusPaused, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { m.AutoCheckEnabled = false }},
-		{"disabled", MonitorStatusPaused, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Status = StatusDisabled }},
-		{"scheduling paused", MonitorStatusPaused, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Schedulable = false }},
-		{"error beats paused scheduling", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Status, a.Schedulable = StatusError, false }},
-		{"expired", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.AutoPauseOnExpired, a.ExpiresAt = true, &past }},
-		{"rate limited", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.RateLimitResetAt = &future }},
-		{"overloaded", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.OverloadUntil = &future }},
-		{"temporary block", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.TempUnschedulableUntil = &future }},
-		{"model cooldown", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { setAccountModelRateLimitSnapshot(a, "main", future, "test", now) }},
-		{"quota exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Extra = map[string]any{"quota_limit": 1.0, "quota_used": 1.0} }},
-		{"daily exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Extra = map[string]any{"quota_daily_limit": 1.0, "quota_daily_used": 1.0, "quota_daily_start": now.Format(time.RFC3339)} }},
-		{"weekly exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Extra = map[string]any{"quota_weekly_limit": 1.0, "quota_weekly_used": 1.0, "quota_weekly_start": now.Format(time.RFC3339)} }},
-		{"quota query failed", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) { l.Status = MonitorStatusError }},
-		{"stale despite recent last_checked_at", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) { m.LastCheckedAt, l.CheckedAt = &now, past }},
-		{"no history", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) { l.CheckedAt = time.Time{} }},
-		{"proxy broken", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) { svc.proxies = &monitorFixtureProxyRepo{broken: true} }},
-		{"account read failed", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) { svc.quotaFetcher.accounts = &stubMonitorAccountSource{err: fmt.Errorf("database unavailable")} }},
+		{"monitor paused", MonitorStatusPaused, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled = false
+		}},
+		{"disabled", MonitorStatusPaused, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.Status = StatusDisabled
+		}},
+		{"scheduling paused", MonitorStatusPaused, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.Schedulable = false
+		}},
+		{"error beats paused scheduling", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.Status, a.Schedulable = StatusError, false
+		}},
+		{"expired", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.AutoPauseOnExpired, a.ExpiresAt = true, &past
+		}},
+		{"automatically paused after expiry", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.AutoPauseOnExpired, a.ExpiresAt, a.Schedulable = true, &past, false
+		}},
+		{"deleted quota account", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.CheckMode, m.AccountID = MonitorCheckModeQuota, nil
+		}},
+		{"rate limited", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.RateLimitResetAt = &future
+		}},
+		{"overloaded", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.OverloadUntil = &future
+		}},
+		{"temporary block", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.TempUnschedulableUntil = &future
+		}},
+		{"model cooldown", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			setAccountModelRateLimitSnapshot(a, "main", future, "test", now)
+		}},
+		{"quota exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.Extra = map[string]any{"quota_limit": 1.0, "quota_used": 1.0}
+		}},
+		{"daily exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.Extra = map[string]any{"quota_daily_limit": 1.0, "quota_daily_used": 1.0, "quota_daily_start": now.Format(time.RFC3339)}
+		}},
+		{"weekly exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			a.Extra = map[string]any{"quota_weekly_limit": 1.0, "quota_weekly_used": 1.0, "quota_weekly_start": now.Format(time.RFC3339)}
+		}},
+		{"quota query failed", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			l.Status = MonitorStatusError
+		}},
+		{"stale despite recent last_checked_at", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.LastCheckedAt, l.CheckedAt = &now, past
+		}},
+		{"no history", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			l.CheckedAt = time.Time{}
+		}},
+		{"proxy broken", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) {
+			svc.proxies = &monitorFixtureProxyRepo{broken: true}
+		}},
+		{"account read failed", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) {
+			svc.quotaFetcher.accounts = &stubMonitorAccountSource{err: fmt.Errorf("database unavailable")}
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Enabled: true, Provider: MonitorProviderOpenAI, PrimaryModel: "main", ExtraModels: []string{"other"}, IntervalSeconds: 60, JitterSeconds: 10, AccountID: int64Ptr(9)}}

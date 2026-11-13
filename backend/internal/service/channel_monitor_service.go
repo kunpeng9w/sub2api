@@ -729,7 +729,14 @@ func monitorAccountStatus(account *Account, model string) (string, string) {
 	if account.Status == StatusError {
 		return MonitorStatusFailed, "linked account is in error state"
 	}
-	if account.Status == StatusDisabled || !account.Schedulable {
+	if account.Status == StatusDisabled {
+		return MonitorStatusPaused, "linked account is disabled"
+	}
+	// 到期任务会自动关闭 Schedulable，需与人工停调区分。
+	if account.AutoPauseOnExpired && account.ExpiresAt != nil && !time.Now().Before(*account.ExpiresAt) {
+		return MonitorStatusFailed, "linked account expired"
+	}
+	if !account.Schedulable {
 		return MonitorStatusPaused, "linked account scheduling is paused"
 	}
 	if !account.IsSchedulable() {
