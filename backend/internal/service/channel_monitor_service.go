@@ -710,8 +710,9 @@ func attachQuotaSnapshot(results []*CheckResult, snapshot *domain.MonitorQuotaSn
 	}
 	primary := results[0]
 	primary.Quota = snapshot
+	status, hint := monitorQuotaWindowStatus(snapshot)
 	for _, res := range results {
-		if hint := quotaUnavailableHint(snapshot, res.Model); hint != "" &&
+		if status == MonitorStatusFailed &&
 			(res.Status == MonitorStatusOperational || res.Status == MonitorStatusDegraded) {
 			res.Status, res.Message = MonitorStatusFailed, hint
 		}
@@ -779,10 +780,6 @@ func (s *ChannelMonitorService) applyLinkedAccountSchedulingStatus(ctx context.C
 		}
 		if status == MonitorStatusFailed || status == MonitorStatusError {
 			res.Status, res.Message = status, message
-		} else if account != nil && res.Model != MonitorDefaultQuotaModel {
-			if hint := quotaUnavailableHint(results[0].Quota, account.GetMappedModel(res.Model)); hint != "" {
-				res.Status, res.Message = MonitorStatusFailed, hint
-			}
 		}
 	}
 }

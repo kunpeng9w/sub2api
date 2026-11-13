@@ -524,8 +524,9 @@ func usageFailureInfo(usage *UsageInfo) (failed, credentialInvalid bool, msg str
 // deriveQuotaCheckResult 把配额快照推导为检测状态（复用既有 status 枚举，
 // 时间线/可用率机制自动生效）：
 //   - 查询成功且无告警        → operational
-//   - 明确全局/当前模型额度耗尽、余额耗尽 → failed
-//   - 接近额度上限、余额偏低、其他模型额度告警 → degraded
+//   - 全局 5h/7d 窗口耗尽 → failed
+//   - 全局 5h/7d 窗口接近额度上限 → degraded
+//   - 缺少全局 5h/7d 窗口 → error（展示为未知）
 //   - 账号未关联或无法查询 → error
 //   - 凭据失效（401/403）     → failed
 //   - 网络/解析等其他错误      → error
@@ -545,70 +546,34 @@ func deriveQuotaCheckResult(snapshot *domain.MonitorQuotaSnapshot, model string,
 		res.Status = MonitorStatusError
 		res.Message = snapshot.Error
 	default:
-		if hint := quotaUnavailableHint(snapshot, model); hint != "" {
-			res.Status = MonitorStatusFailed
-			res.Message = hint
-		} else if hint := quotaDegradedHint(snapshot); hint != "" {
-			res.Status = MonitorStatusDegraded
-			res.Message = hint
-		} else {
-			res.Status = MonitorStatusOperational
-		}
+		res.Status, res.Message = monitorQuotaWindowStatus(snapshot)
 	}
 	return res
 }
 
-// quotaUnavailableHint 仅把明确全局或当前模型的额度耗尽视为不可用。
-func quotaUnavailableHint(snapshot *domain.MonitorQuotaSnapshot, model string) string {
+// monitorQuotaWindowStatus 只按全局 5h/7d 窗口判定；其他窗口和余额仅供展示。
+func monitorQuotaWindowStatus(snapshot *domain.MonitorQuotaSnapshot) (string, string) {
+	status, message := MonitorStatusError, "global 5h/7d quota unavailable"
 	if snapshot == nil || !snapshot.Success {
-		return ""
+		return status, message
 	}
 	for _, tier := range snapshot.Tiers {
-		if tier.WindowInactive || tier.UsedPercent < 100 {
+		if tier.Label != "" || (tier.Window != "5h" && tier.Window != "7d") {
 			continue
 		}
-		global := (tier.Label == "" && tier.Window != "7d-sonnet" && tier.Window != "7d-fable") ||
-			tier.Label == "requests" || tier.Label == "tokens" || tier.Label == "shared"
-		matches := model != "" && model != MonitorDefaultQuotaModel &&
-			(tier.Label == model || (tier.Window == "7d-sonnet" && strings.Contains(model, "sonnet")) ||
-				(tier.Window == "7d-fable" && isAnthropicFableModel(model)) ||
-				(tier.Label == "pro" && strings.Contains(model, "-pro")) ||
-				(tier.Label == "flash" && strings.Contains(model, "-flash")))
-		if global || matches {
-			return "quota exhausted: " + tier.Window + " " + tier.Label
+		if status == MonitorStatusError {
+			status, message = MonitorStatusOperational, ""
+		}
+		if tier.WindowInactive {
+			continue
+		}
+		if tier.UsedPercent >= 100 {
+			return MonitorStatusFailed, "quota exhausted: " + tier.Window
+		}
+		if tier.UsedPercent >= monitorQuotaDegradedUsedPercent {
+			status = MonitorStatusDegraded
+			message = fmt.Sprintf("quota high: %s at %.1f%%", tier.Window, tier.UsedPercent)
 		}
 	}
-	if len(snapshot.Balances) > 0 {
-		for _, balance := range snapshot.Balances {
-			if balance.Balance > 0 {
-				return ""
-			}
-		}
-		return "balance exhausted"
-	}
-	if snapshot.Balance != nil && *snapshot.Balance <= 0 {
-		return "balance exhausted"
-	}
-	return ""
-}
-
-// quotaDegradedHint 生成 degraded 的 message（指出触发告警的窗口/余额）；
-// 空串表示无告警。
-func quotaDegradedHint(snapshot *domain.MonitorQuotaSnapshot) string {
-	for _, tier := range snapshot.Tiers {
-		if !tier.WindowInactive && tier.UsedPercent >= monitorQuotaDegradedUsedPercent {
-			name := tier.Window
-			if tier.Label != "" {
-				name = tier.Label + "/" + tier.Window
-			}
-			return fmt.Sprintf("quota high: %s at %s%%", name, strconv.FormatFloat(tier.UsedPercent, 'f', 1, 64))
-		}
-	}
-	if snapshot.BalanceLow {
-		if snapshot.Balance != nil {
-			return fmt.Sprintf("balance low: %s %s", strconv.FormatFloat(*snapshot.Balance, 'f', -1, 64), firstNonEmpty(snapshot.Currency, "?"))
-		}
-		return fmt.Sprintf("balance low (%s)", firstNonEmpty(snapshot.Currency, "?"))
-	}
-	return ""
+	return status, message
 }

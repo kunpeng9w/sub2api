@@ -752,7 +752,7 @@ func TestRunCheck_PausedAccountSkipsAutomaticDetection(t *testing.T) {
 		CheckMode: MonitorCheckModeQuota, AccountID: int64Ptr(9),
 	}}
 	svc := newQuotaModeService(t, repo)
-	usage := &stubMonitorUsageSource{usage: &UsageInfo{}}
+	usage := &stubMonitorUsageSource{usage: &UsageInfo{FiveHour: &UsageProgress{Utilization: 20}}}
 	account := &Account{ID: 9, Platform: MonitorProviderOpenAI, Status: StatusActive}
 	svc.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{9: account}, usage))
 	_, err := svc.RunCheck(context.Background(), 1)

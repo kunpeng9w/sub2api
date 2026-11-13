@@ -326,7 +326,7 @@ func TestQuotaFetcher_UsageValueChannelFailureYieldsFailureSnapshot(t *testing.T
 	require.True(t, snapshot.Success)
 	require.Empty(t, snapshot.Error)
 	require.Empty(t, snapshot.Tiers)
-	require.Equal(t, MonitorStatusOperational, deriveQuotaCheckResult(snapshot, "quota", time.Now()).Status)
+	require.Equal(t, MonitorStatusError, deriveQuotaCheckResult(snapshot, "quota", time.Now()).Status)
 }
 
 func TestUsageFailureInfo_ClassificationMatrix(t *testing.T) {
@@ -412,31 +412,25 @@ func TestQuotaFetcher_CNBalanceHTTP403MarksCredentialInvalid(t *testing.T) {
 	require.True(t, snapshot.CredentialInvalid)
 }
 
-// 余额告警口径与账号停调（CNProviderBalanceCheckService.checkOne）一致：
-// 上游标记不可用或全部币种低于阈值 → BalanceLow → degraded；任一币种达标即健康。
-func TestQuotaFetcher_CNBalanceLowMarksDegraded(t *testing.T) {
+// 余额快照保留告警字段，但没有全局 5h/7d 窗口时不能据此判断配额状态。
+func TestQuotaFetcher_CNBalancePreservesSnapshotWithoutQuotaStatus(t *testing.T) {
 	cases := []struct {
-		name        string
-		accountID   int64
-		result      *CNProviderBalanceResult
-		balanceLow  bool
-		wantStatus  string
-		wantMessage string
+		name       string
+		accountID  int64
+		result     *CNProviderBalanceResult
+		balanceLow bool
 	}{
 		{
-			// 审查例：余额 5/阈值 10 的账号调度器已停调，监控不能仍绿灯。
 			name:       "balance below threshold",
 			accountID:  21,
 			result:     &CNProviderBalanceResult{Success: true, Available: true, Balance: 5, Currency: "CNY"},
 			balanceLow: true,
-			wantStatus: MonitorStatusDegraded, wantMessage: "balance low: 5 CNY",
 		},
 		{
 			name:       "upstream marked unavailable",
 			accountID:  22,
 			result:     &CNProviderBalanceResult{Success: true, Available: false, Balance: 20, Currency: "CNY"},
 			balanceLow: true,
-			wantStatus: MonitorStatusDegraded, wantMessage: "balance low: 20 CNY",
 		},
 		{
 			// deepseek 双币种：任一币种（USD 20）达标即健康。
@@ -446,13 +440,11 @@ func TestQuotaFetcher_CNBalanceLowMarksDegraded(t *testing.T) {
 				Success: true, Available: true, Balance: 5, Currency: "CNY",
 				Balances: []CNProviderBalanceEntry{{Currency: "CNY", Balance: 5}, {Currency: "USD", Balance: 20}},
 			},
-			wantStatus: MonitorStatusOperational,
 		},
 		{
-			name:       "single currency above threshold",
-			accountID:  24,
-			result:     &CNProviderBalanceResult{Success: true, Available: true, Balance: 20, Currency: "CNY"},
-			wantStatus: MonitorStatusOperational,
+			name:      "single currency above threshold",
+			accountID: 24,
+			result:    &CNProviderBalanceResult{Success: true, Available: true, Balance: 20, Currency: "CNY"},
 		},
 	}
 	for _, tc := range cases {
@@ -471,12 +463,8 @@ func TestQuotaFetcher_CNBalanceLowMarksDegraded(t *testing.T) {
 			require.True(t, snapshot.Success)
 			require.Equal(t, tc.balanceLow, snapshot.BalanceLow)
 			res := deriveQuotaCheckResult(snapshot, "quota", time.Now())
-			require.Equal(t, tc.wantStatus, res.Status)
-			if tc.wantMessage != "" {
-				require.Contains(t, res.Message, tc.wantMessage)
-			} else {
-				require.Empty(t, res.Message)
-			}
+			require.Equal(t, MonitorStatusError, res.Status)
+			require.Contains(t, res.Message, "5h/7d quota unavailable")
 		})
 	}
 }
@@ -771,18 +759,18 @@ func TestDeriveQuotaCheckResult_StatusMatrix(t *testing.T) {
 
 	highUsage := &domain.MonitorQuotaSnapshot{Success: true, Tiers: []domain.MonitorQuotaTier{
 		{Window: "5h", UsedPercent: 30},
-		{Window: "daily", Label: "pro", UsedPercent: 95},
+		{Window: "7d", UsedPercent: 95},
 	}}
 	res = deriveQuotaCheckResult(highUsage, "quota", now)
 	require.Equal(t, MonitorStatusDegraded, res.Status)
-	require.Contains(t, res.Message, "pro/daily")
+	require.Contains(t, res.Message, "7d")
 	require.Contains(t, res.Message, "95.0%")
 
 	balance := 0.1
 	lowBalance := &domain.MonitorQuotaSnapshot{Success: true, BalanceLow: true, Balance: &balance, Currency: "CNY"}
 	res = deriveQuotaCheckResult(lowBalance, "quota", now)
-	require.Equal(t, MonitorStatusDegraded, res.Status)
-	require.Contains(t, res.Message, "balance low")
+	require.Equal(t, MonitorStatusError, res.Status)
+	require.Contains(t, res.Message, "5h/7d quota unavailable")
 
 	invalid := &domain.MonitorQuotaSnapshot{Success: false, CredentialInvalid: true, Error: "401 unauthorized"}
 	res = deriveQuotaCheckResult(invalid, "quota", now)
@@ -808,15 +796,20 @@ func TestMonitorQuotaExhaustion(t *testing.T) {
 	}{
 		{"warning", "quota", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 90}}}},
 		{"global exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 100}}}},
+		{"weekly exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 20}, {Window: "7d", UsedPercent: 100}}}},
+		{"exhaustion beats warning", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 95}, {Window: "7d", UsedPercent: 100}}}},
+		{"warning survives healthy window", "quota", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 90}, {Window: "7d", UsedPercent: 10}}}},
+		{"only global windows affect status", "claude-sonnet-4-5", MonitorStatusOperational, domain.MonitorQuotaSnapshot{Balance: new(float64), BalanceLow: true, Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 20}, {Window: "7d-sonnet", UsedPercent: 100}, {Window: "7d-fable", UsedPercent: 100}, {Window: "daily", Label: "shared", UsedPercent: 100}, {Window: "30d", UsedPercent: 100}, {Window: "7d", Label: "claude-sonnet-4-5", UsedPercent: 100}}}},
+		{"no windows", "quota", MonitorStatusError, domain.MonitorQuotaSnapshot{}},
 		{"inactive window", "quota", MonitorStatusOperational, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 100, WindowInactive: true}}}},
-		{"partial model exhaustion", "quota", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
-		{"matching model", "gpt-test", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
-		{"other model", "gpt-other", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
-		{"fable quota", "claude-fable-5", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "7d-fable", UsedPercent: 100}}}},
-		{"fable isolated", "claude-sonnet-4-5", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "7d-fable", UsedPercent: 100}}}},
-		{"one currency remains", "quota", MonitorStatusOperational, domain.MonitorQuotaSnapshot{Balance: new(float64), Balances: []domain.MonitorBalance{{Currency: "CNY"}, {Currency: "USD", Balance: 2}}}},
-		{"all currencies exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Balances: []domain.MonitorBalance{{Currency: "CNY"}, {Currency: "USD", Balance: -1}}}},
-		{"single balance exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Balance: new(float64)}},
+		{"partial model exhaustion", "quota", MonitorStatusError, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
+		{"matching model", "gpt-test", MonitorStatusError, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
+		{"other model", "gpt-other", MonitorStatusError, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
+		{"fable quota", "claude-fable-5", MonitorStatusError, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "7d-fable", UsedPercent: 100}}}},
+		{"fable isolated", "claude-sonnet-4-5", MonitorStatusError, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "7d-fable", UsedPercent: 100}}}},
+		{"one currency remains", "quota", MonitorStatusError, domain.MonitorQuotaSnapshot{Balance: new(float64), Balances: []domain.MonitorBalance{{Currency: "CNY"}, {Currency: "USD", Balance: 2}}}},
+		{"all currencies exhausted", "quota", MonitorStatusError, domain.MonitorQuotaSnapshot{Balances: []domain.MonitorBalance{{Currency: "CNY"}, {Currency: "USD", Balance: -1}}}},
+		{"single balance exhausted", "quota", MonitorStatusError, domain.MonitorQuotaSnapshot{Balance: new(float64)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.snapshot.Success = true

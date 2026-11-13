@@ -295,6 +295,15 @@ func TestMonitorCurrentStatusAcrossViews(t *testing.T) {
 		mutate     func(*ChannelMonitor, *Account, *ChannelMonitorLatest, *ChannelMonitorService)
 	}{
 		{"healthy", MonitorStatusOperational, func(*ChannelMonitor, *Account, *ChannelMonitorLatest, *ChannelMonitorService) {}},
+		{"quota ignores probe key decryption failure", MonitorStatusOperational, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.CheckMode, m.APIKey, m.APIKeyDecryptFailed = MonitorCheckModeQuota, "invalid ciphertext", true
+		}},
+		{"probe requires decrypted key", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.CheckMode, m.APIKey, m.APIKeyDecryptFailed = MonitorCheckModeProbe, "invalid ciphertext", true
+		}},
+		{"quota probe requires decrypted key", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.CheckMode, m.APIKey, m.APIKeyDecryptFailed = MonitorCheckModeQuotaProbe, "invalid ciphertext", true
+		}},
 		{"monitor paused", MonitorStatusPaused, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) {
 			m.AutoCheckEnabled = false
 		}},
