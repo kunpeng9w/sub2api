@@ -297,15 +297,7 @@ func (h *ChannelMonitorHandler) List(c *gin.Context) {
 
 // batchSummaryFor 批量聚合 latest + 7d 可用率，避免每行 2 次 SQL（消除 N+1）。
 func (h *ChannelMonitorHandler) batchSummaryFor(c *gin.Context, items []*service.ChannelMonitor) map[int64]service.MonitorStatusSummary {
-	ids := make([]int64, 0, len(items))
-	primaryByID := make(map[int64]string, len(items))
-	extrasByID := make(map[int64][]string, len(items))
-	for _, m := range items {
-		ids = append(ids, m.ID)
-		primaryByID[m.ID] = m.PrimaryModel
-		extrasByID[m.ID] = m.ExtraModels
-	}
-	return h.monitorService.BatchMonitorStatusSummary(c.Request.Context(), ids, primaryByID, extrasByID)
+	return h.monitorService.BatchMonitorStatusSummary(c.Request.Context(), items)
 }
 
 // buildListItemResponse 把 monitor + summary 装成 admin list 的响应行。

@@ -256,3 +256,101 @@ func TestMonitorUnboundClaudeFollowsAccountDefault(t *testing.T) {
 	require.Equal(t, expected, route)
 	require.Equal(t, svc.cfg.Gateway.ClaudeEgress.ProxyURL, route)
 }
+
+// 各界面共用同一批历史；验证当前状态变化不会重写历史可用率。
+type monitorStatusRepo struct {
+	*quotaModeRepoStub
+	latest []*ChannelMonitorLatest
+}
+
+func (r *monitorStatusRepo) ListEnabled(context.Context) ([]*ChannelMonitor, error) {
+	m := *r.monitor
+	return []*ChannelMonitor{&m}, nil
+}
+func (r *monitorStatusRepo) ListLatestForMonitorIDs(_ context.Context, ids []int64) (map[int64][]*ChannelMonitorLatest, error) {
+	out := make(map[int64][]*ChannelMonitorLatest)
+	for _, id := range ids {
+		out[id] = r.latest
+	}
+	return out, nil
+}
+func (r *monitorStatusRepo) ComputeAvailabilityForMonitors(context.Context, []int64, int) (map[int64][]*ChannelMonitorAvailability, error) {
+	return map[int64][]*ChannelMonitorAvailability{r.monitor.ID: {{Model: "main", AvailabilityPct: 87.5}}}, nil
+}
+func (r *monitorStatusRepo) ListRecentHistoryForMonitors(context.Context, []int64, map[int64]string, int) (map[int64][]*ChannelMonitorHistoryEntry, error) {
+	return map[int64][]*ChannelMonitorHistoryEntry{r.monitor.ID: {{Model: "main", Status: MonitorStatusOperational}}}, nil
+}
+func (r *monitorStatusRepo) ListLatestPerModel(context.Context, int64) ([]*ChannelMonitorLatest, error) {
+	return r.latest, nil
+}
+func (r *monitorStatusRepo) ComputeAvailability(context.Context, int64, int) ([]*ChannelMonitorAvailability, error) {
+	return []*ChannelMonitorAvailability{{Model: "main", AvailabilityPct: 87.5}}, nil
+}
+
+func TestMonitorCurrentStatusAcrossViews(t *testing.T) {
+	now := time.Now()
+	future, past := now.Add(time.Hour), now.Add(-time.Hour)
+	for _, tc := range []struct {
+		name, want string
+		mutate func(*ChannelMonitor, *Account, *ChannelMonitorLatest, *ChannelMonitorService)
+	}{
+		{"healthy", MonitorStatusOperational, func(*ChannelMonitor, *Account, *ChannelMonitorLatest, *ChannelMonitorService) {}},
+		{"monitor paused", MonitorStatusPaused, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { m.AutoCheckEnabled = false }},
+		{"disabled", MonitorStatusPaused, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Status = StatusDisabled }},
+		{"scheduling paused", MonitorStatusPaused, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Schedulable = false }},
+		{"error beats paused scheduling", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Status, a.Schedulable = StatusError, false }},
+		{"expired", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.AutoPauseOnExpired, a.ExpiresAt = true, &past }},
+		{"rate limited", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.RateLimitResetAt = &future }},
+		{"overloaded", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.OverloadUntil = &future }},
+		{"temporary block", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.TempUnschedulableUntil = &future }},
+		{"model cooldown", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { setAccountModelRateLimitSnapshot(a, "main", future, "test", now) }},
+		{"quota exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Extra = map[string]any{"quota_limit": 1.0, "quota_used": 1.0} }},
+		{"daily exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Extra = map[string]any{"quota_daily_limit": 1.0, "quota_daily_used": 1.0, "quota_daily_start": now.Format(time.RFC3339)} }},
+		{"weekly exhausted", MonitorStatusFailed, func(_ *ChannelMonitor, a *Account, _ *ChannelMonitorLatest, _ *ChannelMonitorService) { a.Extra = map[string]any{"quota_weekly_limit": 1.0, "quota_weekly_used": 1.0, "quota_weekly_start": now.Format(time.RFC3339)} }},
+		{"quota query failed", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) { l.Status = MonitorStatusError }},
+		{"stale despite recent last_checked_at", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) { m.LastCheckedAt, l.CheckedAt = &now, past }},
+		{"no history", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) { l.CheckedAt = time.Time{} }},
+		{"proxy broken", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) { svc.proxies = &monitorFixtureProxyRepo{broken: true} }},
+		{"account read failed", MonitorStatusUnknown, func(_ *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) { svc.quotaFetcher.accounts = &stubMonitorAccountSource{err: fmt.Errorf("database unavailable")} }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Enabled: true, Provider: MonitorProviderOpenAI, PrimaryModel: "main", ExtraModels: []string{"other"}, IntervalSeconds: 60, JitterSeconds: 10, AccountID: int64Ptr(9)}}
+			svc := newQuotaModeService(t, repo)
+			account := &Account{ID: 9, Platform: MonitorProviderOpenAI, Type: AccountTypeAPIKey}
+			svc.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{9: account}, nil))
+			latest := &ChannelMonitorLatest{Model: "main", Status: MonitorStatusOperational, CheckedAt: now}
+			fixture := &monitorStatusRepo{quotaModeRepoStub: repo, latest: []*ChannelMonitorLatest{latest}}
+			svc.repo = fixture
+			tc.mutate(repo.monitor, account, latest, svc)
+			summary := svc.BatchMonitorStatusSummary(context.Background(), []*ChannelMonitor{repo.monitor})[1]
+			views, err := svc.ListUserView(context.Background())
+			require.NoError(t, err)
+			detail, err := svc.GetUserDetail(context.Background(), 1)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, summary.PrimaryStatus)
+			require.Equal(t, tc.want, views[0].PrimaryStatus)
+			require.Equal(t, tc.want, detail.Models[0].LatestStatus)
+			require.Equal(t, 87.5, views[0].Availability7d)
+			require.Equal(t, MonitorStatusOperational, views[0].Timeline[0].Status)
+			if tc.name == "model cooldown" {
+				extra := &ChannelMonitorLatest{Model: "other", Status: MonitorStatusOperational, CheckedAt: now}
+				statusFor := svc.monitorDisplayStatus(context.Background(), repo.monitor, make(map[int64]*Account))
+				require.Equal(t, MonitorStatusOperational, statusFor("other", extra))
+			}
+		})
+	}
+}
+
+func TestMonitorStatusReusesAccountAndHonorsJitter(t *testing.T) {
+	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Enabled: true, Provider: MonitorProviderOpenAI, PrimaryModel: "main", IntervalSeconds: 60, JitterSeconds: 30, AccountID: int64Ptr(9)}}
+	svc := newQuotaModeService(t, repo)
+	svc.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{9: {ID: 9, Platform: MonitorProviderOpenAI}}, nil))
+	accountSource := svc.quotaFetcher.accounts.(*stubMonitorAccountSource)
+	cache := make(map[int64]*Account)
+	for range 2 {
+		statusFor := svc.monitorDisplayStatus(context.Background(), repo.monitor, cache)
+		require.Equal(t, MonitorStatusOperational, statusFor("main", &ChannelMonitorLatest{Status: MonitorStatusOperational, CheckedAt: time.Now().Add(-240 * time.Second)}))
+		require.Equal(t, MonitorStatusUnknown, statusFor("main", &ChannelMonitorLatest{Status: MonitorStatusOperational, CheckedAt: time.Now().Add(-300 * time.Second)}))
+	}
+	require.Equal(t, 1, accountSource.calls)
+}

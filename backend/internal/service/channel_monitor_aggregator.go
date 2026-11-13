@@ -4,24 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 // 渠道监控聚合层：把 latest + availability 拼成 admin/user 视图所需的 summary / detail。
 // 所有方法都遵守"失败仅日志，返回零值"的原则，避免 N+1 查询失败拖垮列表渲染。
 
 // BatchMonitorStatusSummary 批量聚合多个监控的 latest + 7d 可用率（admin/user list 用，消除 N+1）。
-// 失败时返回空 map，错误仅日志，不影响列表渲染。
-//
-// 参数：
-//   - ids: 要聚合的 monitor ID 列表
-//   - primaryByID: monitor ID -> primary model（用于读 7d 可用率与 latest 状态）
-//   - extrasByID: monitor ID -> extra models 列表（用于读 latest 状态填充 ExtraModels）
-func (s *ChannelMonitorService) BatchMonitorStatusSummary(
-	ctx context.Context,
-	ids []int64,
-	primaryByID map[int64]string,
-	extrasByID map[int64][]string,
-) map[int64]MonitorStatusSummary {
+// 读取失败显示未知，不影响列表渲染。
+func (s *ChannelMonitorService) BatchMonitorStatusSummary(ctx context.Context, monitors []*ChannelMonitor) map[int64]MonitorStatusSummary {
+	ids, primaryByID, extrasByID := collectMonitorIndexes(monitors)
 	out := make(map[int64]MonitorStatusSummary, len(ids))
 	if len(ids) == 0 {
 		return out
@@ -37,15 +29,61 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 		availMap = map[int64][]*ChannelMonitorAvailability{}
 	}
 
-	for _, id := range ids {
-		out[id] = buildStatusSummary(
-			indexLatestByModel(latestMap[id]),
+	accounts := make(map[int64]*Account)
+	for _, m := range monitors {
+		id := m.ID
+		latest := indexLatestByModel(latestMap[id])
+		summary := buildStatusSummary(
+			latest,
 			indexAvailabilityByModel(availMap[id]),
 			primaryByID[id],
 			extrasByID[id],
 		)
+		statusFor := s.monitorDisplayStatus(ctx, m, accounts)
+		summary.PrimaryStatus = statusFor(m.PrimaryModel, latest[m.PrimaryModel])
+		for i := range summary.ExtraModels {
+			extra := &summary.ExtraModels[i]
+			extra.Status = statusFor(extra.Model, latest[extra.Model])
+		}
+		out[id] = summary
 	}
 	return out
+}
+
+// monitorDisplayStatus 共用于管理列表、用户卡片和详情，不改写历史样本。
+func (s *ChannelMonitorService) monitorDisplayStatus(ctx context.Context, m *ChannelMonitor, accounts map[int64]*Account) func(string, *ChannelMonitorLatest) string {
+	var account *Account
+	if m.AccountID != nil {
+		var loaded bool
+		account, loaded = accounts[*m.AccountID]
+		if !loaded {
+			account = s.loadMonitorAccount(ctx, m)
+			accounts[*m.AccountID] = account // 失败也只读取一次。
+		}
+		if account != nil && account.Platform != m.Provider {
+			account = nil
+		}
+	}
+	_, _, routeErr := s.monitorRouteSnapshot(ctx, m, account)
+	m.EgressConfigured = routeErr == nil
+	return func(model string, latest *ChannelMonitorLatest) string {
+		if !m.Enabled || !m.AutoCheckEnabled {
+			return MonitorStatusPaused
+		}
+		if m.AccountID != nil {
+			if status, _ := monitorAccountStatus(account, model); status != "" {
+				return status
+			}
+		}
+		if routeErr != nil || m.APIKeyDecryptFailed || latest == nil {
+			return MonitorStatusUnknown
+		}
+		maxAge := time.Duration(2*(m.IntervalSeconds+m.JitterSeconds))*time.Second + 90*time.Second
+		if latest.CheckedAt.IsZero() || time.Since(latest.CheckedAt) > maxAge || latest.Status == MonitorStatusError {
+			return MonitorStatusUnknown
+		}
+		return latest.Status
+	}
 }
 
 // ListUserView 用户只读视图：列出所有 enabled 监控的概览。
@@ -73,8 +111,13 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context, userIDs ...int
 		return []*UserMonitorView{}, nil
 	}
 
-	ids, primaryByID, extrasByID := collectMonitorIndexes(monitors)
-	summaries := s.BatchMonitorStatusSummary(ctx, ids, primaryByID, extrasByID)
+	for _, m := range monitors {
+		if s.encryptor != nil {
+			s.decryptInPlace(m)
+		}
+	}
+	ids, primaryByID, _ := collectMonitorIndexes(monitors)
+	summaries := s.BatchMonitorStatusSummary(ctx, monitors)
 	latestMap := s.batchLatest(ctx, ids)
 	timelineMap := s.batchTimeline(ctx, ids, primaryByID)
 
@@ -82,8 +125,7 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context, userIDs ...int
 	for _, m := range monitors {
 		primaryLatest := pickLatest(latestMap[m.ID], m.PrimaryModel)
 		view := buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID])
-		_, routeErr := s.resolveMonitorRoute(ctx, m)
-		view.CanRun = routeErr == nil
+		view.CanRun = m.EgressConfigured
 		views = append(views, view)
 	}
 	return views, nil
@@ -160,6 +202,14 @@ func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64, use
 	}
 
 	models := mergeModelDetails(m, latest, availMap)
+	if s.encryptor != nil {
+		s.decryptInPlace(m)
+	}
+	statusFor := s.monitorDisplayStatus(ctx, m, make(map[int64]*Account))
+	latestByModel := indexLatestByModel(latest)
+	for i := range models {
+		models[i].LatestStatus = statusFor(models[i].Model, latestByModel[models[i].Model])
+	}
 	return &UserMonitorDetail{
 		AutoCheckEnabled: m.AutoCheckEnabled,
 		ID:               m.ID,

@@ -778,7 +778,7 @@ func TestDeriveQuotaCheckResult_StatusMatrix(t *testing.T) {
 	require.Contains(t, res.Message, "pro/daily")
 	require.Contains(t, res.Message, "95.0%")
 
-	balance := -0.5
+	balance := 0.1
 	lowBalance := &domain.MonitorQuotaSnapshot{Success: true, BalanceLow: true, Balance: &balance, Currency: "CNY"}
 	res = deriveQuotaCheckResult(lowBalance, "quota", now)
 	require.Equal(t, MonitorStatusDegraded, res.Status)
@@ -790,7 +790,7 @@ func TestDeriveQuotaCheckResult_StatusMatrix(t *testing.T) {
 
 	unlinked := &domain.MonitorQuotaSnapshot{Success: false, Error: "linked account not found"}
 	res = deriveQuotaCheckResult(unlinked, "quota", now)
-	require.Equal(t, MonitorStatusDegraded, res.Status)
+	require.Equal(t, MonitorStatusError, res.Status)
 
 	other := &domain.MonitorQuotaSnapshot{Success: false, Error: "connection refused"}
 	res = deriveQuotaCheckResult(other, "quota", now)
@@ -799,4 +799,28 @@ func TestDeriveQuotaCheckResult_StatusMatrix(t *testing.T) {
 
 	res = deriveQuotaCheckResult(nil, "quota", now)
 	require.Equal(t, MonitorStatusError, res.Status)
+}
+
+func TestMonitorQuotaExhaustion(t *testing.T) {
+	for _, tc := range []struct {
+		name, model, want string
+		snapshot domain.MonitorQuotaSnapshot
+	}{
+		{"warning", "quota", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 90}}}},
+		{"global exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 100}}}},
+		{"inactive window", "quota", MonitorStatusOperational, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 100, WindowInactive: true}}}},
+		{"partial model exhaustion", "quota", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
+		{"matching model", "gpt-test", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
+		{"other model", "gpt-other", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "total", Label: "gpt-test", UsedPercent: 100}}}},
+		{"fable quota", "claude-fable-5", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "7d-fable", UsedPercent: 100}}}},
+		{"fable isolated", "claude-sonnet-4-5", MonitorStatusDegraded, domain.MonitorQuotaSnapshot{Tiers: []domain.MonitorQuotaTier{{Window: "7d-fable", UsedPercent: 100}}}},
+		{"one currency remains", "quota", MonitorStatusOperational, domain.MonitorQuotaSnapshot{Balance: new(float64), Balances: []domain.MonitorBalance{{Currency: "CNY"}, {Currency: "USD", Balance: 2}}}},
+		{"all currencies exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Balances: []domain.MonitorBalance{{Currency: "CNY"}, {Currency: "USD", Balance: -1}}}},
+		{"single balance exhausted", "quota", MonitorStatusFailed, domain.MonitorQuotaSnapshot{Balance: new(float64)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.snapshot.Success = true
+			require.Equal(t, tc.want, deriveQuotaCheckResult(&tc.snapshot, tc.model, time.Now()).Status)
+		})
+	}
 }

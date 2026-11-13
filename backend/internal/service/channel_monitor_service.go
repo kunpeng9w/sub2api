@@ -136,8 +136,6 @@ func (s *ChannelMonitorService) List(ctx context.Context, params ChannelMonitorL
 	}
 	for _, it := range items {
 		s.decryptInPlace(it)
-		_, routeErr := s.resolveMonitorRoute(ctx, it)
-		it.EgressConfigured = routeErr == nil
 	}
 	return items, total, nil
 }
@@ -637,6 +635,11 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 	if actorID == 0 && !m.AutoCheckEnabled {
 		return nil, ErrChannelMonitorDisabled
 	}
+	if actorID == 0 && m.AccountID != nil {
+		if status, _ := monitorAccountStatus(s.loadMonitorAccount(ctx, m), ""); status == MonitorStatusPaused {
+			return nil, ErrChannelMonitorDisabled
+		}
+	}
 	ctx, err = s.monitorContext(ctx, m, actorID)
 	if err != nil {
 		return nil, err
@@ -700,43 +703,79 @@ func (s *ChannelMonitorService) fetchQuotaSnapshot(ctx context.Context, m *Chann
 }
 
 // attachQuotaSnapshot quota_probe：把配额快照挂到主模型行（results[0]）。
-// 配额失败不改变探活状态，仅在探活 message 为空时附注失败原因。
+// 配额查询失败不改变探活状态；明确额度耗尽则覆盖成功探活。
 func attachQuotaSnapshot(results []*CheckResult, snapshot *domain.MonitorQuotaSnapshot) {
 	if len(results) == 0 || snapshot == nil {
 		return
 	}
 	primary := results[0]
 	primary.Quota = snapshot
+	for _, res := range results {
+		if hint := quotaUnavailableHint(snapshot, res.Model); hint != "" &&
+			(res.Status == MonitorStatusOperational || res.Status == MonitorStatusDegraded) {
+			res.Status, res.Message = MonitorStatusFailed, hint
+		}
+	}
 	if !snapshot.Success && strings.TrimSpace(primary.Message) == "" {
 		primary.Message = truncateMessage("quota fetch failed: " + snapshot.Error)
 	}
 }
 
-// applyLinkedAccountSchedulingStatus 在入库前读取实时停调状态，避免配额缓存或成功探活掩盖账号故障。
-func (s *ChannelMonitorService) applyLinkedAccountSchedulingStatus(ctx context.Context, m *ChannelMonitor, results []*CheckResult) {
+// monitorAccountStatus 复用调度器判定；暂停和未知仅供当前界面展示。
+func monitorAccountStatus(account *Account, model string) (string, string) {
+	if account == nil {
+		return MonitorStatusUnknown, "linked account unavailable"
+	}
+	if account.Status == StatusError {
+		return MonitorStatusFailed, "linked account is in error state"
+	}
+	if account.Status == StatusDisabled || !account.Schedulable {
+		return MonitorStatusPaused, "linked account scheduling is paused"
+	}
+	if !account.IsSchedulable() {
+		return MonitorStatusFailed, "linked account unavailable for scheduling (expired, quota exhausted or temporarily unschedulable)"
+	}
+	if model != "" && model != MonitorDefaultQuotaModel && account.isModelRateLimitedWithContext(context.Background(), model) {
+		return MonitorStatusFailed, "linked account temporarily unschedulable for this model"
+	}
+	return "", ""
+}
+
+func (s *ChannelMonitorService) loadMonitorAccount(ctx context.Context, m *ChannelMonitor) *Account {
 	if m.AccountID == nil || s.quotaFetcher == nil {
-		return
+		return nil
 	}
 	account, err := s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
 	if err != nil || account == nil {
-		slog.Warn("channel_monitor: load linked account scheduling status failed", "monitor_id", m.ID, "error", err)
+		slog.Warn("channel_monitor: load linked account failed", "monitor_id", m.ID, "error", err)
+		return nil
+	}
+	return account
+}
+
+// applyLinkedAccountSchedulingStatus 绕过配额缓存，历史只保存原四态。
+func (s *ChannelMonitorService) applyLinkedAccountSchedulingStatus(ctx context.Context, m *ChannelMonitor, results []*CheckResult) {
+	if m.AccountID == nil {
 		return
 	}
-	blocked := account.TempUnschedulableUntil != nil && time.Now().Before(*account.TempUnschedulableUntil)
+	account := s.loadMonitorAccount(ctx, m)
+	if account != nil && account.Platform != m.Provider {
+		account = nil
+	}
 	for _, res := range results {
-		// 保留已有故障及其具体原因。
 		if res.Status != MonitorStatusOperational && res.Status != MonitorStatusDegraded {
 			continue
 		}
-		message := ""
-		if blocked {
-			message = "linked account temporarily unschedulable"
-		} else if res.Model != MonitorDefaultQuotaModel && account.isModelRateLimitedWithContext(ctx, res.Model) {
-			message = "linked account temporarily unschedulable for this model"
+		status, message := monitorAccountStatus(account, res.Model)
+		if status == MonitorStatusUnknown {
+			status = MonitorStatusError
 		}
-		if message != "" {
-			res.Status = MonitorStatusFailed
-			res.Message = message
+		if status == MonitorStatusFailed || status == MonitorStatusError {
+			res.Status, res.Message = status, message
+		} else if account != nil && len(results) > 0 {
+			if hint := quotaUnavailableHint(results[0].Quota, account.GetMappedModel(res.Model)); res.Model != MonitorDefaultQuotaModel && hint != "" {
+				res.Status, res.Message = MonitorStatusFailed, hint
+			}
 		}
 	}
 }

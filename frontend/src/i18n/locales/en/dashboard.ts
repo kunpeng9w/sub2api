@@ -503,9 +503,10 @@ export default {
     status: {
       operational: 'Operational',
       degraded: 'Degraded',
-      failed: 'Failed',
+      failed: 'Unavailable',
       error: 'Error',
-      unknown: '-'
+      paused: 'Paused',
+      unknown: 'Unknown'
     },
     providers: {
       openai: 'OpenAI',

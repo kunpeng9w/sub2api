@@ -508,9 +508,10 @@ export default {
     status: {
       operational: '正常',
       degraded: '降级',
-      failed: '失败',
+      failed: '不可用',
       error: '错误',
-      unknown: '-'
+      paused: '已暂停',
+      unknown: '未知'
     },
     providers: {
       openai: 'OpenAI',

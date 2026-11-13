@@ -11,7 +11,7 @@
  */
 
 import { useI18n } from 'vue-i18n'
-import type { CheckMode, MonitorStatus, Provider } from '@/api/admin/channelMonitor'
+import type { CheckMode, MonitorDisplayStatus, Provider } from '@/api/admin/channelMonitor'
 import {
   PROVIDER_OPENAI,
   PROVIDER_ANTHROPIC,
@@ -41,19 +41,19 @@ const HSL_SATURATION = 72
 const HSL_LIGHTNESS = 42
 
 export interface AvailabilityRow {
-  primary_status: MonitorStatus | ''
+  primary_status: MonitorDisplayStatus | ''
   availability_7d: number | null | undefined
 }
 
 export function useChannelMonitorFormat() {
   const { t } = useI18n()
 
-  function statusLabel(s: MonitorStatus | ''): string {
+  function statusLabel(s: MonitorDisplayStatus | ''): string {
     if (!s) return t('monitorCommon.status.unknown')
     return t(`monitorCommon.status.${s}`)
   }
 
-  function statusBadgeClass(s: MonitorStatus | ''): string {
+  function statusBadgeClass(s: MonitorDisplayStatus | ''): string {
     switch (s) {
       case STATUS_OPERATIONAL:
         return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'

@@ -91,14 +91,20 @@ func (s *ChannelMonitorService) resolveMonitorRoute(ctx context.Context, m *Chan
 	route, _, err := s.monitorRouteSnapshot(ctx, m)
 	return route, err
 }
-func (s *ChannelMonitorService) monitorRouteSnapshot(ctx context.Context, m *ChannelMonitor) (string, string, error) {
+func (s *ChannelMonitorService) monitorRouteSnapshot(ctx context.Context, m *ChannelMonitor, loadedAccounts ...*Account) (string, string, error) {
 	binding := m.ProxyID
 	accountID := int64(0)
 	if m.AccountID != nil {
 		if s.quotaFetcher == nil {
 			return "", "", ErrChannelMonitorEgress
 		}
-		account, err := s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
+		var account *Account
+		var err error
+		if len(loadedAccounts) > 0 {
+			account = loadedAccounts[0]
+		} else {
+			account, err = s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
+		}
 		if err != nil || account == nil || account.Platform != m.Provider {
 			return "", "", ErrChannelMonitorEgress
 		}
