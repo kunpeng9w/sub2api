@@ -80,7 +80,10 @@ func (s *ChannelMonitorService) monitorDisplayStatus(ctx context.Context, m *Cha
 			routeErr != nil || (defaultCheckMode(m.CheckMode) != MonitorCheckModeQuota && m.APIKeyDecryptFailed) || latest == nil {
 			return MonitorStatusUnknown
 		}
-		maxAge := time.Duration(2*(m.IntervalSeconds+m.JitterSeconds))*time.Second + 90*time.Second
+		maxAge := 12 * time.Hour
+		if m.AutoCheckEnabled {
+			maxAge = time.Duration(2*(m.IntervalSeconds+m.JitterSeconds))*time.Second + 90*time.Second
+		}
 		if latest.CheckedAt.IsZero() || time.Since(latest.CheckedAt) > maxAge || latest.Status == MonitorStatusError {
 			return MonitorStatusUnknown
 		}

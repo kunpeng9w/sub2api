@@ -310,8 +310,23 @@ func TestMonitorCurrentStatusAcrossViews(t *testing.T) {
 		{"manual detection keeps failed sample", MonitorStatusFailed, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
 			m.AutoCheckEnabled, l.Status = false, MonitorStatusFailed
 		}},
-		{"manual detection with stale sample", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+		{"manual detection keeps hour old sample", MonitorStatusOperational, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
 			m.AutoCheckEnabled, l.CheckedAt = false, past
+		}},
+		{"manual detection keeps sample just under twelve hours", MonitorStatusOperational, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, l.CheckedAt = false, now.Add(-12*time.Hour+time.Minute)
+		}},
+		{"manual detection keeps degraded sample under twelve hours", MonitorStatusDegraded, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, l.CheckedAt, l.Status = false, now.Add(-11*time.Hour), MonitorStatusDegraded
+		}},
+		{"manual detection ignores saved interval", MonitorStatusOperational, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, m.IntervalSeconds, m.JitterSeconds, l.CheckedAt = false, 15, 0, now.Add(-11*time.Hour)
+		}},
+		{"manual detection expires sample over twelve hours", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, m.LastCheckedAt, l.CheckedAt = false, &now, now.Add(-12*time.Hour-time.Second)
+		}},
+		{"manual detection expires failed sample over twelve hours", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, l *ChannelMonitorLatest, _ *ChannelMonitorService) {
+			m.AutoCheckEnabled, l.CheckedAt, l.Status = false, now.Add(-13*time.Hour), MonitorStatusFailed
 		}},
 		{"manual detection without sample", MonitorStatusUnknown, func(m *ChannelMonitor, _ *Account, _ *ChannelMonitorLatest, svc *ChannelMonitorService) {
 			m.AutoCheckEnabled = false
