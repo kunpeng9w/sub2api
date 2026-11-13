@@ -87,10 +87,6 @@ func (s *ChannelMonitorService) SetExecutionDependencies(proxies ProxyRepository
 	s.proxies = proxies
 	s.runLocks = locks
 }
-func (s *ChannelMonitorService) resolveMonitorRoute(ctx context.Context, m *ChannelMonitor) (string, error) {
-	route, _, err := s.monitorRouteSnapshot(ctx, m)
-	return route, err
-}
 func (s *ChannelMonitorService) monitorRouteSnapshot(ctx context.Context, m *ChannelMonitor, loadedAccounts ...*Account) (string, string, error) {
 	binding := m.ProxyID
 	accountID := int64(0)

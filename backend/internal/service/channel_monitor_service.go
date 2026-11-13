@@ -779,8 +779,8 @@ func (s *ChannelMonitorService) applyLinkedAccountSchedulingStatus(ctx context.C
 		}
 		if status == MonitorStatusFailed || status == MonitorStatusError {
 			res.Status, res.Message = status, message
-		} else if account != nil && len(results) > 0 {
-			if hint := quotaUnavailableHint(results[0].Quota, account.GetMappedModel(res.Model)); res.Model != MonitorDefaultQuotaModel && hint != "" {
+		} else if account != nil && res.Model != MonitorDefaultQuotaModel {
+			if hint := quotaUnavailableHint(results[0].Quota, account.GetMappedModel(res.Model)); hint != "" {
 				res.Status, res.Message = MonitorStatusFailed, hint
 			}
 		}
