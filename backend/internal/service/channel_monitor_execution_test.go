@@ -249,7 +249,7 @@ func TestMonitorUnboundClaudeFollowsAccountDefault(t *testing.T) {
 		accounts: map[int64]*Account{9: account},
 	}})
 	monitor := &ChannelMonitor{Provider: MonitorProviderAnthropic, AccountID: int64Ptr(9)}
-	route, err := svc.resolveMonitorRoute(context.Background(), monitor)
+	route, _, err := svc.monitorRouteSnapshot(context.Background(), monitor)
 	require.NoError(t, err)
 	expected, err := ResolveAccountProxyURL(account, svc.cfg)
 	require.NoError(t, err)
