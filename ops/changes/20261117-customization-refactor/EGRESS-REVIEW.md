@@ -14,4 +14,4 @@
 
 Actions 的严格出口专项明确要求：绑定异常、最终 HTTP 校验、HTTP/SSE 不回退、WS lease 复核、OAuth 会话、插件、脱离请求媒体、批任务、快照/outbox 原子性，以及数据库 legacy direct/backup 和续期扫描用例必须真实 pass。其他已有回归由 ops/monitor/backend/upgrade 工作流继续覆盖。
 
-Mihomo DNS 生命周期的远程失败在原基线 `0161258af6ca167f5885c145b454d3a982839939` 上也能重现：运行 `43417474087` 的重新执行，job `133843996010`，`test_real_lifecycle_start_stop_restart_crash_and_failed_start` 在测试 fixture 的 SIGKILL 后未恢复普通 DNS。该问题没有通过修改生产出口、跳过断言或回退逻辑来处理。最终远程结果另见 VERIFICATION.md；不能把这个失败写成通过。
+Mihomo DNS 生命周期的远程失败在原基线 `0161258af6ca167f5885c145b454d3a982839939` 上也能重现：运行 `43417474087` 的重新执行，job `133843996010`，`test_real_lifecycle_start_stop_restart_crash_and_failed_start` 在测试 fixture 的 SIGKILL 后未恢复普通 DNS。日志同时显示整个 cgroup 的 SIGKILL 杀死了 ExecStopPost 控制进程；测试故障注入改为只向主进程发送 SIGKILL，保留全部恢复断言，不改生产 DNS/出口/回退逻辑。基线失败与修正后的远程结果分别记录，最终结果另见 VERIFICATION.md。
