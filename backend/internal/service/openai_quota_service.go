@@ -99,7 +99,7 @@ func (r *OpenAIRateLimit) UnmarshalJSON(data []byte) error {
 			return nil
 		}
 		w.OpenAIRateLimitWindow.UsedPercent = *w.UsedPercent
-		w.OpenAIRateLimitWindow.resetTimeMissing = w.ResetAfterSeconds == nil && (w.ResetAt == nil || *w.ResetAt <= 0)
+		w.resetTimeMissing = w.ResetAfterSeconds == nil && (w.ResetAt == nil || *w.ResetAt <= 0)
 		if w.ResetAfterSeconds != nil {
 			w.OpenAIRateLimitWindow.ResetAfterSeconds = *w.ResetAfterSeconds
 		}

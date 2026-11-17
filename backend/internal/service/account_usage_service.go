@@ -878,7 +878,8 @@ func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Accou
 	now := time.Now()
 	usage := &UsageInfo{Source: "passive"}
 	applyExtraToUsage(usage, account.Extra, now)
-	if force || shouldRefreshOpenAICodexSnapshot(account, usage, now) {
+	lastAttempt := s.cachedCodexRefresh(ctx, account.ID)
+	if force || shouldRefreshOpenAICodexSnapshot(account, usage, now) || (lastAttempt != nil && lastAttempt.message != "") {
 		entry, err := s.refreshOpenAICodexSnapshot(ctx, account, force)
 		if err != nil {
 			return nil, err

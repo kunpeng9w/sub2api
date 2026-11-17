@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"golang.org/x/sync/singleflight"
@@ -498,12 +499,12 @@ func quotaErrorSnapshot(source, message string, now time.Time) *domain.MonitorQu
 // （海外 GetUsage 的错误没有结构化状态码，只能看文本）。
 func isCredentialErrorMessage(msg string) bool {
 	msg = strings.ToLower(msg)
-	return strings.Contains(msg, "401") ||
-
+	return strings.Contains(msg, "http 401") ||
+		strings.Contains(msg, "status 401") ||
+		strings.Contains(msg, "returned 401") ||
 		strings.Contains(msg, "unauthorized") ||
-
 		strings.Contains(msg, "invalid_api_key") ||
-		strings.Contains(msg, "authentication")
+		strings.Contains(msg, "authentication failed")
 }
 
 // usageFailureInfo 识别 GetUsage 经「值通道」返回的失败：antigravity/grok
@@ -532,8 +533,10 @@ func isMonitorCredentialError(err error) bool {
 	if infraerrors.Code(err) == http.StatusUnauthorized || (infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" || infraerrors.Reason(err) == "OPENAI_ACCOUNT_BANNED") {
 		return true
 	}
-	// Typed permission denials must not fall through to text heuristics.
-	if infraerrors.Code(err) == http.StatusForbidden {
+	// Typed upstream/network errors already carry their classification. Their
+	// text may contain arbitrary URL ports (e.g. 40123), not an HTTP status.
+	var appError *infraerrors.ApplicationError
+	if errors.As(err, &appError) {
 		return false
 	}
 	return isCredentialErrorMessage(err.Error())

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/stretchr/testify/require"
 )
@@ -819,5 +820,12 @@ func TestMonitorQuotaExhaustion(t *testing.T) {
 			tc.snapshot.Success = true
 			require.Equal(t, tc.want, deriveQuotaCheckResult(&tc.snapshot, tc.model, time.Now()).Status)
 		})
+	}
+}
+
+func TestQuotaFetcher_NetworkPortsAreNotCredentialStatus(t *testing.T) {
+	for _, message := range []string{"dial tcp 127.0.0.1:40123: timeout", "Get http://127.0.0.1:40312: upstream request failed"} {
+		require.False(t, isMonitorCredentialError(infraerrors.New(502, "OPENAI_QUOTA_REQUEST_FAILED", message)))
+		require.False(t, isMonitorCredentialError(errors.New(message)))
 	}
 }

@@ -33,7 +33,7 @@ const stubs = {
   UsageProgressBar: { props: ['utilization'], template: '<div data-test="percent">{{ utilization }}</div>' },
   OpenAIQuotaResetCell: { template: '<div><slot name="pre-actions" /></div>' }
 }
-type UsageCell = { loadActiveUsage: () => Promise<void>; loadUsage: (options: { bypassCache: boolean }) => Promise<void> }
+type UsageCell = { loadActiveUsage: () => Promise<void>; loadUsage: (options: { bypassCache: boolean }) => Promise<void>; _usageCache: Map<number, { data: AccountUsageInfo; ts: number }> }
 
 beforeEach(() => {
   getUsage.mockReset()
@@ -61,11 +61,10 @@ describe('quota request identity and generation', () => {
     await oldRun
     await flushPromises()
     expect(wrapper.get('[data-test="percent"]').text()).toBe('22')
+    const cache = (wrapper.vm as unknown as UsageCell)._usageCache
+    expect(cache.get(99102)?.data.five_hour?.utilization).toBe(22)
+    expect(cache.has(99101)).toBe(false)
     wrapper.unmount()
-    const cached = mount(AccountUsageCell, { props: { account: account(99102) }, global: { stubs } })
-    await flushPromises()
-    expect(cached.get('[data-test="percent"]').text()).toBe('22')
-    cached.unmount()
   })
 
   it.each(['resolve', 'reject'] as const)('keeps the newer loading, error and display state when the old request ends: %s', async (outcome) => {
@@ -94,14 +93,13 @@ describe('quota request identity and generation', () => {
     getUsage.mockReturnValueOnce(old.promise)
     const wrapper = mount(AccountUsageCell, { props: { account: account(99105) }, global: { stubs } })
     const run = queued[0]!.run()
+    const cache = (wrapper.vm as unknown as UsageCell)._usageCache
     wrapper.unmount()
     old.resolve(usage(99))
     await run
     await flushPromises()
-    const replacement = mount(AccountUsageCell, { props: { account: account(99105) }, global: { stubs } })
-    expect(queued).toHaveLength(2)
-    expect(replacement.find('[data-test="percent"]').exists()).toBe(false)
-    replacement.unmount()
+    expect(cache.has(99105)).toBe(false)
+    expect(wrapper.emitted('usage-loaded')).toBeUndefined()
   })
 
   it('shows each window sample independently and leaves missing sample time unknown', async () => {

@@ -155,6 +155,7 @@ jobs:
             internal/service:TestBuildUsageInfo_ScopedFableLimits \
             internal/service:TestPassiveUsageClearsExhaustedFableLimitAfterQuotaReset \
             internal/service:TestUsageBillingLane_QueuedRequestsSettleAsOneBatch \
+            internal/service:TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB \
             internal/service:TestOpenAIUsageRefresh_QuotaAPIMissingResetNeverBecomesZero
       - uses: actions/upload-artifact@v7
         if: always()
