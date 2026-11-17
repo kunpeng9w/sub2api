@@ -33,4 +33,3 @@ func Estimate(cost, percentage float64, start, end, sampled, now time.Time) *dom
 	}
 	return e
 }
-

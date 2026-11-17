@@ -40,4 +40,8 @@ supplementary_groups=()
 for runner_group in $(id -Gn); do
   supplementary_groups+=(-G "$runner_group")
 done
-sudo --preserve-env -- runuser --preserve-environment -u "$test_user" -g "$test_group" "${supplementary_groups[@]}" -- env PATH="$PATH" "$@"
+# Some hosted sudo policies discard the caller environment even with -E. Snapshot
+# it before sudo and restore it after the UID/GID transition so Go uses the runner
+# cache rather than /root/.cache. NUL separation preserves spaces and newlines.
+mapfile -d '' -t test_environment < <(env -0)
+sudo -- runuser --preserve-environment -u "$test_user" -g "$test_group" "${supplementary_groups[@]}" -- env -i "${test_environment[@]}" "$@"

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 type estimateWindowRepo struct {
 	UsageLogRepository
 	queries []UsageWindowQuery

@@ -29,4 +29,3 @@ func TestQuotaEstimateFormulaAndInvalidInputs(t *testing.T) {
 	}
 	require.Nil(t, Estimate(12, 40, start, now, now.Add(-time.Second), now).TotalCost)
 }
-
