@@ -276,6 +276,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { buildCodexModelCatalogUrl, fetchCodexModelsManifest } from '@/api/codex'
 import type { GroupPlatform } from '@/types'
 import { buildCodexApiKeyAuthConfig } from '@/utils/codexAuthConfig'
+import { buildClaudeCodeFiles } from '@/custom/client-config/claudeCode'
 import {
   findCodexCatalogModel,
   formatCodexReasoningEffortTomlLine,
@@ -873,67 +874,7 @@ Invoke-RestMethod -Method Post -Uri "${endpoint}" -Headers $headers -ContentType
 }
 
 function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
-  let path: string
-  let content: string
-
-  switch (activeTab.value) {
-    case 'unix':
-      path = 'Terminal'
-      content = `export ANTHROPIC_BASE_URL="${baseUrl}"
-export ANTHROPIC_AUTH_TOKEN="${apiKey}"
-export CLAUDE_CODE_ATTRIBUTION_HEADER=1
-export DISABLE_TELEMETRY=1
-export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-export ENABLE_PROMPT_CACHING_1H=1`
-      break
-    case 'cmd':
-      path = 'Command Prompt'
-      content = `set ANTHROPIC_BASE_URL=${baseUrl}
-set ANTHROPIC_AUTH_TOKEN=${apiKey}
-set CLAUDE_CODE_ATTRIBUTION_HEADER=1
-set DISABLE_TELEMETRY=1
-set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-set ENABLE_PROMPT_CACHING_1H=1`
-      break
-    case 'powershell':
-      path = 'PowerShell'
-      content = `$env:ANTHROPIC_BASE_URL="${baseUrl}"
-$env:ANTHROPIC_AUTH_TOKEN="${apiKey}"
-$env:CLAUDE_CODE_ATTRIBUTION_HEADER=1
-$env:DISABLE_TELEMETRY=1
-$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-$env:ENABLE_PROMPT_CACHING_1H=1`
-      break
-    default:
-      path = 'Terminal'
-      content = ''
-  }
-
-  const vscodeSettingsPath = activeTab.value === 'unix'
-    ? '~/.claude/settings.json'
-    : '%USERPROFILE%\\.claude\\settings.json'
-
-  const vscodeContent = `{
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "skipWebFetchPreflight": true,
-  "env": {
-    "ANTHROPIC_BASE_URL": "${baseUrl}",
-    "ANTHROPIC_AUTH_TOKEN": "${apiKey}",
-    "CLAUDE_CODE_ATTRIBUTION_HEADER": "1",
-    "DISABLE_TELEMETRY": "1",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    "ENABLE_PROMPT_CACHING_1H": "1"
-  }
-}`
-
-  return [
-    { path, content },
-    {
-      path: vscodeSettingsPath,
-      content: vscodeContent,
-      hint: t('keys.useKeyModal.claudeSettingsHint')
-    }
-  ]
+  return buildClaudeCodeFiles(activeTab.value, baseUrl, apiKey, t('keys.useKeyModal.claudeSettingsHint'))
 }
 
 function generateGrokClaudeFiles(baseUrl: string, apiKey: string): FileConfig[] {

@@ -8,6 +8,6 @@
 
 维护收益：上游已有生产文件减少 0、共享函数内的定制分支减少 0、重复公式减少 0；新增一个转发桥接与包引用。原 `quota_estimate.go` 已是本地独立文件，因此包边界能隔离编译依赖，却不能据此证明降低上游合并成本。
 
-结论：按 PLAN §7.1 与 §8 停止该边界试验，远程回归完成后恢复原结构；不扩大为 `custom/quotaestimate` 模块。保留专项工作流的真实测试执行记录能力。后续只抽取确实位于上游共享文件内的本地策略，优先同 package 适配，避免新增纯转发桥接或逐字段复制领域结构。
+结论：按 PLAN §7.1 与 §8 停止该边界试验，本批远程回归完成后恢复原结构；不扩大为 `custom/quotaestimate` 模块。保留专项工作流的真实测试执行记录能力。后续只抽取确实位于上游共享文件内的本地策略，优先同 package 适配，避免新增纯转发桥接或逐字段复制领域结构。
 
-远程结果及实际测试名称在最终 VERIFICATION.md 中登记；本文件的源码评估不代表测试通过。
+已下载 Actions `44024942954` 的 `monitor-unit-9ae3629d141764211a693c972438f7ac7e9d7ef8` 日志，确认纯规则包的 `TestQuotaEstimateFormulaAndInvalidInputs`、service 包的 `TestQuotaEstimateAllWindowsAndSampleCutoff` 和 `TestQuotaEstimateKeepsIndependentWindowSampleTimes` 全部真实 pass；规范化事件见 PILOT-EVIDENCE.json。该次监控生成、单元/数据库回归及前后端构建通过。普通刷新专项的用例与仓储步骤通过，但随后重复 race 检查在下一批推送时被取消，不能记作通过；最终提交另行执行完整专项。

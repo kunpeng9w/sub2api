@@ -1,7 +1,7 @@
 name: Upstream upgrade verification
 on:
   push:
-    branches: ['codex/merge-upstream-*']
+    branches: ['codex/merge-upstream-*', 'codex/customization-refactor']
   workflow_dispatch:
   pull_request:
     branches: [main]
