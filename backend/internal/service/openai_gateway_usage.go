@@ -492,7 +492,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		applyAccountStatsCost(ctx, usageLog, s.channelService, s.billingService,
 			account.ID, *apiKey.GroupID, result.UpstreamModel, result.Model,
 			tokens, cost.TotalCost, pricingAt,
-			accountStatsLongContextPricingEnabled(longContextBillingGate) && !modelLongContextExempt,
+			accountStatsLongContextPricingEnabled(longContextBillingGate) && !modelLongContextExempt, 1,
 		)
 	}
 
@@ -1163,6 +1163,10 @@ func stampCodexWindowCompleteness(updates map[string]any, limits *NormalizedCode
 		{"5h", limits.Used5hPercent, limits.Reset5hSeconds, limits.Window5hMinutes},
 		{"7d", limits.Used7dPercent, limits.Reset7dSeconds, limits.Window7dMinutes},
 	} {
+        if window.used != nil && window.reset == nil {
+            updates["codex_"+window.key+"_reset_at"] = nil
+            updates["codex_"+window.key+"_reset_after_seconds"] = nil
+        }
 		if window.used != nil || window.reset != nil || window.minutes != nil {
 			updates["codex_"+window.key+"_sample_complete"] = window.used != nil && window.reset != nil && window.minutes != nil
 		}

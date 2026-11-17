@@ -21,7 +21,7 @@ import (
 // The workflow supplies a disposable PostgreSQL service and the exact baseline
 // migration tree. Each case uses a separate database, including public schema
 // references made by historical migrations. No application config is loaded.
-func TestUpgradeV020Migrations(t *testing.T) {
+func TestUpgradeV022Migrations(t *testing.T) {
 	dsn := os.Getenv("UPGRADE_TEST_DSN")
 	baselinePath := os.Getenv("UPGRADE_BASELINE_MIGRATIONS")
 	if dsn == "" || baselinePath == "" {
@@ -55,7 +55,7 @@ INSERT INTO channel_monitor_users(monitor_id,user_id) VALUES(903,901);`)
 			}
 			for restart := 0; restart < 3; restart++ {
 				require.NoError(t, ApplyMigrations(ctx, db), "startup %d", restart)
-				for _, file := range []string{"249_channel_monitor_manual_access.sql", "249_mcp_oauth.sql", "250_channel_monitor_sort_order.sql", "249_add_usage_logs_api_key_cost_index_notx.sql", "250_openai_cache_write_ttl.sql"} {
+				for _, file := range []string{"249_channel_monitor_manual_access.sql", "249_mcp_oauth.sql", "250_channel_monitor_sort_order.sql", "249_add_usage_logs_api_key_cost_index_notx.sql", "250_openai_cache_write_ttl.sql", "251_group_force_openai_ultrafast.sql", "251_usage_group_rollup_expired_before.sql"} {
 					content, err := fs.ReadFile(migrations.FS, file)
 					require.NoError(t, err)
 					digest := sha256.Sum256([]byte(strings.TrimSpace(string(content))))
@@ -63,6 +63,26 @@ INSERT INTO channel_monitor_users(monitor_id,user_id) VALUES(903,901);`)
 					require.NoError(t, db.QueryRowContext(ctx, "SELECT checksum FROM schema_migrations WHERE filename=$1", file).Scan(&checksum))
 					require.Equal(t, hex.EncodeToString(digest[:]), checksum)
 				}
+                // Check the actual schema/defaults, not only migration ledger rows.
+                var ultrafastDefault, expiredDefault string
+                require.NoError(t, db.QueryRowContext(ctx, "SELECT column_default FROM information_schema.columns WHERE table_name='groups' AND column_name='force_openai_ultrafast'").Scan(&ultrafastDefault))
+                require.Equal(t, "false", ultrafastDefault)
+                require.NoError(t, db.QueryRowContext(ctx, "SELECT column_default FROM information_schema.columns WHERE table_name='usage_group_rollup_state' AND column_name='expired_before'").Scan(&expiredDefault))
+                require.Contains(t, expiredDefault, "1970-01-01")
+                var rollupColumns int
+                require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM information_schema.columns WHERE table_name='usage_group_rollup_state' AND column_name IN ('expired_before','building_until','build_dirty_from')").Scan(&rollupColumns))
+                require.Equal(t, 3, rollupColumns)
+                // Exercise invalidation across the expiry boundary while a rebuild runs.
+                tx, err := db.BeginTx(ctx, nil)
+                require.NoError(t, err)
+                _, err = tx.ExecContext(ctx, `UPDATE usage_group_rollup_state SET closed_before='2026-11-17', expired_before='2026-11-10T00:00:00Z', building_until='2026-11-18', build_dirty_from=NULL WHERE id=1;
+SELECT invalidate_group_usage_rollups_at('2026-11-01T00:00:00Z','UTC');`)
+                require.NoError(t, err)
+                var closed, dirty string
+                require.NoError(t, tx.QueryRowContext(ctx, "SELECT closed_before::text,build_dirty_from::text FROM usage_group_rollup_state WHERE id=1").Scan(&closed,&dirty))
+                require.Equal(t, "2026-11-10", closed)
+                require.Equal(t, "2026-11-10", dirty)
+                require.NoError(t, tx.Rollback())
 				var grants int
 				require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM mcp_oauth_grants").Scan(&grants))
 				require.Zero(t, grants)

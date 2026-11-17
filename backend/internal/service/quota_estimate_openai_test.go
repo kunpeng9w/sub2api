@@ -38,8 +38,10 @@ func TestQuotaEstimateOpenAIPartialObservationKeepsOtherWindowCutoff(t *testing.
 			}
 			if updatedWindow == "5h" {
 				partial.PrimaryUsedPercent = &used
+                partial.PrimaryResetAfterSeconds = &reset5
 			} else {
 				partial.SecondaryUsedPercent = &used
+                partial.SecondaryResetAfterSeconds = &reset7
 			}
 			mergeAccountExtra(account, buildCodexUsageExtraUpdates(partial, now))
 			repo := &estimateWindowRepo{}

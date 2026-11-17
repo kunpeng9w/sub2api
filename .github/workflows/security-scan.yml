@@ -2,6 +2,7 @@ name: Security Scan
 
 on:
   push:
+    # Includes codex/merge-upstream-v0.2.22; final evidence uses this exact head SHA.
   pull_request:
   schedule:
     - cron: '0 3 * * 1'

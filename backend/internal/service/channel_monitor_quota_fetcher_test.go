@@ -348,6 +348,7 @@ func TestUsageFailureInfo_ClassificationMatrix(t *testing.T) {
 		{name: "error code rate limited", usage: &UsageInfo{ErrorCode: errorCodeRateLimited}, failed: true, msg: errorCodeRateLimited},
 		{name: "error code network error", usage: &UsageInfo{ErrorCode: errorCodeNetworkError}, failed: true, msg: errorCodeNetworkError},
 		{name: "grok quota unknown exempted", usage: &UsageInfo{ErrorCode: "quota_unknown", Error: "Grok quota is unknown until billing is probed"}},
+		{name: "openai quota refresh failed is unknown", usage: &UsageInfo{ErrorCode: errorCodeQuotaRefreshFailed, Error: "Unable to refresh OpenAI quota"}, failed: true, msg: "Unable to refresh OpenAI quota"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -737,6 +738,9 @@ func TestUsageQuotaTiers_MapsAllWindowKinds(t *testing.T) {
 func TestUsageQuotaTiers_NilAndEmptyInputs(t *testing.T) {
 	require.Nil(t, usageQuotaTiers(nil))
 	require.Nil(t, usageQuotaTiers(&UsageInfo{}))
+	require.Nil(t, usageQuotaTiers(&UsageInfo{
+		FiveHour: &UsageProgress{UtilizationUnknown: true, WindowStats: &WindowStats{Requests: 2}},
+	}))
 
 	// Grok 窗口 limit<=0 时跳过，避免除零。
 	var zero int64

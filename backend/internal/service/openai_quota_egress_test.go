@@ -27,10 +27,7 @@ func TestEgressAuditOpenAIQuotaAttempts(t *testing.T) {
 				upstream.recoverAfterModel = shadow && status != 502
 				_, err := svc.GetUsage(context.Background(), id)
 				require.NoError(t, err)
-				want := 2
-				if shadow && status != 502 {
-					want++
-				}
+				want := 1
 				counts := map[string]int{}
 				for _, row := range sink.snapshot() {
 					event, _ := row["event"].(string)
@@ -41,7 +38,7 @@ func TestEgressAuditOpenAIQuotaAttempts(t *testing.T) {
 					require.Equal(t, int64(100), row["account_id"])
 					require.Equal(t, id, row["quota_account_id"])
 					require.NotEmpty(t, row["attempt_id"])
-					if row["purpose"] == "model_fallback" {
+					if row["purpose"] == "model_probe" {
 						require.NotEmpty(t, row["model"])
 					}
 					encoded, err := json.Marshal(row)
@@ -103,7 +100,7 @@ func TestEgressAuditOpenAIQuotaTimeout(t *testing.T) {
 	for _, row := range sink.snapshot() {
 		if row["event"] == "upstream_egress_completed" {
 			completed++
-			if row["purpose"] == "quota_usage" {
+			if row["purpose"] == "model_probe" {
 				timedOut++
 				require.Contains(t, []string{"timeout", "canceled", "transport_error"}, row["outcome"])
 			} else {
@@ -114,7 +111,7 @@ func TestEgressAuditOpenAIQuotaTimeout(t *testing.T) {
 		}
 	}
 	require.Equal(t, 1, timedOut)
-	require.Equal(t, 2, completed)
+	require.Equal(t, 1, completed)
 }
 
 func TestEgressAuditOpenAIQuotaCancellation(t *testing.T) {

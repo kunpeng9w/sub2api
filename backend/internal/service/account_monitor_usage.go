@@ -50,7 +50,12 @@ func (s *AccountUsageService) getMonitorUsage(ctx context.Context, account *Acco
 		if !hasOpenAIQuotaDisplayWindows(updates) {
 			return nil, ErrChannelMonitorAccountNotSupportable
 		}
-		return openAIUsageFromExtra(updates, time.Now()), nil
+		now := time.Now()
+        usage := openAIUsageFromExtra(updates, now)
+        usage.FiveHour = buildObservedCodexUsageProgress(updates, "5h", now)
+        usage.SevenDay = buildObservedCodexUsageProgress(updates, "7d", now)
+        usage.Source = "active"
+        return usage, nil
 	default:
 		return s.getUsageForAccount(ctx, account, false)
 	}
@@ -60,4 +65,13 @@ func (s *AccountUsageService) getMonitorUsage(ctx context.Context, account *Acco
 // with the same proxy-pinned context propagated to every transport.
 func monitorDedicatedUsage(ctx context.Context, account *Account) bool {
 	return monitorrequest.Active(ctx) && (account.IsAnthropicOAuthOrSetupToken() || account.IsOpenAIOAuth() || account.Platform == PlatformAntigravity)
+}
+
+// GetMonitorUsageForAccount keeps quota monitoring independent of page refresh
+// policy even for callers without an active transport policy (e.g. unit stubs).
+func (s *AccountUsageService) GetMonitorUsageForAccount(ctx context.Context, account *Account) (*UsageInfo, error) {
+ if account == nil { return nil, ErrAccountNotFound }
+ if err := scopedAccountAccess(ctx, s.accountRepo, account, "accounts.usage.read", true); err != nil { return nil, err }
+ usage, err := s.getMonitorUsage(ctx, account)
+ return s.attachQuotaEstimates(ctx, account, usage), err
 }

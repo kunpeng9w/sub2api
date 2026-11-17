@@ -6,6 +6,7 @@ FRONTEND_OPENAI_USAGE_VITEST := \
 	src/views/user/__tests__/ChannelStatusV1View.refresh.spec.ts \
 	src/views/user/__tests__/ChannelStatusV1View.details.spec.ts \
 	src/components/account/__tests__/AccountUsageCell.spec.ts \
+	src/components/account/__tests__/AccountUsageCell.async.spec.ts \
 	src/components/account/__tests__/UsageProgressBar.spec.ts \
 	src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \
 	src/components/common/__tests__/MonitorQuotaView.spec.ts \
@@ -28,6 +29,7 @@ FRONTEND_CRITICAL_VITEST := \
 	src/constants/__tests__/platforms.spec.ts \
 	src/components/account/__tests__/credentialsBuilder.platformCatalog.spec.ts \
 	src/components/account/__tests__/AccountProxyField.spec.ts \
+	src/components/account/__tests__/CNProviderQuotaCell.spec.ts \
 	src/components/account/__tests__/CreateAccountModal.spec.ts \
 	src/components/account/__tests__/EditAccountModal.spec.ts \
 	src/components/account/__tests__/credentialsBuilder.spec.ts \

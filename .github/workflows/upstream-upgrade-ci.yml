@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        baseline: ['56ef3746843ba857d281b39049a36fa82d9cad56', '6ddd5af468e3e808574de32c51c9662bdcc9754d']
+        baseline: ['56ef3746843ba857d281b39049a36fa82d9cad56', '3df1a585096fd3b677315ed2456105664ade8d26']
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -100,6 +100,10 @@ jobs:
           git archive "${{ matrix.baseline }}" backend/migrations | tar -x -C "$RUNNER_TEMP/baseline"
           git diff --exit-code 56ef3746843ba857d281b39049a36fa82d9cad56 -- backend/migrations/249_channel_monitor_manual_access.sql backend/migrations/250_channel_monitor_sort_order.sql
           git diff --exit-code dab829a4e9b7d1cc307189aea8b0319eb29e29d0 -- backend/migrations/249_mcp_oauth.sql
+      - name: Preserve all executed migrations and upstream 251 files verbatim
+        run: |
+          git diff --exit-code 3df1a585096fd3b677315ed2456105664ade8d26 -- $(git ls-tree -r --name-only 3df1a585096fd3b677315ed2456105664ade8d26 backend/migrations/)
+          git diff --exit-code b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b -- backend/migrations/251_group_force_openai_ultrafast.sql backend/migrations/251_usage_group_rollup_expired_before.sql
       - name: Run real migration runner against disposable databases
         working-directory: backend
         env:
@@ -109,7 +113,7 @@ jobs:
           GOMAXPROCS: '2'
         run: |
           set -o pipefail
-          go test -v -tags=unit -p 1 ./internal/repository -run 'TestUpgradeV020Migrations|TestScopedAdmin.*Postgres|TestAdminFullAccessPostgres|TestProxySamplePostgres' -count=1 -timeout=8m 2>&1 | tee "$RUNNER_TEMP/upgrade-migrations.log"
+          go test -v -tags=unit -p 1 ./internal/repository -run 'TestUpgradeV022Migrations|TestScopedAdmin.*Postgres|TestAdminFullAccessPostgres|TestProxySamplePostgres' -count=1 -timeout=8m 2>&1 | tee "$RUNNER_TEMP/upgrade-migrations.log"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -137,7 +141,7 @@ jobs:
         run: |
           set -o pipefail
           bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -race -v -tags=unit -p 1 -count=1 ./internal/service ./internal/repository ./internal/pkg/httputil ./internal/handler ./internal/handler/admin ./internal/server/routes \
-            -run 'TestOpenAIUsageRefresh_Upgrade|TestScopedAdmin|TestEgressAudit|TestHTTPUpstreamDrain|TestStrictEgress|TestChannelMonitor|TestQuotaEstimate|TestUsageWindow|TestOpenAISevenDay|TestAccountUsageService_SetupToken|Test.*(BodyBudget|BodyMemory|ReadTimeout|WriteTimeout|NonStream|WSHTTPBridge|Images)' \
+            -run 'TestOpenAIUsageRefresh|TestUsageFailureInfo|TestScopedAdmin|TestEgressAudit|TestHTTPUpstreamDrain|TestStrictEgress|TestChannelMonitor|TestQuotaEstimate|TestUsageWindow|TestOpenAISevenDay|TestAccountUsageService_SetupToken|Test.*(BodyBudget|BodyMemory|ReadTimeout|WriteTimeout|NonStream|WSHTTPBridge|Images)' \
             -timeout=20m 2>&1 | tee "$RUNNER_TEMP/upgrade-cross-regressions.log"
       - uses: actions/upload-artifact@v7
         if: always()

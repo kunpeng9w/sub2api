@@ -52,7 +52,7 @@ func TestShouldRefreshOpenAICodexSnapshot(t *testing.T) {
 		t.Fatal("expected absent snapshot to require refresh")
 	}
 
-	staleAt := now.Add(-(openAIUsageCacheTTL + time.Minute)).Format(time.RFC3339)
+	staleAt := now.Add(-(openAIProbeCacheTTL + time.Minute)).Format(time.RFC3339)
 	if !shouldRefreshOpenAICodexSnapshot(&Account{
 		Platform: PlatformOpenAI,
 		Type:     AccountTypeOAuth,
@@ -75,7 +75,7 @@ func TestShouldRefreshOpenAICodexSnapshot_SparkShadowIgnoresWSv2(t *testing.T) {
 		FiveHour: &UsageProgress{Utilization: 0},
 		SevenDay: &UsageProgress{Utilization: 0},
 	}
-	staleAt := now.Add(-(openAIUsageCacheTTL + time.Minute)).Format(time.RFC3339)
+	staleAt := now.Add(-(openAIProbeCacheTTL + time.Minute)).Format(time.RFC3339)
 	freshAt := now.Add(-time.Minute).Format(time.RFC3339)
 	parentID := int64(7001)
 
@@ -109,8 +109,8 @@ func TestShouldRefreshOpenAICodexSnapshot_SparkShadowIgnoresWSv2(t *testing.T) {
 		Type:     AccountTypeOAuth,
 		Extra:    map[string]any{"codex_usage_updated_at": staleAt},
 	}
-	if !shouldRefreshOpenAICodexSnapshot(normalNoWS, usage, now) {
-		t.Fatal("expected stale non-WSv2 normal account to refresh")
+	if shouldRefreshOpenAICodexSnapshot(normalNoWS, usage, now) {
+		t.Fatal("expected non-WSv2 normal account to skip refresh")
 	}
 }
 
@@ -150,11 +150,101 @@ func TestAccountUsageService_GetOpenAIUsage_DoesNotPromoteCodexExtraToRateLimit(
 	}
 }
 
-func TestBuildCodexUsageProgressFromExtra_PreservesObservedWindow(t *testing.T) {
+func TestAccountUsageService_GetOpenAIUsage_PreservesSnapshotObservationTime(t *testing.T) {
+	t.Parallel()
+	observedAt := time.Now().Add(-48 * time.Hour).UTC().Truncate(time.Second)
+	for _, stamp := range []string{observedAt.Format(time.RFC3339), "", "invalid"} {
+		t.Run(stamp, func(t *testing.T) {
+			account := &Account{
+				Platform: PlatformOpenAI,
+				Type:     AccountTypeOAuth,
+				Extra: map[string]any{
+					"codex_5h_used_percent":  10.0,
+					"codex_7d_used_percent":  100.0,
+					"codex_usage_updated_at": stamp,
+				},
+			}
+			usage, err := (&AccountUsageService{}).getOpenAIUsage(context.Background(), account, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if stamp == observedAt.Format(time.RFC3339) {
+				if usage.UpdatedAt == nil || !usage.UpdatedAt.Equal(observedAt) {
+					t.Fatalf("cached snapshot must keep its observation time %v, got %v", observedAt, usage.UpdatedAt)
+				}
+			} else if usage.UpdatedAt != nil {
+				t.Fatalf("unknown observation time must not become the request time: %v", usage.UpdatedAt)
+			}
+			if usage.Source != "passive" || usage.Error != "" {
+				t.Fatalf("snapshot read should be passive, not a failed refresh: %#v", usage)
+			}
+		})
+	}
+}
+
+func TestAccountUsageService_GetOpenAIUsage_RefreshFailureKeepsCachedDataAndReportsError(t *testing.T) {
+	t.Parallel()
+	observedAt := time.Now().Add(-24 * time.Hour).UTC().Truncate(time.Second)
+	for _, shadow := range []bool{false, true} {
+		account := &Account{
+			Platform: PlatformOpenAI,
+			Type:     AccountTypeOAuth,
+			Extra: map[string]any{
+				"codex_7d_used_percent":  100.0,
+				"codex_usage_updated_at": observedAt.Format(time.RFC3339),
+			},
+		}
+		if shadow {
+			parentID := int64(10)
+			account.ParentAccountID = &parentID
+			account.QuotaDimension = QuotaDimensionSpark
+		}
+		// Ordinary accounts have no token; shadow accounts have no quota service.
+		// Neither case may turn a failed query into a fresh, successful snapshot.
+		usage, err := (&AccountUsageService{}).getOpenAIUsage(context.Background(), account, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if usage.ErrorCode != "quota_refresh_failed" || usage.Error == "" {
+			t.Fatalf("refresh failure was hidden (shadow=%v): %#v", shadow, usage)
+		}
+		if usage.SevenDay == nil || usage.SevenDay.Utilization != 100 {
+			t.Fatalf("last known quota should remain available: %#v", usage.SevenDay)
+		}
+		if usage.UpdatedAt == nil || !usage.UpdatedAt.Equal(observedAt) || usage.Source != "passive" {
+			t.Fatalf("failed refresh must not advance snapshot freshness: %#v", usage)
+		}
+		if account.RateLimitResetAt != nil || account.Extra["codex_usage_updated_at"] != observedAt.Format(time.RFC3339) {
+			t.Fatal("failed refresh must not mutate the snapshot or scheduler state")
+		}
+	}
+}
+
+func TestAccountUsageService_GetOpenAIUsage_RefreshFailureWithoutSnapshot(t *testing.T) {
+	t.Parallel()
+	svc := &AccountUsageService{usageLogRepo: &usageBatchLogRepoStub{}}
+	usage, err := svc.getOpenAIUsage(context.Background(), &Account{
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeOAuth,
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.ErrorCode != "quota_refresh_failed" || usage.UpdatedAt != nil {
+		t.Fatalf("missing upstream quota must remain unknown after failure: %#v", usage)
+	}
+	for name, window := range map[string]*UsageProgress{"5h": usage.FiveHour, "7d": usage.SevenDay} {
+		if window == nil || window.WindowStats == nil || !window.UtilizationUnknown {
+			t.Errorf("%s should keep local stats while marking quota unknown: %#v", name, window)
+		}
+	}
+}
+
+func TestBuildCodexUsageProgressFromExtra_ZerosExpiredWindow(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 3, 16, 12, 0, 0, 0, time.UTC)
 
-	t.Run("expired 5h window keeps observed utilization", func(t *testing.T) {
+	t.Run("expired 5h window zeroes utilization", func(t *testing.T) {
 		extra := map[string]any{
 			"codex_5h_used_percent": 42.0,
 			"codex_5h_reset_at":     "2026-03-16T10:00:00Z", // 2h ago
@@ -163,8 +253,8 @@ func TestBuildCodexUsageProgressFromExtra_PreservesObservedWindow(t *testing.T) 
 		if progress == nil {
 			t.Fatal("expected non-nil progress")
 		}
-		if progress.Utilization != 42 {
-			t.Fatalf("expected observed Utilization=42 for expired window, got %v", progress.Utilization)
+		if progress.Utilization != 0 {
+			t.Fatalf("expected Utilization=0 for expired window, got %v", progress.Utilization)
 		}
 		if progress.RemainingSeconds != 0 {
 			t.Fatalf("expected RemainingSeconds=0, got %v", progress.RemainingSeconds)
@@ -186,7 +276,7 @@ func TestBuildCodexUsageProgressFromExtra_PreservesObservedWindow(t *testing.T) 
 		}
 	})
 
-	t.Run("expired 7d window keeps observed utilization", func(t *testing.T) {
+	t.Run("expired 7d window zeroes utilization", func(t *testing.T) {
 		extra := map[string]any{
 			"codex_7d_used_percent": 88.0,
 			"codex_7d_reset_at":     "2026-03-15T00:00:00Z", // yesterday
@@ -195,8 +285,8 @@ func TestBuildCodexUsageProgressFromExtra_PreservesObservedWindow(t *testing.T) 
 		if progress == nil {
 			t.Fatal("expected non-nil progress")
 		}
-		if progress.Utilization != 88 {
-			t.Fatalf("expected observed Utilization=88 for expired 7d window, got %v", progress.Utilization)
+		if progress.Utilization != 0 {
+			t.Fatalf("expected Utilization=0 for expired 7d window, got %v", progress.Utilization)
 		}
 	})
 }

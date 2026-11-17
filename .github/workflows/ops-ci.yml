@@ -2,6 +2,7 @@ name: Source and operations verification
 
 on:
   push:
+    # Includes codex/merge-upstream-v0.2.22; final evidence uses this exact head SHA.
   pull_request:
   workflow_dispatch:
     inputs:
