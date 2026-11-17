@@ -51,7 +51,7 @@ jobs:
         working-directory: backend
         run: |
           set -o pipefail
-          bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -json -tags=unit -p 2 ./internal/custom/... ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/httpclient ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m 2>&1 | tee "$RUNNER_TEMP/monitor-unit.jsonl"
+          bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -json -tags=unit -p 2 ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/httpclient ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m 2>&1 | tee "$RUNNER_TEMP/monitor-unit.jsonl"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
