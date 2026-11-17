@@ -65,6 +65,7 @@ jobs:
             internal/service:TestOpenAIUsageRefresh_AuthenticationOverridesGenericFailure \
             internal/service:TestOpenAIUsageRefresh_QuotaAPIMissingResetNeverBecomesZero \
             internal/service:TestOpenAIUsageRefresh_ForcedFailureRemainsVisibleWithFreshSnapshot \
+            internal/service:TestOpenAIUsageRefresh_UpgradeRestrictedFailurePreservesSuccessfulProbe \
             internal/service:TestOpenAIUsageRefresh_MissingPercentIsNotZero \
             internal/service:TestQuotaFetcher_NetworkPortsAreNotCredentialStatus \
             internal/service:TestExtractOpenAICodexProbeUpdatesAccepts429WithCodexHeaders \

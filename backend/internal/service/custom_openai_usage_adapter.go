@@ -102,6 +102,19 @@ func (s *AccountUsageService) refreshOpenAICodexSnapshot(ctx context.Context, ac
 		}
 		if s.cache != nil {
 			s.cache.openAIUsageCache.Store(openAIUsageFlightKey(ctx, account.ID), entry)
+			if entry.message == "" {
+				// A successful observation is account data, not a privileged
+				// request policy. Retire older failures from either policy, while
+				// leaving a newer failed attempt visible to its own callers.
+				for _, scope := range []string{"full", "read-only"} {
+					key := fmt.Sprintf("usage:%d:%s", account.ID, scope)
+					value, _ := s.cache.openAIUsageCache.Load(key)
+					previous, ok := value.(*openAIUsageCacheEntry)
+					if ok && previous.message != "" && previous.timestamp.Before(entry.timestamp) {
+						s.cache.openAIUsageCache.CompareAndSwap(key, previous, entry)
+					}
+				}
+			}
 		}
 		return entry
 	}
