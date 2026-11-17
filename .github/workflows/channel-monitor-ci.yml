@@ -1,7 +1,7 @@
 name: Channel monitor isolated verification
 on:
   push:
-    branches: ['codex/channel-monitor-manual-access-quota']
+    branches: ['codex/channel-monitor-manual-access-quota', 'codex/customization-refactor']
   pull_request:
     paths:
       - 'backend/**'
@@ -49,7 +49,15 @@ jobs:
         run: git diff --exit-code
       - name: Unit regression without public network
         working-directory: backend
-        run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -tags=unit -p 2 ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/httpclient ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m
+        run: |
+          set -o pipefail
+          bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -json -tags=unit -p 2 ./internal/custom/... ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/httpclient ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m 2>&1 | tee "$RUNNER_TEMP/monitor-unit.jsonl"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: monitor-unit-${{ github.sha }}
+          path: ${{ runner.temp }}/monitor-unit.jsonl
+          if-no-files-found: error
       - name: Monitor database integration with isolated fixtures
         working-directory: backend
         run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -tags=integration -p 2 ./internal/repository -run 'TestQuotaEstimateSnapshotRoundTrip|TestChannelMonitorSortOrderRoundTrip|TestChannelMonitorManualViewerProxyRoundTrip|TestUsageLogRepoSuite/TestMonitorUsageWindowStatsBatch' -count=1 -timeout=10m
