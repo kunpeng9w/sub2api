@@ -51,6 +51,7 @@ describe('quota request identity and generation', () => {
     expect(queued[0]?.accountID).toBe(99101)
     await wrapper.setProps({ account: account(99102) })
     expect(queued[1]?.accountID).toBe(99102)
+    expect(queued).toHaveLength(2)
     const oldRun = queued[0]!.run()
     expect(getUsage).toHaveBeenLastCalledWith(99101)
     await queued[1]!.run()
@@ -78,13 +79,13 @@ describe('quota request identity and generation', () => {
     if (outcome === 'resolve') old.resolve(usage(99)); else old.reject(new Error('old failure'))
     await first
     await flushPromises()
-    expect(wrapper.get('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.attributes('aria-busy')).toBe('true')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     newer.resolve(usage(33))
     await active
     await flushPromises()
     expect(wrapper.get('[data-test="percent"]').text()).toBe('33')
-    expect(wrapper.get('button').attributes('disabled')).toBeUndefined()
+    expect(wrapper.attributes('aria-busy')).toBe('false')
     wrapper.unmount()
   })
 

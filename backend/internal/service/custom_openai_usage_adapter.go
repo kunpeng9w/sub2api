@@ -93,10 +93,10 @@ func (s *AccountUsageService) refreshOpenAICodexSnapshot(ctx context.Context, ac
 		if err != nil {
 			entry.updates = nil
 			entry.message, entry.errorCode = "Unable to refresh OpenAI quota; displayed values may be from an earlier observation", errorCodeQuotaRefreshFailed
-			if infraerrors.Code(err) == http.StatusUnauthorized {
+			if infraerrors.Code(err) == http.StatusUnauthorized || infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" {
 				entry.errorCode = errorCodeUnauthenticated
 			}
-			if infraerrors.Code(err) == http.StatusForbidden && infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" {
+			if infraerrors.Reason(err) == "OPENAI_ACCOUNT_BANNED" {
 				entry.errorCode = "account_banned"
 			}
 		}
@@ -120,7 +120,11 @@ func (s *AccountUsageService) refreshOpenAICodexSnapshot(ctx context.Context, ac
 		if result.Err != nil {
 			return nil, result.Err
 		}
-		return result.Val.(*openAIUsageCacheEntry), nil
+		entry, ok := result.Val.(*openAIUsageCacheEntry)
+		if !ok || entry == nil {
+			return nil, fmt.Errorf("invalid OpenAI usage refresh result")
+		}
+		return entry, nil
 	}
 }
 
@@ -174,7 +178,7 @@ func openAIQuotaDisplayUpdates(account *Account, quota *OpenAIQuotaUsage) map[st
 
 // Restrict 403 credential classification to machine-readable upstream error
 // codes. Permission, region, proxy and policy denials remain ordinary errors.
-func explicitOpenAICredentialFailure(body []byte) bool {
+func openAICredentialErrorReason(body []byte) string {
 	var payload struct {
 		Error struct {
 			Code string `json:"code"`
@@ -182,13 +186,15 @@ func explicitOpenAICredentialFailure(body []byte) bool {
 		} `json:"error"`
 	}
 	if json.Unmarshal(body, &payload) != nil {
-		return false
+		return ""
 	}
 	for _, code := range []string{payload.Error.Code, payload.Error.Type} {
 		switch code {
-		case "invalid_api_key", "token_expired", "invalid_token", "account_deactivated", "account_disabled":
-			return true
+		case "invalid_api_key", "token_expired", "invalid_token":
+			return "OPENAI_CREDENTIAL_INVALID"
+		case "account_deactivated", "account_disabled":
+			return "OPENAI_ACCOUNT_BANNED"
 		}
 	}
-	return false
+	return ""
 }

@@ -47,10 +47,23 @@ const (
 // /wham/usage. The upstream returns an explicit `null` window when the slot
 // is unused, so consumers should treat a nil pointer as "no data".
 type OpenAIRateLimitWindow struct {
+	resetTimeMissing   bool
 	UsedPercent        float64 `json:"used_percent"`
 	LimitWindowSeconds int64   `json:"limit_window_seconds"`
 	ResetAfterSeconds  int64   `json:"reset_after_seconds"`
 	ResetAt            int64   `json:"reset_at"`
+}
+
+// openAIQuotaResetAfterSeconds preserves an absent deadline as unknown.
+func openAIQuotaResetAfterSeconds(window *OpenAIRateLimitWindow, now time.Time) *int {
+	if window.resetTimeMissing {
+		return nil
+	}
+	seconds := int(window.ResetAfterSeconds)
+	if window.ResetAt > 0 {
+		seconds = max(0, int(window.ResetAt-now.Unix()))
+	}
+	return &seconds
 }
 
 // OpenAIRateLimit is a rate-limit envelope (primary + optional secondary window).
@@ -68,7 +81,9 @@ func (r *OpenAIRateLimit) UnmarshalJSON(data []byte) error {
 	type rateLimit OpenAIRateLimit
 	type window struct {
 		OpenAIRateLimitWindow
-		UsedPercent *float64 `json:"used_percent"`
+		UsedPercent       *float64 `json:"used_percent"`
+		ResetAfterSeconds *int64   `json:"reset_after_seconds"`
+		ResetAt           *int64   `json:"reset_at"`
 	}
 	var decoded rateLimit
 	payload := struct {
@@ -84,6 +99,13 @@ func (r *OpenAIRateLimit) UnmarshalJSON(data []byte) error {
 			return nil
 		}
 		w.OpenAIRateLimitWindow.UsedPercent = *w.UsedPercent
+		w.OpenAIRateLimitWindow.resetTimeMissing = w.ResetAfterSeconds == nil && (w.ResetAt == nil || *w.ResetAt <= 0)
+		if w.ResetAfterSeconds != nil {
+			w.OpenAIRateLimitWindow.ResetAfterSeconds = *w.ResetAfterSeconds
+		}
+		if w.ResetAt != nil {
+			w.OpenAIRateLimitWindow.ResetAt = *w.ResetAt
+		}
 		return &w.OpenAIRateLimitWindow
 	}
 	decoded.PrimaryWindow = observedWindow(payload.PrimaryWindow)
@@ -257,8 +279,10 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, accountID int64) (*
 				continue
 			}
 			status := resp.StatusCode
-			if status == http.StatusForbidden && explicitOpenAICredentialFailure([]byte(resp.String())) {
-				return nil, infraerrors.New(http.StatusForbidden, "OPENAI_CREDENTIAL_INVALID", "OpenAI credentials are invalid")
+			if status == http.StatusForbidden {
+				if reason := openAICredentialErrorReason([]byte(resp.String())); reason != "" {
+					return nil, infraerrors.New(http.StatusForbidden, reason, "OpenAI credentials are invalid")
+				}
 			}
 			usageOnly, _ := ctx.Value(openAIQuotaUsageOnlyKey{}).(bool)
 			if usageOnly || isOpenAIAutoResetContext(ctx) {
@@ -354,9 +378,9 @@ func (s *OpenAIQuotaService) probeCodexUsage(ctx context.Context, account *Accou
 	if resp.Body != nil {
 		if resp.StatusCode == http.StatusForbidden {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
-			if explicitOpenAICredentialFailure(body) {
+			if reason := openAICredentialErrorReason(body); reason != "" {
 				_ = resp.Body.Close()
-				return nil, infraerrors.New(http.StatusForbidden, "OPENAI_CREDENTIAL_INVALID", "OpenAI credentials are invalid")
+				return nil, infraerrors.New(http.StatusForbidden, reason, "OpenAI credentials are invalid")
 			}
 		}
 		_ = resp.Body.Close()
@@ -862,16 +886,14 @@ func buildCodexSparkWindowExtraUpdates(usage *OpenAIQuotaUsage, now time.Time) m
 	if w := spark.PrimaryWindow; w != nil {
 		p := w.UsedPercent
 		snap.PrimaryUsedPercent = &p
-		ra := int(w.ResetAfterSeconds)
-		snap.PrimaryResetAfterSeconds = &ra
+		snap.PrimaryResetAfterSeconds = openAIQuotaResetAfterSeconds(w, now)
 		wm := int(w.LimitWindowSeconds / 60)
 		snap.PrimaryWindowMinutes = &wm
 	}
 	if w := spark.SecondaryWindow; w != nil {
 		p := w.UsedPercent
 		snap.SecondaryUsedPercent = &p
-		ra := int(w.ResetAfterSeconds)
-		snap.SecondaryResetAfterSeconds = &ra
+		snap.SecondaryResetAfterSeconds = openAIQuotaResetAfterSeconds(w, now)
 		wm := int(w.LimitWindowSeconds / 60)
 		snap.SecondaryWindowMinutes = &wm
 	}

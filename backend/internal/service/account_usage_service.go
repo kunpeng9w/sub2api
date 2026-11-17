@@ -961,30 +961,6 @@ func (s *AccountUsageService) probeOpenAICodexSnapshot(ctx context.Context, acco
 	return s.openAIQuotaService.probeCodexUsage(ctx, account)
 }
 
-func (s *AccountUsageService) persistOpenAICodexProbeSnapshot(accountID int64, updates map[string]any) {
-	s.persistOpenAICodexProbeSnapshotContext(context.Background(), accountID, updates)
-}
-
-func (s *AccountUsageService) persistOpenAICodexProbeSnapshotContext(ctx context.Context, accountID int64, updates map[string]any) {
-	if s == nil || s.accountRepo == nil || accountID <= 0 {
-		return
-	}
-	if len(updates) == 0 {
-		return
-	}
-
-	go func() {
-		updateCtx, updateCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer updateCancel()
-		if err := scopedAccountIDAccess(updateCtx, s.accountRepo, accountID, "accounts.usage.read", true); err != nil {
-			return
-		}
-		if err := s.accountRepo.UpdateExtra(updateCtx, accountID, updates); err == nil && adminaccess.RestrictedFromContext(ctx) == nil {
-			notifyOpenAIAutoReset(accountID)
-		}
-	}()
-}
-
 func mergeAccountExtra(account *Account, updates map[string]any) {
 	if account == nil || len(updates) == 0 {
 		return

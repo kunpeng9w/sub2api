@@ -1857,7 +1857,8 @@ watch(
   { flush: 'sync' }
 )
 
-watch(openAIUsageRefreshKey, (nextKey, prevKey) => {
+watch(() => [props.account.id, openAIUsageRefreshKey.value] as const, ([accountID, nextKey], [previousAccountID, prevKey]) => {
+  if (accountID !== previousAccountID) return
   if (!prevKey || nextKey === prevKey) return
   if (props.account.platform !== 'openai' || props.account.type !== 'oauth') return
 

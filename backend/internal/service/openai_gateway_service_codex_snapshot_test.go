@@ -216,10 +216,10 @@ func TestBuildCodexUsageExtraUpdates_WithoutNormalizedWindowFields(t *testing.T)
 	if got := updates["codex_usage_updated_at"]; got != "2026-02-20T09:15:00Z" {
 		t.Fatalf("codex_usage_updated_at = %v, want %s", got, "2026-02-20T09:15:00Z")
 	}
-	if _, ok := updates["codex_5h_reset_at"]; ok {
+	if updates["codex_5h_reset_at"] != nil {
 		t.Fatalf("did not expect codex_5h_reset_at in updates: %v", updates["codex_5h_reset_at"])
 	}
-	if _, ok := updates["codex_7d_reset_at"]; ok {
+	if updates["codex_7d_reset_at"] != nil {
 		t.Fatalf("did not expect codex_7d_reset_at in updates: %v", updates["codex_7d_reset_at"])
 	}
 }

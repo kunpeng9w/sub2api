@@ -62,7 +62,10 @@ jobs:
             internal/service:TestOpenAIUsageRefresh_SparkRejectsGlobalHeaders \
             internal/service:TestOpenAIUsageRefresh_MonitorExpiredFailureNeverRecovers \
             internal/service:TestOpenAIUsageRefresh_PartialWindowKeepsOwnTimeAndClearsReset \
-            internal/service:TestOpenAIUsageRefresh_AuthenticationOverridesGenericFailure
+            internal/service:TestOpenAIUsageRefresh_AuthenticationOverridesGenericFailure \
+            internal/service:TestOpenAIUsageRefresh_QuotaAPIMissingResetNeverBecomesZero \
+            internal/service:TestExtractOpenAICodexProbeUpdatesAccepts429WithCodexHeaders \
+            internal/service:TestAccountUsageService_PersistOpenAICodexProbeSnapshotOnlyUpdatesExtra
       - name: Verify handler contracts and snapshot persistence
         id: contracts
         run: |

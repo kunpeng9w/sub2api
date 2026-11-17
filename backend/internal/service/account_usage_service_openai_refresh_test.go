@@ -333,6 +333,9 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 				wantRequest = "GET /backend-api/wham/usage"
 			}
 			require.Equal(t, []string{wantRequest}, upstream.requestLog())
+			for _, credentials := range upstream.credentialLog() {
+				require.Equal(t, "Bearer sensitive-quota-token|parent-org", credentials)
+			}
 			repo.mu.Lock()
 			writes := append([]int64(nil), repo.writes...)
 			repo.mu.Unlock()
@@ -355,14 +358,14 @@ func TestOpenAIUsageRefresh_AllEntryPoints(t *testing.T) {
 	for _, path := range []string{"single", "batch", "monitor", "restricted"} {
 		for _, shadow := range []bool{false, true} {
 			for _, history := range []bool{false, true} {
-				for _, scenario := range []string{"success", "401", "403", "banned", "429", "500", "timeout", "parse", "empty"} {
+				for _, scenario := range []string{"success", "401", "403", "token403", "banned", "429", "500", "timeout", "parse", "empty"} {
 					t.Run(fmt.Sprintf("%s/shadow=%t/history=%t/%s", path, shadow, history, scenario), func(t *testing.T) {
 						svc, repo, upstream, id := quotaRefreshFixture(t, shadow, history)
 						status := 200
 						switch scenario {
 						case "401":
 							status = 401
-						case "403", "banned":
+						case "403", "token403", "banned":
 							status = 403
 						case "429":
 							status = 429
@@ -378,6 +381,9 @@ func TestOpenAIUsageRefresh_AllEntryPoints(t *testing.T) {
 						upstream.status, upstream.modelStatus = status, status
 						if scenario != "success" {
 							upstream.modelHeaders = nil
+						}
+						if scenario == "token403" {
+							upstream.body = `{"error":{"code":"token_expired"}}`
 						}
 						if scenario == "banned" {
 							upstream.body = `{"error":{"code":"account_deactivated"}}`
@@ -396,12 +402,12 @@ func TestOpenAIUsageRefresh_AllEntryPoints(t *testing.T) {
 						}
 						if snapshot != nil {
 							require.Equal(t, scenario == "success", snapshot.Success)
-							require.Equal(t, scenario == "401" || scenario == "banned", snapshot.CredentialInvalid)
+							require.Equal(t, scenario == "401" || scenario == "token403" || scenario == "banned", snapshot.CredentialInvalid)
 							want := MonitorStatusError
 							if scenario == "success" {
 								want = MonitorStatusOperational
 							}
-							if scenario == "401" || scenario == "banned" {
+							if scenario == "401" || scenario == "token403" || scenario == "banned" {
 								want = MonitorStatusFailed
 							}
 							require.Equal(t, want, deriveQuotaCheckResult(snapshot, "quota", time.Now()).Status)
@@ -428,7 +434,7 @@ func TestOpenAIUsageRefresh_AllEntryPoints(t *testing.T) {
 								require.Nil(t, usage.UpdatedAt)
 								require.True(t, usage.FiveHour.UtilizationUnknown)
 							}
-							if scenario == "401" {
+							if scenario == "401" || scenario == "token403" {
 								require.True(t, usage.NeedsReauth)
 							}
 							if scenario == "banned" {
@@ -560,7 +566,25 @@ func TestOpenAIUsageRefresh_MonitorExpiredFailureNeverRecovers(t *testing.T) {
 			}
 			repo.accounts[id].Extra["codex_5h_used_percent"] = 100.0
 			repo.accounts[id].Extra["codex_5h_reset_at"] = reset.Format(time.RFC3339)
-			upstream.status = status
+			upstream.status, upstream.modelStatus = status, status
+			if status != http.StatusOK {
+				upstream.modelHeaders = nil
+			}
+			page, err := svc.GetUsage(context.Background(), id, true)
+			require.NoError(t, err)
+			if status == http.StatusOK {
+				require.Equal(t, 55.0, page.FiveHour.Utilization)
+			} else {
+				wantPage := 100.0
+				if expired {
+					wantPage = 0
+				}
+				require.Equal(t, wantPage, page.FiveHour.Utilization)
+				require.Equal(t, "2020-01-01T00:00:00Z", page.UpdatedAt.Format(time.RFC3339))
+				throttled, err := svc.GetUsage(context.Background(), id)
+				require.NoError(t, err)
+				require.Equal(t, page.ErrorCode, throttled.ErrorCode)
+			}
 			fetcher := NewChannelMonitorQuotaFetcher(svc, nil, nil, repo, nil)
 			for round := 0; round < 3; round++ {
 				snapshot := fetcher.Fetch(context.Background(), id)
@@ -574,7 +598,7 @@ func TestOpenAIUsageRefresh_MonitorExpiredFailureNeverRecovers(t *testing.T) {
 				}
 				require.Equal(t, want, res.Status)
 			}
-			require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
+			require.Equal(t, []string{"POST /backend-api/codex/responses", "GET /backend-api/wham/usage"}, upstream.requestLog())
 		}
 	}
 }
@@ -588,4 +612,35 @@ func TestOpenAIUsageRefresh_AuthenticationOverridesGenericFailure(t *testing.T) 
 	failed, invalid, _ := usageFailureInfo(&UsageInfo{ErrorCode: errorCodeQuotaRefreshFailed})
 	require.True(t, failed)
 	require.False(t, invalid)
+}
+
+func TestOpenAIUsageRefresh_QuotaAPIMissingResetNeverBecomesZero(t *testing.T) {
+	for _, shadow := range []bool{false, true} {
+		svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
+		upstream.body = `{"rate_limit":{"primary_window":{"used_percent":40,"limit_window_seconds":18000}},"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":{"primary_window":{"used_percent":40,"limit_window_seconds":18000}}}]}`
+		usage, err := svc.GetUsage(upgradeUsageReader(true), id, true)
+		require.NoError(t, err)
+		require.Empty(t, usage.Error)
+		require.Equal(t, 40.0, usage.FiveHour.Utilization)
+		require.Nil(t, usage.FiveHour.ResetsAt)
+		require.NotNil(t, usage.FiveHour.Estimate)
+		require.Nil(t, usage.FiveHour.Estimate.RemainingCost)
+		require.Nil(t, repo.accounts[id].Extra["codex_5h_reset_at"])
+		require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
+	}
+}
+
+// The old asynchronous persist helper was removed after moving every caller to
+// synchronous snapshot persistence. Keep its no-scheduler-mutation contract.
+func TestAccountUsageService_PersistOpenAICodexProbeSnapshotOnlyUpdatesExtra(t *testing.T) {
+	svc, repo, upstream, id := quotaRefreshFixture(t, false, false)
+	reset := time.Now().Add(time.Hour)
+	repo.accounts[id].RateLimitResetAt = &reset
+	upstream.modelHeaders.Set("x-codex-primary-used-percent", "100")
+	usage, err := svc.GetUsage(context.Background(), id, true)
+	require.NoError(t, err)
+	require.Empty(t, usage.Error)
+	require.Equal(t, 100.0, usage.FiveHour.Utilization)
+	require.Equal(t, []int64{id}, repo.writes)
+	require.Equal(t, reset, *repo.accounts[id].RateLimitResetAt)
 }

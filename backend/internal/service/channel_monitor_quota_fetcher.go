@@ -529,7 +529,7 @@ func usageFailureInfo(usage *UsageInfo) (failed, credentialInvalid bool, msg str
 }
 
 func isMonitorCredentialError(err error) bool {
-	if infraerrors.Code(err) == http.StatusUnauthorized || infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" {
+	if infraerrors.Code(err) == http.StatusUnauthorized || (infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" || infraerrors.Reason(err) == "OPENAI_ACCOUNT_BANNED") {
 		return true
 	}
 	// Typed permission denials must not fall through to text heuristics.

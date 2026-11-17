@@ -207,7 +207,7 @@ func TestScopedAdminQuotaHeaderParentResolveFailureFailsClosed(t *testing.T) {
 	require.Equal(t, 404, infraerrors.Code(err))
 }
 
-func TestScopedAdminOpenAIUsageRefreshPrefersQuotaAPI(t *testing.T) {
+func TestScopedAdminOpenAIUsageRefreshUsesScopedRequestPolicy(t *testing.T) {
 	for _, tc := range []struct {
 		name                     string
 		restricted, shadow, full bool
@@ -235,6 +235,12 @@ func TestScopedAdminOpenAIUsageRefreshPrefersQuotaAPI(t *testing.T) {
 					quotaCalls++
 				}
 				w.Header().Set("Content-Type", "application/json")
+				if r.Method == http.MethodPost {
+					for key, values := range fallbackQuotaHeaders() {
+						w.Header()[key] = values
+					}
+					w.Header().Set("x-codex-primary-used-percent", "37")
+				}
 				if !strings.HasSuffix(r.URL.Path, "/usage") {
 					_, _ = w.Write([]byte(`[]`))
 					return
@@ -254,8 +260,13 @@ func TestScopedAdminOpenAIUsageRefreshPrefersQuotaAPI(t *testing.T) {
 			usage, err := svc.GetUsageForAccount(ctx, a, true)
 			require.NoError(t, err)
 			require.Empty(t, usage.Error)
-			require.Equal(t, 1, quotaCalls)
-			require.Zero(t, nonReadCalls, "successful quota reads must not synthesize model requests")
+			if tc.restricted || tc.shadow {
+				require.Equal(t, 1, quotaCalls)
+				require.Zero(t, nonReadCalls, "restricted and Spark reads must not synthesize model requests")
+			} else {
+				require.Zero(t, quotaCalls)
+				require.Equal(t, 1, nonReadCalls, "ordinary accounts use the upstream model probe")
+			}
 			require.NotNil(t, usage.FiveHour)
 			require.Equal(t, tc.wantUsage, usage.FiveHour.Utilization)
 			select {

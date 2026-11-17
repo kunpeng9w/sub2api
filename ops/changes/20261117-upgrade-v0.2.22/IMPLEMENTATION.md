@@ -26,6 +26,7 @@
 | refreshOpenAIUsageSnapshot、openAIFailures、旧账户级成功缓存 | 上游十分钟探测节流 + 最小权限范围 singleflight/等待取消接入；Upgrade*、CallerCancellation* |
 | queryUsageFromModel 的 Spark 模型回退/重读 | 普通 probeCodexUsage 使用原严格出口和鉴权 transport；Spark 始终 QueryUsage；EgressAuditOpenAIQuota* |
 | 旧整快照清空缺失窗口 | 上游增量更新 + 窗口采样/缺 reset 清理；PartialWindowKeepsOwnTimeAndClearsReset、QuotaEstimateOpenAI* |
+| persistOpenAICodexProbeSnapshot/Context（已无调用点） | 删除异步写入；改为刷新成功后同步 UpdateExtra，原不改运行时限流语义由同名持久化测试迁移验证 |
 | 旧统一观测时间/重复错误提示 | 上游错误提示与 utilization_unknown；窗口级时间显示；AccountUsageCell 与 async 测试 |
 | 旧普通账号不依赖 WSv2 的过期刷新断言 | 上游正常账号 staleness 门控；Spark 不依赖 WSv2；ShouldRefreshOpenAICodexSnapshot* |
 | 上游监控 quota_refresh_failed 豁免/DoesNotFlap | 用户确认的失败 error/未知规则；MonitorExpiredFailureNeverRecovers、AuthenticationOverridesGenericFailure、UsageFailureInfo 矩阵 |
@@ -46,3 +47,5 @@ Ent/Wire/pnpm 锁及 gofmt 只由 Actions 生成后下载补丁。生成文件�
 首个候选 38fb9766c 的检查完整结束后修复，不取消检查推进。发现并修复 Fable bytes 导入、SQL 保护误包含 Go 测试、测试 i18n mock。Actions 44042866119 生成补丁已经下载审查；后续以最终候选完整重新验收，初始失败不作为通过证据。
 
 PR #7 面向 main，包含 PR #6 全部提交及后续定制/重构；#6 保持原状。安装包来自 Source and operations verification 的 embedded-build artifact，版本/SHA/校验和另附验收记录。本轮不部署生产，不调用真实账号做验收。
+
+第二轮 e7978205e：生成补丁为空、安全扫描及嵌入构建通过；空库/两种旧库迁移及重复启动通过，监控后端通过。完整回归指出旧 API-first 和保留旧 reset 的断言需迁移，Lint 指出两个失去调用点的异步持久化函数；删除后以新的同步持久化测试保留其不改调度语义。新异步测试发现重复账号切换刷新，改为身份 watcher 负责切换、内容 watcher 仅负责同账号更新。另补 Spark/受限 JSON 窗口缺 reset 时保留未知的契约。最终仍须完整重验。

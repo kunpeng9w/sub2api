@@ -132,7 +132,11 @@ func TestBuildCodexUsageProgressPartialObservationInvalidatesInactive(t *testing
 					}
 				}
 				merge(partial, sample.Add(time.Second))
-				require.Equal(t, reset, extra[key+"_reset_after_seconds"], "raw fields are retained")
+				if field == "used" {
+					require.Nil(t, extra[key+"_reset_after_seconds"], "a new utilization without reset clears the old deadline")
+				} else {
+					require.Equal(t, reset, extra[key+"_reset_after_seconds"], "metadata-only updates retain the prior deadline")
+				}
 				p := buildCodexUsageProgressFromExtra(extra, window, time.Now())
 				require.False(t, p.WindowInactive)
 				require.Nil(t, p.ResetsAt)
