@@ -24,11 +24,11 @@
 | `backend/ent/mutation.go` | 自动 | 生成/装配；升级新增 billing lane 依赖，必须由目标源码重新生成并审查，不能手工接受生成文本 |
 | `backend/ent/runtime/runtime.go` | 自动 | 生成/装配；升级新增 billing lane 依赖，必须由目标源码重新生成并审查，不能手工接受生成文本 |
 | `backend/go.mod` | 自动 | 构建/依赖/配置；Makefile 需人工解冲突；本轮专项 package/筛选/生成列表必须保留，不能拿目标 CI 替换 |
-| `backend/internal/config/config.go` | 自动 | 文档或版本元数据；目标版本只作为演练输入，本轮不更新发布版本 |
+| `backend/internal/config/config.go` | 自动 | 配置校验允许 Concurrency.PingInterval=0；核对禁用等待 SSE ping 的消费端行为及负值拒绝。 |
 | `backend/internal/repository/account_repo.go` | 自动 | 上游改变 last-used 锁顺序、新增单 scope 解封及 session start；仓储事务/outbox/快照语义须独立核验 |
 | `backend/internal/repository/http_upstream.go` | 自动 | 上游更改 dialer keepalive/control；本地最终绑定检查、重定向、TLS/监控派生与审计均须保留；本轮不合入 |
 | `backend/internal/repository/usage_log_repo_integration_test.go` | 自动 | 测试/fixture；升级时保留原定制行为断言，检查新增方法签名和 mock，不以自动合并等价通过 |
-| `backend/internal/service/account_test_service.go` | 自动 | 文档或版本元数据；目标版本只作为演练输入，本轮不更新发布版本 |
+| `backend/internal/service/account_test_service.go` | 自动 | Vertex URL 构造增加参数；核对新签名、区域选择及账号测试的严格出口。 |
 | `backend/internal/service/account_usage_service.go` | 冲突 | 冲突；保留本地额度优先/受限隔离/模型兜底/采样时间；limits[] 与刷新失败的新语义留待独立升级决策 |
 | `backend/internal/service/account_usage_service_test.go` | 冲突 | 冲突；保留本地额度优先/受限隔离/模型兜底/采样时间；limits[] 与刷新失败的新语义留待独立升级决策 |
 | `backend/internal/service/antigravity_gateway_compat.go` | 自动 | 已读目标差异及出口调用；请求/流式/模型元数据/错误或计费有变化，保留账号出口和请求后重播边界，升级另行回归 |
@@ -58,9 +58,9 @@
 | `backend/internal/service/openai_gateway_passthrough.go` | 自动 | 已读目标差异及出口调用；请求/流式/模型元数据/错误或计费有变化，保留账号出口和请求后重播边界，升级另行回归 |
 | `backend/internal/service/openai_gateway_responses_anthropic_native.go` | 自动 | 已读目标差异及出口调用；请求/流式/模型元数据/错误或计费有变化，保留账号出口和请求后重播边界，升级另行回归 |
 | `backend/internal/service/openai_gateway_usage.go` | 自动 | 已读目标差异及出口调用；请求/流式/模型元数据/错误或计费有变化，保留账号出口和请求后重播边界，升级另行回归 |
-| `backend/internal/service/openai_models_list.go` | 自动 | 文档或版本元数据；目标版本只作为演练输入，本轮不更新发布版本 |
-| `backend/internal/service/openai_ws_forwarder_ingress.go` | 自动 | 文档或版本元数据；目标版本只作为演练输入，本轮不更新发布版本 |
-| `backend/internal/service/openai_ws_v2_passthrough_adapter.go` | 自动 | 文档或版本元数据；目标版本只作为演练输入，本轮不更新发布版本 |
+| `backend/internal/service/openai_models_list.go` | 自动 | passthrough 模型过滤参与列表投影；核对列表可见性与实际请求模型准入一致。 |
+| `backend/internal/service/openai_ws_forwarder_ingress.go` | 自动 | 注入 codexClientSessionID(c)；核对 WS 客户端会话身份、账号隔离及出口绑定。 |
+| `backend/internal/service/openai_ws_v2_passthrough_adapter.go` | 自动 | 首帧和后续帧注入客户端 session ID；核对 response.create/session.update 身份一致性及账号隔离。 |
 | `backend/internal/service/ratelimit_service.go` | 自动 | 上游新增 Fable 恢复/周采样保留和 Bedrock 处理；不得改变本轮过期、显式零与监控判定 |
 | `backend/internal/service/upstream_models.go` | 自动 | 目标改变 Vertex 区域/URL/参数或兼容输出；路由钉住不随目标域名切换，新增签名调用一并核验 |
 | `backend/internal/service/vertex_service_account.go` | 自动 | 目标改变 Vertex 区域/URL/参数或兼容输出；路由钉住不随目标域名切换，新增签名调用一并核验 |
@@ -75,3 +75,5 @@
 | `frontend/src/i18n/locales/en/admin/accounts.ts` | 自动 | 目标增加组/用量字段及编辑展示；保留本地 sampled_at/estimate/window_inactive 和管理边界，升级类型/组件完整回归 |
 | `frontend/src/i18n/locales/zh/admin/accounts.ts` | 自动 | 目标增加组/用量字段及编辑展示；保留本地 sampled_at/estimate/window_inactive 和管理边界，升级类型/组件完整回归 |
 | `frontend/src/types/index.ts` | 自动 | 目标增加组/用量字段及编辑展示；保留本地 sampled_at/estimate/window_inactive 和管理边界，升级类型/组件完整回归 |
+
+2026-11-17 升级准备补正：依 IMPLEMENTATION-REVIEW.md 修正上述五处生产代码分类。原重构验收结果保持历史记录；这些行为纳入 v0.2.22 升级验收。
