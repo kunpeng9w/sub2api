@@ -722,68 +722,6 @@ func attachQuotaSnapshot(results []*CheckResult, snapshot *domain.MonitorQuotaSn
 	}
 }
 
-// monitorAccountStatus 复用调度器判定；暂停和未知仅供当前界面展示。
-func monitorAccountStatus(account *Account, model string) (string, string) {
-	if account == nil {
-		return MonitorStatusUnknown, "linked account unavailable"
-	}
-	if account.Status == StatusError {
-		return MonitorStatusFailed, "linked account is in error state"
-	}
-	if account.Status == StatusDisabled {
-		return MonitorStatusPaused, "linked account is disabled"
-	}
-	// 到期任务会自动关闭 Schedulable，需与人工停调区分。
-	if account.AutoPauseOnExpired && account.ExpiresAt != nil && !time.Now().Before(*account.ExpiresAt) {
-		return MonitorStatusFailed, "linked account expired"
-	}
-	if !account.Schedulable {
-		return MonitorStatusPaused, "linked account scheduling is paused"
-	}
-	if !account.IsSchedulable() {
-		return MonitorStatusFailed, "linked account unavailable for scheduling (expired, quota exhausted or temporarily unschedulable)"
-	}
-	if model != "" && model != MonitorDefaultQuotaModel && account.isModelRateLimitedWithContext(context.Background(), model) {
-		return MonitorStatusFailed, "linked account temporarily unschedulable for this model"
-	}
-	return "", ""
-}
-
-func (s *ChannelMonitorService) loadMonitorAccount(ctx context.Context, m *ChannelMonitor) *Account {
-	if m.AccountID == nil || s.quotaFetcher == nil {
-		return nil
-	}
-	account, err := s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
-	if err != nil || account == nil {
-		slog.Warn("channel_monitor: load linked account failed", "monitor_id", m.ID, "error", err)
-		return nil
-	}
-	return account
-}
-
-// applyLinkedAccountSchedulingStatus 绕过配额缓存，历史只保存原四态。
-func (s *ChannelMonitorService) applyLinkedAccountSchedulingStatus(ctx context.Context, m *ChannelMonitor, results []*CheckResult) {
-	if m.AccountID == nil {
-		return
-	}
-	account := s.loadMonitorAccount(ctx, m)
-	if account != nil && account.Platform != m.Provider {
-		account = nil
-	}
-	for _, res := range results {
-		if res.Status != MonitorStatusOperational && res.Status != MonitorStatusDegraded {
-			continue
-		}
-		status, message := monitorAccountStatus(account, res.Model)
-		if status == MonitorStatusUnknown {
-			status = MonitorStatusError
-		}
-		if status == MonitorStatusFailed || status == MonitorStatusError {
-			res.Status, res.Message = status, message
-		}
-	}
-}
-
 // persistCheckResults 写入本次检测的历史记录并更新 last_checked_at。
 // 任一写库失败都只记日志，不影响调用方拿到 results（与 MVP 期望一致：宁可漏记历史也要先返回结果）。
 func (s *ChannelMonitorService) persistCheckResults(ctx context.Context, m *ChannelMonitor, results []*CheckResult) {

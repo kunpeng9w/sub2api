@@ -550,30 +550,3 @@ func deriveQuotaCheckResult(snapshot *domain.MonitorQuotaSnapshot, model string,
 	}
 	return res
 }
-
-// monitorQuotaWindowStatus 只按全局 5h/7d 窗口判定；其他窗口和余额仅供展示。
-func monitorQuotaWindowStatus(snapshot *domain.MonitorQuotaSnapshot) (string, string) {
-	status, message := MonitorStatusError, "global 5h/7d quota unavailable"
-	if snapshot == nil || !snapshot.Success {
-		return status, message
-	}
-	for _, tier := range snapshot.Tiers {
-		if tier.Label != "" || (tier.Window != "5h" && tier.Window != "7d") {
-			continue
-		}
-		if status == MonitorStatusError {
-			status, message = MonitorStatusOperational, ""
-		}
-		if tier.WindowInactive {
-			continue
-		}
-		if tier.UsedPercent >= 100 {
-			return MonitorStatusFailed, "quota exhausted: " + tier.Window
-		}
-		if tier.UsedPercent >= monitorQuotaDegradedUsedPercent {
-			status = MonitorStatusDegraded
-			message = fmt.Sprintf("quota high: %s at %.1f%%", tier.Window, tier.UsedPercent)
-		}
-	}
-	return status, message
-}

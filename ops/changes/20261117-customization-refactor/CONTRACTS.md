@@ -33,3 +33,10 @@
 ## 数据及实现约束
 
 API、JSON、数据库/迁移、Ent/Wire 公开结构保持兼容。规则仅依赖标准库/domain；账号读取、鉴权、费用、缓存、执行锁和持久化留在原 package 适配，不复制 Account/Proxy 结构。保留已有未提交升级计划。本轮只在 Actions 运行测试、生成和构建，逐批保存 source SHA 和真实执行用例；未完成检查不能视作通过。
+
+## 实际接入归属（第 3 批）
+
+- `custom_openai_usage_adapter.go` 收拢本地额度优先/模型兜底、权限范围缓存、singleflight 等待及错误/快照处理；`account_usage_service.go` 保留 `getOpenAIUsage`、上游窗口构建和费用查询，通过 `refreshOpenAIUsageSnapshot` 接入。原 helper 符号不改名，其他已存在调用无需改写。
+- `custom_monitor_status_adapter.go` 收拢全局额度状态、关联账号调度状态、跨视图展示有效期；原 service/aggregator/fetcher 继续以同名函数调用。`loadMonitorAccount` 和状态覆盖仍在 service package，不导出内部模型，不创建 Account 副本类型。时间调用位置和优先级保持原样。
+- 监控权限/锁/冷却/实际执行期限继续使用 `channel_monitor_access.go` 的现有独立实现；`runCheck` 的执行、保存及释放顺序不调整。出口 context、HTTP/TLS、WS、插件和仓储生命周期全部保留。
+- 没有引入 `custom/quotaestimate` 常驻包，额度试点及停止依据见 PILOT.md；不改变前端原生 7d 公式或让前端补算缺失估算。

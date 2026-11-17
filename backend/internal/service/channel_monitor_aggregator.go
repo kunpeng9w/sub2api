@@ -50,47 +50,6 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(ctx context.Context, m
 	return out
 }
 
-// monitorDisplayStatus 共用于管理列表、用户卡片和详情，不改写历史样本。
-func (s *ChannelMonitorService) monitorDisplayStatus(ctx context.Context, m *ChannelMonitor, accounts map[int64]*Account) func(string, *ChannelMonitorLatest) string {
-	var account *Account
-	if m.AccountID != nil {
-		var loaded bool
-		account, loaded = accounts[*m.AccountID]
-		if !loaded {
-			account = s.loadMonitorAccount(ctx, m)
-			accounts[*m.AccountID] = account // 失败也只读取一次。
-		}
-		if account != nil && account.Platform != m.Provider {
-			account = nil
-		}
-	}
-	_, _, routeErr := s.monitorRouteSnapshot(ctx, m, account)
-	m.EgressConfigured = routeErr == nil
-	return func(model string, latest *ChannelMonitorLatest) string {
-		// 自动检测开关仅控制定时采集，不代表关联账号暂停调度。
-		if !m.Enabled {
-			return MonitorStatusPaused
-		}
-		if m.AccountID != nil {
-			if status, _ := monitorAccountStatus(account, model); status != "" {
-				return status
-			}
-		}
-		if (m.AccountID == nil && defaultCheckMode(m.CheckMode) == MonitorCheckModeQuota) ||
-			routeErr != nil || (defaultCheckMode(m.CheckMode) != MonitorCheckModeQuota && m.APIKeyDecryptFailed) || latest == nil {
-			return MonitorStatusUnknown
-		}
-		maxAge := 12 * time.Hour
-		if m.AutoCheckEnabled {
-			maxAge = time.Duration(2*(m.IntervalSeconds+m.JitterSeconds))*time.Second + 90*time.Second
-		}
-		if latest.CheckedAt.IsZero() || time.Since(latest.CheckedAt) > maxAge || latest.Status == MonitorStatusError {
-			return MonitorStatusUnknown
-		}
-		return latest.Status
-	}
-}
-
 // ListUserView 用户只读视图：列出所有 enabled 监控的概览。
 // 使用批量聚合接口避免 N+1：
 //
