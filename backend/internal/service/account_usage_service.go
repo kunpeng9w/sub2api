@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -121,7 +122,7 @@ type UsageCache struct {
 	antigravityCache  sync.Map           // accountID -> *antigravityUsageCache
 	apiFlight         singleflight.Group // 防止同一账号的并发请求击穿缓存（Anthropic）
 	antigravityFlight singleflight.Group // 防止同一 Antigravity 账号的并发请求击穿缓存
-	openAIUsageCache  sync.Map           // accountID -> last successful *openAIUsageCacheEntry
+	openAIUsageCache  sync.Map           // permission-scoped key -> last probe result
 	openAIUsageFlight singleflight.Group
 	grokProbeCache    sync.Map // accountID -> last billing probe attempt
 }
@@ -146,17 +147,17 @@ type WindowStats struct {
 
 // UsageProgress 使用量进度
 type UsageProgress struct {
-	SampledAt         *time.Time `json:"sampled_at,omitempty"`
-	sampleTimeMissing bool
-	Estimate          *domain.QuotaEstimate `json:"estimate,omitempty"`
-	Utilization       float64               `json:"utilization"`               // 使用率百分比 (0-100+，100表示100%)
-	ResetsAt          *time.Time            `json:"resets_at"`                 // 重置时间
-	WindowInactive    bool                  `json:"window_inactive,omitempty"` // 未激活的滚动窗口，不显示推算的重置时间
-	RemainingSeconds  int                   `json:"remaining_seconds"`         // 距重置剩余秒数
-	WindowStats       *WindowStats          `json:"window_stats,omitempty"`    // 窗口期统计（从窗口开始到当前的使用量）
-	UsedRequests      int64                 `json:"used_requests,omitempty"`
-	LimitRequests     int64                 `json:"limit_requests,omitempty"`
-	UtilizationUnknown bool `json:"utilization_unknown,omitempty"`
+	SampledAt          *time.Time `json:"sampled_at,omitempty"`
+	sampleTimeMissing  bool
+	Estimate           *domain.QuotaEstimate `json:"estimate,omitempty"`
+	Utilization        float64               `json:"utilization"`               // 使用率百分比 (0-100+，100表示100%)
+	ResetsAt           *time.Time            `json:"resets_at"`                 // 重置时间
+	WindowInactive     bool                  `json:"window_inactive,omitempty"` // 未激活的滚动窗口，不显示推算的重置时间
+	RemainingSeconds   int                   `json:"remaining_seconds"`         // 距重置剩余秒数
+	WindowStats        *WindowStats          `json:"window_stats,omitempty"`    // 窗口期统计（从窗口开始到当前的使用量）
+	UsedRequests       int64                 `json:"used_requests,omitempty"`
+	LimitRequests      int64                 `json:"limit_requests,omitempty"`
+	UtilizationUnknown bool                  `json:"utilization_unknown,omitempty"`
 }
 
 // AntigravityQuotaGroup is a group of Antigravity models that share their quota windows.
@@ -865,20 +866,33 @@ func (s *AccountUsageService) syncActiveToPassive(ctx context.Context, account *
 // getOpenAIUsage uses the upstream model-probe/Spark/read-only policies. Monitor
 // reads enter getMonitorUsage before this path and never join its refresh work.
 func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Account, force bool) (*UsageInfo, error) {
-	if account == nil { return nil, fmt.Errorf("account is required") }
-	if err := scopedAccountAccess(ctx, s.accountRepo, account, "accounts.usage.read", true); err != nil { return nil, err }
-	if err := ctx.Err(); err != nil { return nil, err }
+	if account == nil {
+		return nil, fmt.Errorf("account is required")
+	}
+	if err := scopedAccountAccess(ctx, s.accountRepo, account, "accounts.usage.read", true); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	now := time.Now()
 	usage := &UsageInfo{Source: "passive"}
 	applyExtraToUsage(usage, account.Extra, now)
 	if force || shouldRefreshOpenAICodexSnapshot(account, usage, now) {
 		entry, err := s.refreshOpenAICodexSnapshot(ctx, account, force)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		if entry != nil {
 			if hasOpenAIQuotaObservation(entry.updates) {
-				mergeAccountExtra(account, entry.updates)
-				applyExtraToUsage(usage, account.Extra, now)
-				usage.Source = "active"
+				incoming, _ := parseTime(fmt.Sprint(entry.updates["codex_usage_updated_at"]))
+				if usage.UpdatedAt == nil || !incoming.Before(*usage.UpdatedAt) {
+					mergeAccountExtra(account, entry.updates)
+					applyExtraToUsage(usage, account.Extra, now)
+					if !entry.cached {
+						usage.Source = "active"
+					}
+				}
 			}
 			usage.Error, usage.ErrorCode = entry.message, entry.errorCode
 			usage.NeedsReauth = entry.errorCode == errorCodeUnauthenticated
@@ -887,11 +901,15 @@ func (s *AccountUsageService) getOpenAIUsage(ctx context.Context, account *Accou
 	}
 	if s.usageLogRepo != nil {
 		if stats, err := s.usageLogRepo.GetAccountWindowStats(ctx, account.ID, codexWindowStatsStart(usage.FiveHour, 5*time.Hour, now)); err == nil {
-			if usage.FiveHour == nil { usage.FiveHour = &UsageProgress{UtilizationUnknown: true} }
+			if usage.FiveHour == nil {
+				usage.FiveHour = &UsageProgress{UtilizationUnknown: true}
+			}
 			usage.FiveHour.WindowStats = windowStatsFromAccountStats(stats)
 		}
 		if stats, err := s.usageLogRepo.GetAccountWindowStats(ctx, account.ID, codexWindowStatsStart(usage.SevenDay, 7*24*time.Hour, now)); err == nil {
-			if usage.SevenDay == nil { usage.SevenDay = &UsageProgress{UtilizationUnknown: true} }
+			if usage.SevenDay == nil {
+				usage.SevenDay = &UsageProgress{UtilizationUnknown: true}
+			}
 			usage.SevenDay.WindowStats = windowStatsFromAccountStats(stats)
 		}
 	}
@@ -918,7 +936,7 @@ func isOpenAICodexSnapshotStale(account *Account, now time.Time) bool {
 	// 普通账号的 codex 刷新走 probe(/responses 头),要求 WSv2;但 spark 影子走 QueryUsage
 	// (/wham/usage body 的 codex_bengalfox),与 WSv2 无关——不能用 WSv2 门控其 staleness,否则首刷后
 	// codex_5h/7d 已存在→staleness 恒 false→spark 窗口永久冻结(外审第9轮 P1)。影子改按
-	// codex_usage_updated_at TTL 判定;实际查询频率仍由 shouldProbeOpenAICodexSnapshot 的缓存 TTL 节流。
+	// codex_usage_updated_at TTL 判定;实际查询频率仍由 refreshOpenAICodexSnapshot 的缓存 TTL 节流。
 	if !account.IsShadow() && !account.IsOpenAIResponsesWebSocketV2Enabled() {
 		return false
 	}
@@ -937,7 +955,9 @@ func isOpenAICodexSnapshotStale(account *Account, now time.Time) bool {
 }
 
 func (s *AccountUsageService) probeOpenAICodexSnapshot(ctx context.Context, account *Account) (map[string]any, error) {
-	if s.openAIQuotaService == nil { return nil, fmt.Errorf("OpenAI quota service is not configured") }
+	if s.openAIQuotaService == nil {
+		return nil, fmt.Errorf("OpenAI quota service is not configured")
+	}
 	return s.openAIQuotaService.probeCodexUsage(ctx, account)
 }
 
@@ -964,7 +984,6 @@ func (s *AccountUsageService) persistOpenAICodexProbeSnapshotContext(ctx context
 		}
 	}()
 }
-
 
 func mergeAccountExtra(account *Account, updates map[string]any) {
 	if account == nil || len(updates) == 0 {
@@ -1544,9 +1563,11 @@ func windowStatsFromAccountStats(stats *usagestats.AccountStats) *WindowStats {
 }
 
 func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now time.Time) *UsageProgress {
- progress := buildObservedCodexUsageProgress(extra, window, now)
- if progress != nil && progress.ResetsAt != nil && !now.Before(*progress.ResetsAt) { progress.Utilization = 0 }
- return progress
+	progress := buildObservedCodexUsageProgress(extra, window, now)
+	if progress != nil && progress.ResetsAt != nil && !now.Before(*progress.ResetsAt) {
+		progress.Utilization = 0
+	}
+	return progress
 }
 
 func buildObservedCodexUsageProgress(extra map[string]any, window string, now time.Time) *UsageProgress {
@@ -1627,7 +1648,6 @@ func buildObservedCodexUsageProgress(extra map[string]any, window string, now ti
 			progress.RemainingSeconds = max(0, int(resetAt.Sub(now).Seconds()))
 		}
 	}
-
 
 	return progress
 }

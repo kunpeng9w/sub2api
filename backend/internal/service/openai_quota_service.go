@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
- "io"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -351,17 +351,17 @@ func (s *OpenAIQuotaService) probeCodexUsage(ctx context.Context, account *Accou
 	if err != nil {
 		return nil, infraerrors.New(http.StatusBadGateway, "OPENAI_QUOTA_FALLBACK_FAILED", "model fallback request failed")
 	}
-    if resp.Body != nil {
-        if resp.StatusCode == http.StatusForbidden {
-            body, _ := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
-            if explicitOpenAICredentialFailure(body) {
-                _ = resp.Body.Close()
-                return nil, infraerrors.New(http.StatusForbidden, "OPENAI_CREDENTIAL_INVALID", "OpenAI credentials are invalid")
-            }
-        }
-        _ = resp.Body.Close()
-    }
-    return extractOpenAICodexProbeUpdates(resp.Response)
+	if resp.Body != nil {
+		if resp.StatusCode == http.StatusForbidden {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
+			if explicitOpenAICredentialFailure(body) {
+				_ = resp.Body.Close()
+				return nil, infraerrors.New(http.StatusForbidden, "OPENAI_CREDENTIAL_INVALID", "OpenAI credentials are invalid")
+			}
+		}
+		_ = resp.Body.Close()
+	}
+	return extractOpenAICodexProbeUpdates(resp.Response)
 }
 
 // CacheResetCreditsSnapshot persists a complete reset-credit snapshot after an

@@ -13,7 +13,10 @@ vi.mock('@/utils/usageLoadQueue', () => ({
     queued.push({ accountID: account.id, run: () => fetch().then(resolve, reject) })
   })
 }))
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock('vue-i18n', async () => {
+  const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
+  return { ...actual, useI18n: () => ({ t: (key: string) => key }) }
+})
 
 function deferred<T>() {
   let resolve!: (value: T) => void

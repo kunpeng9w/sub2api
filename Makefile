@@ -1,6 +1,7 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical test-frontend-openai-usage
 
 FRONTEND_OPENAI_USAGE_VITEST := \
+	src/views/admin/__tests__/AccountsView.lite.spec.ts \
 	src/components/common/__tests__/QuotaEstimateView.spec.ts \
 	src/views/user/__tests__/ChannelStatusV1View.bulkRun.spec.ts \
 	src/views/user/__tests__/ChannelStatusV1View.refresh.spec.ts \

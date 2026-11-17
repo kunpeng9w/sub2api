@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
+import type { Account, AccountUsageInfo } from '@/types'
 
 import AccountsView from '../AccountsView.vue'
 import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
@@ -10,6 +11,7 @@ const {
   listWithEtag,
   getById,
   getBatchTodayStats,
+  getBatchUsage,
   getUpstreamBillingProbeSettings,
   getAllProxies,
   getAllGroups,
@@ -21,6 +23,7 @@ const {
   listWithEtag: vi.fn(),
   getById: vi.fn(),
   getBatchTodayStats: vi.fn(),
+  getBatchUsage: vi.fn(),
   getUpstreamBillingProbeSettings: vi.fn(),
   getAllProxies: vi.fn(),
   getAllGroups: vi.fn(),
@@ -36,6 +39,7 @@ vi.mock('@/api/admin', () => ({
       getById,
       listWithEtag,
       getBatchTodayStats,
+      getBatchUsage,
       getUpstreamBillingProbeSettings,
       delete: vi.fn(),
       batchClearError: vi.fn(),
@@ -163,6 +167,7 @@ describe('admin AccountsView lite account list', () => {
     listWithEtag.mockReset().mockResolvedValue({ notModified: true, etag: 'compact-etag', data: null })
     getById.mockReset().mockResolvedValue(fullAccount)
     getBatchTodayStats.mockReset().mockResolvedValue({ stats: {} })
+    getBatchUsage.mockReset().mockResolvedValue({ usage: {}, errors: {} })
     getUpstreamBillingProbeSettings.mockReset().mockResolvedValue({ enabled: true })
     getAllProxies.mockReset().mockResolvedValue([])
     getAllGroups.mockReset().mockResolvedValue([{ id: 7, name: 'codex', platform: 'openai' }])
@@ -323,4 +328,57 @@ describe('admin AccountsView lite account list', () => {
     consoleError.mockRestore()
     wrapper.unmount()
   })
+
+  it.each(['resolve', 'reject'] as const)('ignores an older batch completion and retains the newer loading state: %s', async (outcome) => {
+    let resolveOld!: (value: unknown) => void
+    let rejectOld!: (error: Error) => void
+    let resolveNew!: (value: unknown) => void
+    getBatchUsage.mockReturnValueOnce(new Promise((resolve, reject) => { resolveOld = resolve; rejectOld = reject }))
+      .mockReturnValueOnce(new Promise(resolve => { resolveNew = resolve }))
+    const wrapper = mountView()
+    await flushPromises()
+    const vm = wrapper.vm as unknown as {
+      queueBatchedUsage: (account: Account, options: { force: boolean }) => void
+      flushQueuedUsageBatch: () => Promise<void>
+      usageBatchByAccountId: Record<string, AccountUsageInfo | null>
+      usageBatchErrorByAccountId: Record<string, string | null>
+      usageBatchLoadingByAccountId: Record<string, boolean>
+    }
+    const row = listRow as unknown as Account
+    vm.queueBatchedUsage(row, { force: true })
+    const old = vm.flushQueuedUsageBatch()
+    vm.queueBatchedUsage(row, { force: true })
+    const newer = vm.flushQueuedUsageBatch()
+    if (outcome === 'resolve') resolveOld({ usage: { 42: { five_hour: { utilization: 99 } } } })
+    else rejectOld(new Error('old batch failed'))
+    await old
+    expect(vm.usageBatchLoadingByAccountId['42']).toBe(true)
+    expect(vm.usageBatchByAccountId['42']).toBeUndefined()
+    expect(vm.usageBatchErrorByAccountId['42']).toBeNull()
+    resolveNew({ usage: { 42: { five_hour: { utilization: 22 } } } })
+    await newer
+    expect(vm.usageBatchByAccountId['42']?.five_hour?.utilization).toBe(22)
+    expect(vm.usageBatchLoadingByAccountId['42']).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('does not publish a batch response after the account list unmounts', async () => {
+    let resolve!: (value: unknown) => void
+    getBatchUsage.mockReturnValueOnce(new Promise(yes => { resolve = yes }))
+    const wrapper = mountView()
+    await flushPromises()
+    const vm = wrapper.vm as unknown as {
+      queueBatchedUsage: (account: Account, options: { force: boolean }) => void
+      flushQueuedUsageBatch: () => Promise<void>
+      usageBatchByAccountId: Record<string, AccountUsageInfo | null>
+    }
+    vm.queueBatchedUsage(listRow as unknown as Account, { force: true })
+    const pending = vm.flushQueuedUsageBatch()
+    const before = vm.usageBatchByAccountId
+    wrapper.unmount()
+    resolve({ usage: { 42: { five_hour: { utilization: 99 } } } })
+    await pending
+    expect(vm.usageBatchByAccountId).toBe(before)
+  })
+
 })

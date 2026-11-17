@@ -41,8 +41,8 @@ func TestOpenAIUsageRefresh_UpgradeDeniedBeforeCacheOrFlight(t *testing.T) {
 func TestOpenAIUsageRefresh_UpgradeRestrictedReadNeverFallsBackOrResets(t *testing.T) {
 	svc, _, upstream, id := quotaRefreshFixture(t, false, false)
 	upstream.status = http.StatusBadGateway
- upstream.modelStatus = http.StatusBadGateway
- upstream.modelHeaders = nil
+	upstream.modelStatus = http.StatusBadGateway
+	upstream.modelHeaders = nil
 	usage, err := svc.GetUsage(upgradeUsageReader(true), id, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, usage.Error)
@@ -55,8 +55,8 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFlightAndCancellationIsolation(t *t
 	started := make(chan struct{}, 4)
 	release := make(chan struct{}, 2)
 	upstream.status = http.StatusBadGateway
- upstream.modelStatus = http.StatusBadGateway
- upstream.modelHeaders = nil
+	upstream.modelStatus = http.StatusBadGateway
+	upstream.modelHeaders = nil
 	upstream.requestStarted, upstream.releaseRequest = started, release
 	defer close(release)
 	fullDone := make(chan error, 1)
@@ -108,8 +108,8 @@ func TestOpenAIUsageRefresh_UpgradeFailureCacheIsolation(t *testing.T) {
 		t.Run(fmt.Sprintf("restricted_first=%t", restrictedFirst), func(t *testing.T) {
 			svc, _, upstream, id := quotaRefreshFixture(t, false, false)
 			upstream.status = http.StatusBadGateway
- upstream.modelStatus = http.StatusBadGateway
- upstream.modelHeaders = nil
+			upstream.modelStatus = http.StatusBadGateway
+			upstream.modelHeaders = nil
 			full, reader := context.Background(), upgradeUsageReader(true)
 			first, second := full, reader
 			firstRequests, totalRequests := 1, 2
@@ -141,8 +141,8 @@ func TestOpenAIUsageRefresh_UpgradeFailureCacheIsolation(t *testing.T) {
 func TestOpenAIUsageRefresh_UpgradeRestrictedFailurePreservesSuccessfulProbe(t *testing.T) {
 	svc, repo, upstream, id := quotaRefreshFixture(t, false, false)
 	upstream.status = http.StatusBadGateway
- upstream.modelStatus = http.StatusBadGateway
- upstream.modelHeaders = nil
+	upstream.modelStatus = http.StatusBadGateway
+	upstream.modelHeaders = nil
 	upstream.modelStatus = http.StatusOK
 	upstream.modelHeaders = fallbackQuotaHeaders()
 	full, reader := context.Background(), upgradeUsageReader(true)

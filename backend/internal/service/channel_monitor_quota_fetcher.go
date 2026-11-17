@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
- "net/http"
- infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"fmt"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"log/slog"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -253,10 +253,14 @@ func (f *ChannelMonitorQuotaFetcher) fetchUsage(ctx context.Context, account *Ac
 		return quotaErrorSnapshot("usage", "usage service is not configured", now)
 	}
 	var usage *UsageInfo
-    var err error
-    if dedicated, ok := f.usage.(interface { GetMonitorUsageForAccount(context.Context, *Account) (*UsageInfo, error) }); ok {
-        usage, err = dedicated.GetMonitorUsageForAccount(ctx, account)
-    } else { usage, err = f.usage.GetUsageForAccount(ctx, account) }
+	var err error
+	if dedicated, ok := f.usage.(interface {
+		GetMonitorUsageForAccount(context.Context, *Account) (*UsageInfo, error)
+	}); ok {
+		usage, err = dedicated.GetMonitorUsageForAccount(ctx, account)
+	} else {
+		usage, err = f.usage.GetUsageForAccount(ctx, account)
+	}
 	if err != nil {
 		msg := truncateMessage(sanitizeErrorMessage(err.Error()))
 		return &domain.MonitorQuotaSnapshot{
@@ -509,21 +513,30 @@ func isCredentialErrorMessage(msg string) bool {
 //
 // grok 的 ErrorCode=quota_unknown 是「尚未观测到计费快照/限流头」的已知未知态，
 // 不是失败（严格按 ErrorCode 判会把健康 grok 账号永久判 error），显式豁免。
-//
 func usageFailureInfo(usage *UsageInfo) (failed, credentialInvalid bool, msg string) {
- if usage == nil { return false, false, "" }
- credentialInvalid = usage.NeedsReauth || usage.IsBanned || usage.IsForbidden || usage.ErrorCode == errorCodeUnauthenticated || usage.ErrorCode == errorCodeForbidden || usage.ErrorCode == "account_banned"
- if !credentialInvalid && usage.ErrorCode == "quota_unknown" { return false, false, "" }
- failed = credentialInvalid || usage.Error != "" || usage.ErrorCode != ""
- if !failed { return false, false, "" }
- return true, credentialInvalid, firstNonEmpty(usage.Error, usage.ForbiddenReason, usage.ErrorCode, "usage fetch failed")
+	if usage == nil {
+		return false, false, ""
+	}
+	credentialInvalid = usage.NeedsReauth || usage.IsBanned || usage.IsForbidden || usage.ErrorCode == errorCodeUnauthenticated || usage.ErrorCode == errorCodeForbidden || usage.ErrorCode == "account_banned"
+	if !credentialInvalid && usage.ErrorCode == "quota_unknown" {
+		return false, false, ""
+	}
+	failed = credentialInvalid || usage.Error != "" || usage.ErrorCode != ""
+	if !failed {
+		return false, false, ""
+	}
+	return true, credentialInvalid, firstNonEmpty(usage.Error, usage.ForbiddenReason, usage.ErrorCode, "usage fetch failed")
 }
 
 func isMonitorCredentialError(err error) bool {
- if infraerrors.Code(err) == http.StatusUnauthorized || infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" { return true }
- // Typed permission denials must not fall through to text heuristics.
- if infraerrors.Code(err) == http.StatusForbidden { return false }
- return isCredentialErrorMessage(err.Error())
+	if infraerrors.Code(err) == http.StatusUnauthorized || infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" {
+		return true
+	}
+	// Typed permission denials must not fall through to text heuristics.
+	if infraerrors.Code(err) == http.StatusForbidden {
+		return false
+	}
+	return isCredentialErrorMessage(err.Error())
 }
 
 // deriveQuotaCheckResult 把配额快照推导为检测状态（复用既有 status 枚举，
