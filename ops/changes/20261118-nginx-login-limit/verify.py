@@ -60,7 +60,13 @@ def main():
         configuration = fixture / 'nginx.conf'
         configuration.write_text(
             f'pid {fixture}/nginx.pid;\nerror_log {fixture}/main.error.log;\n'
-            f'events {{ worker_connections 128; }}\nhttp {{\n{site}\n}}\n')
+            f'events {{ worker_connections 128; }}\nhttp {{\n'
+            f'access_log {fixture}/default.access.log;\n'
+            f'client_body_temp_path {fixture}/client_body;\n'
+            f'proxy_temp_path {fixture}/proxy;\n'
+            f'fastcgi_temp_path {fixture}/fastcgi;\n'
+            f'uwsgi_temp_path {fixture}/uwsgi;\n'
+            f'scgi_temp_path {fixture}/scgi;\n{site}\n}}\n')
         command = [nginx, '-p', str(fixture), '-c', str(configuration)]
         subprocess.run(command + ['-t'], check=True)
         process = subprocess.Popen(command + ['-g', 'daemon off;'])
