@@ -1,5 +1,9 @@
 # Sub2API 源码与服务器运维
 
+2026-11-18 已部署 **v0.2.23 定制版**（源码 `dc22d82aebb3b3484c98512678b435bbf48afd58`），保留 `standard` 模式及原配置。PR #8 已合入 main；最终源码七个分支及七个 PR 工作流全部通过，完成停服备份、252 迁移与 HTTPS/实际流量观察。当前事实见 [部署记录](deployed-build.json) 和 [v0.2.23 部署验收](changes/20261118-upgrade-v0.2.23/POST-DEPLOY.md)，下文带旧日期的状态保留作历史。
+
+2026-11-17 已部署 **v0.2.22 定制版**（源码 `9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c`），实际运行模式 `standard`。已完成最终停服备份、原子替换、两份 251 迁移及 HTTPS/健康检查，旧迁移校验和与关键表数量保持一致。当前事实见 [部署记录](deployed-build.json) 和 [部署验收](changes/20261117-upgrade-v0.2.22/POST-DEPLOY.md)；下文旧版本及 simple 模式描述属于历史记录。
+
 本分支源码已从定制基线 `56ef37468` 合入官方 **v0.2.20**（`dab829a4e9b7d1cc307189aea8b0319eb29e29d0`），保留官方完整源码和本地定制提交历史。`origin` 是 `kunpeng9w/sub2api`，`upstream` 是 `Wei-Shaw/sub2api`。已有部署仓库的初始化提交也保留在历史中。升级构建说明见 [v0.2.20 定制升级](changes/20261107-upgrade-v0.2.20/README.md)；[v0.2.19 记录](changes/20261101-upgrade-v0.2.19/README.md) 保留用于追溯；源码基线升级不代表线上已部署，以下带日期的部署记录保留其历史含义。
 
 `backend/`、`frontend/`、`deploy/` 等目录沿用官方结构；服务器额外配置、脚本、审计及验证材料集中在本目录。官方文档仍以官方行为为准，本页说明本机实际差异。

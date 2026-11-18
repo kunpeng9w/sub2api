@@ -1,41 +1,211 @@
 {
-  "schema_version": 1,
-  "observed_at": "2026-10-25T15:17:05.255025+08:00",
+  "schema_version": 2,
+  "observed_at": "2026-11-18T13:54:30.452313+08:00",
   "upstream": {
     "repository": "https://github.com/Wei-Shaw/sub2api.git",
-    "tag": "v0.2.18",
-    "commit": "ac1b8f1271be0d674fa6f074403c1410f30a3a81"
+    "tag": "v0.2.23",
+    "commit": "5af9afb588c4b014b3df9db7d4073af1f8ae01b6",
+    "merged_commit": "2af3f1e15c98c893a89255a037f551046883b8c0"
   },
   "running_build": {
     "path": "/home/pk/workspace/sub2api/bin/sub2api",
-    "sha256": "aa70fe8aaeb5318b98b88def6eb438cef360b116aa2f3f04b4de697669fadcbe",
-    "origin": "external custom build reconstructed from retained patch",
-    "reported_build_commit": "ac1b8f1271be0d674fa6f074403c1410f30a3a81-codex-template",
-    "git_commit_of_external_build": null,
-    "build_time_utc": "2026-10-24T16:33:51Z",
+    "version": "0.2.23",
+    "sha256": "f2bebe5334ff017bf2b7d55f9684fc6e6621cb901e5140e9c1180ddc74ac7f06",
+    "git_commit_of_build": "dc22d82aebb3b3484c98512678b435bbf48afd58",
+    "build_time_utc": "2026-11-18T05:33:57Z",
     "target": "linux/amd64",
     "embedded_frontend": true,
-    "changes": [
-      "Ordinary OpenAI Codex preferred/default model: gpt-6.1-sol",
-      "Ordinary OpenAI Codex provider: supports_websockets = true",
-      "Ordinary OpenAI Codex template omits model_catalog_url"
-    ],
-    "patch_sha256": "35574bff9a103b0ea6d36c505d6baed4ccce9b2032b0abf74b6ca162f336bd37"
-  },
-  "official_backup": {
-    "path": "/home/pk/workspace/sub2api/bin/sub2api.backup-20261025T013912Z",
-    "sha256": "ffd1b1fc769ed9dc32f9a6166d313a67eb162da6a2237b371caba4780493594e"
+    "build_type": "source",
+    "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44244840668"
   },
   "runtime": {
-    "run_mode": "simple",
+    "run_mode": "standard",
     "application_bind": "127.0.0.1:8080",
     "egress_guard_phase": "confirmed",
-    "web_reply_rules_101_102_present": false
+    "egress_mode": "claude-only",
+    "mihomo_state": "inactive"
   },
-  "migration": {
-    "deployment_performed": false,
-    "service_restart_performed": false,
-    "routing_fix_performed": false,
-    "note": "The reconstructed source is versioned independently; future CI builds embed their actual Git SHA. Byte-identical reproduction of the earlier external build is not claimed."
+  "deployment": {
+    "performed": true,
+    "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-v0.2.23-20261118T134900",
+    "final_stopped_database_backup": true,
+    "backup_sha256_verified": true,
+    "backup_restore_drill_performed": false,
+    "migration_count_before": 306,
+    "migration_count_after": 307,
+    "added_migrations": [
+      "252_channel_pricing_ultrafast_multiplier.sql"
+    ],
+    "existing_migration_checksums_preserved": true,
+    "key_table_counts_preserved": true,
+    "https_checks": {
+      "/health": {
+        "status": 200,
+        "bytes": 15,
+        "content_type": "application/json; charset=utf-8"
+      },
+      "/": {
+        "status": 200,
+        "bytes": 3390,
+        "content_type": "text/html; charset=utf-8"
+      },
+      "/api/v1/settings/public": {
+        "status": 200,
+        "bytes": 2605,
+        "content_type": "application/json; charset=utf-8"
+      },
+      "/assets/index-DbMJ-k8n.js": {
+        "status": 200,
+        "bytes": 194191,
+        "content_type": "text/javascript; charset=utf-8"
+      },
+      "/api/v1/admin/accounts": {
+        "status": 401,
+        "bytes": 58,
+        "content_type": "application/json; charset=utf-8"
+      }
+    },
+    "observed_live_successes": [
+      "/api/v1/auth/me",
+      "/api/v1/channel-monitors",
+      "/v1/responses",
+      "/v1/models"
+    ],
+    "limitations": [
+      "Dedicated fresh-login verification unavailable: the historical operator admin account did not exist before deployment; actual /api/v1/auth/me requests succeeded after deployment.",
+      "No dedicated WS/SSE/image/capacity validation performed during deployment; production Responses requests observed successful.",
+      "Backup archive directory and SHA256 checked; actual restore drill not performed."
+    ],
+    "previous_running_version": "0.2.22",
+    "previous_running_commit": "9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c",
+    "previous_running_sha256": "35a4363f8602e78eb5ed9d9f2681d22f29a7c14acff928eb43cbfd0e81004cd2",
+    "pull_request": "https://github.com/kunpeng9w/sub2api/pull/8",
+    "merge_commit": "f1c26fcbd74aa4871f58a1634645066dc2a17453",
+    "branch_workflows_passed": 7,
+    "pull_request_workflows_passed": 7,
+    "service_restarts": 0,
+    "error_or_panic_count": 0
+  },
+  "historical_record_20261025": {
+    "schema_version": 1,
+    "observed_at": "2026-10-25T15:17:05.255025+08:00",
+    "upstream": {
+      "repository": "https://github.com/Wei-Shaw/sub2api.git",
+      "tag": "v0.2.18",
+      "commit": "ac1b8f1271be0d674fa6f074403c1410f30a3a81"
+    },
+    "running_build": {
+      "path": "/home/pk/workspace/sub2api/bin/sub2api",
+      "sha256": "aa70fe8aaeb5318b98b88def6eb438cef360b116aa2f3f04b4de697669fadcbe",
+      "origin": "external custom build reconstructed from retained patch",
+      "reported_build_commit": "ac1b8f1271be0d674fa6f074403c1410f30a3a81-codex-template",
+      "git_commit_of_external_build": null,
+      "build_time_utc": "2026-10-24T16:33:51Z",
+      "target": "linux/amd64",
+      "embedded_frontend": true,
+      "changes": [
+        "Ordinary OpenAI Codex preferred/default model: gpt-6.1-sol",
+        "Ordinary OpenAI Codex provider: supports_websockets = true",
+        "Ordinary OpenAI Codex template omits model_catalog_url"
+      ],
+      "patch_sha256": "35574bff9a103b0ea6d36c505d6baed4ccce9b2032b0abf74b6ca162f336bd37"
+    },
+    "official_backup": {
+      "path": "/home/pk/workspace/sub2api/bin/sub2api.backup-20261025T013912Z",
+      "sha256": "ffd1b1fc769ed9dc32f9a6166d313a67eb162da6a2237b371caba4780493594e"
+    },
+    "runtime": {
+      "run_mode": "simple",
+      "application_bind": "127.0.0.1:8080",
+      "egress_guard_phase": "confirmed",
+      "web_reply_rules_101_102_present": false
+    },
+    "migration": {
+      "deployment_performed": false,
+      "service_restart_performed": false,
+      "routing_fix_performed": false,
+      "note": "The reconstructed source is versioned independently; future CI builds embed their actual Git SHA. Byte-identical reproduction of the earlier external build is not claimed."
+    }
+  },
+  "previous_deployment_20261117": {
+    "schema_version": 2,
+    "observed_at": "2026-11-17T20:56:05.857964+08:00",
+    "upstream": {
+      "repository": "https://github.com/Wei-Shaw/sub2api.git",
+      "tag": "v0.2.22",
+      "commit": "b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b"
+    },
+    "running_build": {
+      "path": "/home/pk/workspace/sub2api/bin/sub2api",
+      "version": "0.2.22",
+      "sha256": "35a4363f8602e78eb5ed9d9f2681d22f29a7c14acff928eb43cbfd0e81004cd2",
+      "git_commit_of_build": "9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c",
+      "build_time_utc": "2026-11-17T08:52:24Z",
+      "target": "linux/amd64",
+      "embedded_frontend": true,
+      "build_type": "source",
+      "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44050220274"
+    },
+    "runtime": {
+      "run_mode": "standard",
+      "application_bind": "127.0.0.1:8080",
+      "egress_guard_phase": "confirmed",
+      "egress_mode": "claude-only",
+      "mihomo_state": "inactive"
+    },
+    "deployment": {
+      "performed": true,
+      "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-v0.2.22-20261117T205409",
+      "final_stopped_database_backup": true,
+      "backup_sha256_verified": true,
+      "backup_restore_drill_performed": false,
+      "migration_count_before": 304,
+      "migration_count_after": 306,
+      "added_migrations": [
+        "251_group_force_openai_ultrafast.sql",
+        "251_group_usage_rollup_nonblocking_build.sql"
+      ],
+      "existing_migration_checksums_preserved": true,
+      "key_table_counts_preserved": true,
+      "https_checks": {
+        "/health": {
+          "status": 200,
+          "bytes": 15,
+          "content_type": "application/json; charset=utf-8"
+        },
+        "/": {
+          "status": 200,
+          "bytes": 3391,
+          "content_type": "text/html; charset=utf-8"
+        },
+        "/api/v1/settings/public": {
+          "status": 200,
+          "bytes": 2606,
+          "content_type": "application/json; charset=utf-8"
+        },
+        "/assets/index-COwbD1CK.js": {
+          "status": 200,
+          "bytes": 194191,
+          "content_type": "text/javascript; charset=utf-8"
+        },
+        "/api/v1/admin/accounts": {
+          "status": 401
+        }
+      },
+      "observed_live_successes": [
+        "/v1/responses",
+        "/v1/models",
+        "/api/v1/auth/me",
+        "/api/v1/channel-monitors",
+        "/api/v1/channel-monitors/8/run"
+      ],
+      "limitations": [
+        "No dedicated WS/SSE/image/capacity validation was performed during deployment.",
+        "Backup archive directory and SHA256 checked; actual restore drill not performed."
+      ],
+      "previous_running_version": "0.2.21",
+      "previous_running_commit": "0161258af6ca167f5885c145b454d3a982839939",
+      "previous_running_sha256": "631c007affe5c35ef1cf532d899e901c7ceeb6d5f587c5b7901e9f80f5af1bde"
+    }
   }
 }
