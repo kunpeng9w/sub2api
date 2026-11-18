@@ -15,3 +15,7 @@
 唯一新迁移 `252_channel_pricing_ultrafast_multiplier.sql` 保留上游原文。已部署迁移内容不变。Actions 迁移矩阵保留最早定制基线，并改为生产 9339f5c5d 基线；现有真实迁移 runner 回归增加 252 的校验和、列类型、可空性和约束验证，每种基线含空库与重复启动。
 
 编译、测试、Lint、生成、扫描与嵌入构建均由 GitHub Actions 执行，结果以最终源码 SHA 为准。部署使用该 SHA 的 Actions artifact，停服保存数据库及配置恢复点，核对来源与 SHA 后安装，并记录迁移、健康与日志状态。部署结果另记 POST-DEPLOY.md。
+
+## 首轮 Actions 复核
+
+候选 6792d683a 的生成补丁为空，两种基线迁移、嵌入构建、Lint、安全扫描、出口模拟通过。完整前端 3211 个用例中仅旧 Ultra Fast 文案断言失败：上游改为套餐/支持模型说明，不再展示 service_tier 字面值。更新该断言，校验 Ultra Fast、6.2、Pro 200/500 与 Sol/Astra 的说明，同时保留旧模型说明验证；生产文案沿用上游。最终安装包需由修正后的源码 SHA 重新构建并通过检查。
