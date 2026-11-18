@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        baseline: ['56ef3746843ba857d281b39049a36fa82d9cad56', '3df1a585096fd3b677315ed2456105664ade8d26']
+        baseline: ['56ef3746843ba857d281b39049a36fa82d9cad56', '9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c']
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -100,10 +100,10 @@ jobs:
           git archive "${{ matrix.baseline }}" backend/migrations | tar -x -C "$RUNNER_TEMP/baseline"
           git diff --exit-code 56ef3746843ba857d281b39049a36fa82d9cad56 -- backend/migrations/249_channel_monitor_manual_access.sql backend/migrations/250_channel_monitor_sort_order.sql
           git diff --exit-code dab829a4e9b7d1cc307189aea8b0319eb29e29d0 -- backend/migrations/249_mcp_oauth.sql
-      - name: Preserve all executed migrations and upstream 251 files verbatim
+      - name: Preserve deployed migrations and upstream 252 verbatim
         run: |
-          git diff --exit-code 3df1a585096fd3b677315ed2456105664ade8d26 -- $(git ls-tree -r --name-only 3df1a585096fd3b677315ed2456105664ade8d26 backend/migrations/ | grep -E '\.sql$')
-          git diff --exit-code b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b -- backend/migrations/251_group_force_openai_ultrafast.sql backend/migrations/251_group_usage_rollup_nonblocking_build.sql
+          git diff --exit-code 9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c -- $(git ls-tree -r --name-only 9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c backend/migrations/ | grep -E '\.sql$')
+          git diff --exit-code 5af9afb588c4b014b3df9db7d4073af1f8ae01b6 -- backend/migrations/252_channel_pricing_ultrafast_multiplier.sql
       - name: Run real migration runner against disposable databases
         working-directory: backend
         env:

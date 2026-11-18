@@ -55,7 +55,7 @@ INSERT INTO channel_monitor_users(monitor_id,user_id) VALUES(903,901);`)
 			}
 			for restart := 0; restart < 3; restart++ {
 				require.NoError(t, ApplyMigrations(ctx, db), "startup %d", restart)
-				for _, file := range []string{"249_channel_monitor_manual_access.sql", "249_mcp_oauth.sql", "250_channel_monitor_sort_order.sql", "249_add_usage_logs_api_key_cost_index_notx.sql", "250_openai_cache_write_ttl.sql", "251_group_force_openai_ultrafast.sql", "251_group_usage_rollup_nonblocking_build.sql"} {
+				for _, file := range []string{"249_channel_monitor_manual_access.sql", "249_mcp_oauth.sql", "250_channel_monitor_sort_order.sql", "249_add_usage_logs_api_key_cost_index_notx.sql", "250_openai_cache_write_ttl.sql", "251_group_force_openai_ultrafast.sql", "251_group_usage_rollup_nonblocking_build.sql", "252_channel_pricing_ultrafast_multiplier.sql"} {
 					content, err := fs.ReadFile(migrations.FS, file)
 					require.NoError(t, err)
 					digest := sha256.Sum256([]byte(strings.TrimSpace(string(content))))
@@ -64,6 +64,12 @@ INSERT INTO channel_monitor_users(monitor_id,user_id) VALUES(903,901);`)
 					require.Equal(t, hex.EncodeToString(digest[:]), checksum)
 				}
 				// Check the actual schema/defaults, not only migration ledger rows.
+				var multiplierType, multiplierNullable, multiplierConstraint string
+				require.NoError(t, db.QueryRowContext(ctx, "SELECT data_type,is_nullable FROM information_schema.columns WHERE table_name='channel_model_pricing' AND column_name='ultrafast_multiplier'").Scan(&multiplierType, &multiplierNullable))
+				require.Equal(t, "numeric", multiplierType)
+				require.Equal(t, "YES", multiplierNullable)
+				require.NoError(t, db.QueryRowContext(ctx, "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='channel_model_pricing_ultrafast_multiplier_positive' AND conrelid='channel_model_pricing'::regclass").Scan(&multiplierConstraint))
+				require.Contains(t, multiplierConstraint, "ultrafast_multiplier >")
 				var ultrafastDefault, expiredDefault string
 				require.NoError(t, db.QueryRowContext(ctx, "SELECT column_default FROM information_schema.columns WHERE table_name='groups' AND column_name='force_openai_ultrafast'").Scan(&ultrafastDefault))
 				require.Equal(t, "false", ultrafastDefault)
