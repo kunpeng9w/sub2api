@@ -2,7 +2,7 @@ name: Egress policy simulation
 
 on:
   push:
-    branches: [codex/strict-egress-policy, codex/account-proxy-priority, codex/customization-refactor, codex/merge-upstream-v0.2.22]
+    branches: [codex/strict-egress-policy, codex/account-proxy-priority, codex/customization-refactor, 'codex/merge-upstream-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
