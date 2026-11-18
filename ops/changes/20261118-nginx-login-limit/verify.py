@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import shutil
+import socket
 import ssl
 import subprocess
 import tempfile
@@ -85,12 +86,16 @@ def main():
             return json.loads(body) if status in (200, 401) else None
 
         try:
-            for _ in range(40):
-                if (fixture / 'nginx.pid').exists():
-                    break
+            for _ in range(50):
                 if process.poll() is not None:
                     raise RuntimeError('Nginx exited during startup')
-                time.sleep(0.1)
+                try:
+                    with socket.create_connection(('127.0.0.1', 18443), timeout=0.2):
+                        break
+                except OSError:
+                    time.sleep(0.1)
+            else:
+                raise RuntimeError('Nginx listener did not become ready')
             first = request('/api/v1/auth/login', 401, 'POST')
             assert first['real_ip'] == first['forwarded_for'] == '127.0.0.1'
             for path in ['/api/v1/auth/login', '/api/v1/auth/login?retry=1',
@@ -117,6 +122,8 @@ def main():
             print('PASS configuration syntax, no burst, shared TOTP budget, recovery, '
                   'independent IPs, spoof rejection, other routes and Upgrade forwarding')
         finally:
+            for log in fixture.glob('*.error.log'):
+                print(log.name, log.read_text(), flush=True)
             process.terminate()
             process.wait(timeout=5)
             backend.shutdown()
