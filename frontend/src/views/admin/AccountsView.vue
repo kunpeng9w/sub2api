@@ -191,12 +191,12 @@
           @select-all-results="handleSelectAllResults"
           @toggle-schedulable="handleBulkToggleSchedulable"
         />
-        <div ref="accountTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div ref="accountTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden" :aria-busy="loading" :inert="loading && accounts.length > 0">
         <DataTable
           ref="dataTableRef"
           :columns="cols"
           :data="accounts"
-          :loading="loading"
+          :loading="loading && accounts.length === 0"
           row-key="id"
           :server-side-sort="true"
           @sort="handleSort"
@@ -490,7 +490,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -753,6 +753,8 @@ const pendingUsageBatchIds = new Set<number>()
 let usageBatchFlushTimer: ReturnType<typeof setTimeout> | null = null
 let queuedUsageBatchForce = false
 let usageBatchRequestToken = 0
+let usageBatchUnmounted = false
+onBeforeUnmount(() => { usageBatchUnmounted = true })
 
 const buildDefaultTodayStats = (): WindowStats => ({
   requests: 0,
@@ -804,7 +806,7 @@ const flushQueuedUsageBatch = async () => {
   pendingUsageBatchIds.clear()
   queuedUsageBatchForce = false
 
-  if (accountIDs.length === 0) return
+  if (usageBatchUnmounted || accountIDs.length === 0) return
 
   const requestTokensByAccount = accountIDs.reduce<Record<string, number>>((acc, accountID) => {
     acc[String(accountID)] = usageBatchRequestTokenByAccountId.value[String(accountID)] ?? 0
@@ -813,6 +815,7 @@ const flushQueuedUsageBatch = async () => {
 
   try {
     const result = await adminAPI.accounts.getBatchUsage(accountIDs, force)
+    if (usageBatchUnmounted) return
 
     const usageMap = result.usage ?? {}
     const errorMap = result.errors ?? {}
@@ -841,6 +844,7 @@ const flushQueuedUsageBatch = async () => {
     usageBatchErrorByAccountId.value = nextErrors
     usageBatchLoadingByAccountId.value = nextLoading
   } catch (error) {
+    if (usageBatchUnmounted) return
     const nextErrors = { ...usageBatchErrorByAccountId.value }
     const nextLoading = { ...usageBatchLoadingByAccountId.value }
     for (const accountID of accountIDs) {
@@ -858,12 +862,16 @@ const flushQueuedUsageBatch = async () => {
 }
 
 const queueBatchedUsage = (account: Account, options?: { force?: boolean }) => {
-  if (!isDesktopViewport.value) return
+  if (usageBatchUnmounted || !isDesktopViewport.value) return
   if (!accountSupportsBatchUsage(account)) return
 
   const force = options?.force === true
   const cacheKey = account.id
   const key = String(cacheKey)
+  usageBatchRequestTokenByAccountId.value = {
+    ...usageBatchRequestTokenByAccountId.value,
+    [key]: ++usageBatchRequestToken
+  }
 
   if (force) {
     usageBatchCache.delete(cacheKey)
@@ -879,10 +887,6 @@ const queueBatchedUsage = (account: Account, options?: { force?: boolean }) => {
   usageBatchErrorByAccountId.value = {
     ...usageBatchErrorByAccountId.value,
     [key]: null
-  }
-  usageBatchRequestTokenByAccountId.value = {
-    ...usageBatchRequestTokenByAccountId.value,
-    [key]: ++usageBatchRequestToken
   }
   setUsageBatchLoading(cacheKey, true)
   pendingUsageBatchIds.add(cacheKey)

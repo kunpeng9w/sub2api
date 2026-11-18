@@ -1,4 +1,4 @@
-// Package monitorrequest pins monitor-initiated traffic to one validated proxy.
+// Package monitorrequest pins monitor-initiated traffic to its validated egress route.
 package monitorrequest
 
 import (
@@ -37,7 +37,7 @@ func Check(ctx context.Context, route string) error {
 	if !ok {
 		return nil
 	}
-	if p.Route == "" || route != p.Route {
+	if route != p.Route {
 		return fmt.Errorf("monitor proxy binding unavailable")
 	}
 	if p.Validate == nil {

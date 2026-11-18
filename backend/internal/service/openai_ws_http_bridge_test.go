@@ -1981,6 +1981,8 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 		Status:      StatusActive,
 	}
 
+	// This fixture parses/copies a real 17 MiB frame under -race. Allow CI
+	// instrumentation time without changing the production bridge deadlines.
 	payload := []byte(strings.Repeat(" ", 1024) + `{"type":"response.create","generate":true,"model":"gpt-5","stream":true,"input":"` + strings.Repeat("x", 17*1024*1024) + `"}`)
 	require.Greater(t, len(payload), 16*1024*1024)
 	require.GreaterOrEqual(t, int64(len(payload)), cfg.Gateway.OpenAIWS.HTTPBridgeThresholdBytes)
@@ -2008,7 +2010,7 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 		defer func() { _ = conn.CloseNow() }()
 		conn.SetReadLimit(ResolveOpenAIWSClientReadLimitBytes(cfg))
 
-		readCtx, cancelRead := context.WithTimeout(r.Context(), 10*time.Second)
+		readCtx, cancelRead := context.WithTimeout(r.Context(), 45*time.Second)
 		msgType, firstMessage, err := conn.Read(readCtx)
 		cancelRead()
 		if err != nil {
@@ -2027,7 +2029,7 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 		req.Header.Set("User-Agent", "codex_cli_rs/0.135.0")
 		ginCtx.Request = req
 
-		proxyCtx, cancelProxy := context.WithTimeout(r.Context(), 20*time.Second)
+		proxyCtx, cancelProxy := context.WithTimeout(r.Context(), 90*time.Second)
 		defer cancelProxy()
 		errCh <- svc.ProxyResponsesWebSocketFromClient(proxyCtx, ginCtx, conn, account, "sk-test", firstMessage, hooks)
 	}))
@@ -2039,14 +2041,14 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
-	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 20*time.Second)
+	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 90*time.Second)
 	err = clientConn.Write(writeCtx, coderws.MessageText, payload)
 	cancelWrite()
 	require.NoError(t, err)
 
 	var eventTypes []string
 	for {
-		readCtx, cancelRead := context.WithTimeout(context.Background(), 10*time.Second)
+		readCtx, cancelRead := context.WithTimeout(context.Background(), 45*time.Second)
 		msgType, event, readErr := clientConn.Read(readCtx)
 		cancelRead()
 		require.NoError(t, readErr)
@@ -2065,7 +2067,7 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 	select {
 	case proxyErr := <-errCh:
 		require.NoError(t, proxyErr)
-	case <-time.After(10 * time.Second):
+	case <-time.After(45 * time.Second):
 		t.Fatal("timed out waiting for websocket bridge proxy to finish")
 	}
 

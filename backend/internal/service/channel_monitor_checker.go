@@ -66,7 +66,7 @@ func runCheckForModel(ctx context.Context, provider, endpoint, apiKey, model str
 	if statusCode < 200 || statusCode >= 300 {
 		// 错误路径：用 rawBody 而非 respText（gjson textPath 抽取在错误响应里通常为空，
 		// 会丢掉真正的上游错误信息，例如 `{"error":{"message":"No available accounts ..."}}`）。
-		res.Status = MonitorStatusError
+		res.Status = MonitorStatusFailed
 		bodySnippet := truncateForErrorBody(rawBody)
 		res.Message = truncateMessage(sanitizeErrorMessage(fmt.Sprintf("upstream HTTP %d: %s", statusCode, bodySnippet)))
 		return res

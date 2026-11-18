@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"golang.org/x/sync/errgroup"
@@ -71,6 +72,7 @@ type channelMonitorRuntimeReader interface {
 
 // ChannelMonitorService 渠道监控管理服务。
 type ChannelMonitorService struct {
+	cfg       *config.Config
 	proxies   ProxyRepository
 	runLocks  LeaderLockCache
 	runSlots  chan struct{}
@@ -134,8 +136,6 @@ func (s *ChannelMonitorService) List(ctx context.Context, params ChannelMonitorL
 	}
 	for _, it := range items {
 		s.decryptInPlace(it)
-		_, routeErr := s.resolveMonitorRoute(ctx, it)
-		it.EgressConfigured = routeErr == nil
 	}
 	return items, total, nil
 }
@@ -635,6 +635,11 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 	if actorID == 0 && !m.AutoCheckEnabled {
 		return nil, ErrChannelMonitorDisabled
 	}
+	if actorID == 0 && m.AccountID != nil {
+		if status, _ := monitorAccountStatus(s.loadMonitorAccount(ctx, m), ""); status == MonitorStatusPaused {
+			return nil, ErrChannelMonitorDisabled
+		}
+	}
 	ctx, err = s.monitorContext(ctx, m, actorID)
 	if err != nil {
 		return nil, err
@@ -671,6 +676,7 @@ func (s *ChannelMonitorService) runCheck(ctx context.Context, id, actorID int64)
 	// 请求断开或执行超时后仍保存已完成的结果；写库有独立的短期限，且仍持有执行锁。
 	persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer persistCancel()
+	s.applyLinkedAccountSchedulingStatus(persistCtx, m, results)
 	s.persistCheckResults(persistCtx, m, results)
 	return results, nil
 }
@@ -697,13 +703,20 @@ func (s *ChannelMonitorService) fetchQuotaSnapshot(ctx context.Context, m *Chann
 }
 
 // attachQuotaSnapshot quota_probe：把配额快照挂到主模型行（results[0]）。
-// 配额失败不改变探活状态，仅在探活 message 为空时附注失败原因。
+// 配额查询失败不改变探活状态；明确额度耗尽则覆盖成功探活。
 func attachQuotaSnapshot(results []*CheckResult, snapshot *domain.MonitorQuotaSnapshot) {
 	if len(results) == 0 || snapshot == nil {
 		return
 	}
 	primary := results[0]
 	primary.Quota = snapshot
+	status, hint := monitorQuotaWindowStatus(snapshot)
+	for _, res := range results {
+		if status == MonitorStatusFailed &&
+			(res.Status == MonitorStatusOperational || res.Status == MonitorStatusDegraded) {
+			res.Status, res.Message = MonitorStatusFailed, hint
+		}
+	}
 	if !snapshot.Success && strings.TrimSpace(primary.Message) == "" {
 		primary.Message = truncateMessage("quota fetch failed: " + snapshot.Error)
 	}

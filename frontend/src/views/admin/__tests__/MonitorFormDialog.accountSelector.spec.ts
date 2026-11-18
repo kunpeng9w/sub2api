@@ -254,6 +254,28 @@ describe('MonitorFormDialog linked account selector', () => {
     )
   })
 
+  it.each(['quota', 'quota_probe'] as const)('requires an account without an unlinked option in %s mode', async (check_mode) => {
+    const wrapper = mountDialog(makeMonitor({ check_mode }))
+    await flushPromises()
+
+    const dropdown = await openAccountDropdown(wrapper)
+    expect(dropdown.textContent).not.toContain('monitorCommon.controls.noAccount')
+    expect(wrapper.text()).toContain('admin.channelMonitor.form.linkedAccountEmpty')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).not.toHaveBeenCalled()
+  })
+
+  it('keeps the unlinked option and optional proxy for probe mode', async () => {
+    const wrapper = mountDialog(makeMonitor())
+    await flushPromises()
+    const dropdown = await openAccountDropdown(wrapper)
+    expect(dropdown.textContent).toContain('monitorCommon.controls.noAccount')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 0, proxy_id: 0 }))
+  })
+
   it('debounced typing hits server-side search and aborts the previous request', async () => {
     vi.useFakeTimers()
     const wrapper = mountDialog()
@@ -372,7 +394,7 @@ describe('MonitorFormDialog linked account selector', () => {
     await flushPromises()
 
     expect(accountTrigger(wrapper).text()).not.toContain('alpha')
-    expect(accountTrigger(wrapper).text()).toContain('monitorCommon.controls.noAccount')
+    expect(accountTrigger(wrapper).text()).toContain('admin.channelMonitor.form.linkedAccountPlaceholder')
   })
 
   // P2-7(b)：antigravity 强制的 quota 在切走时要对称还原，占位模型一并清掉。

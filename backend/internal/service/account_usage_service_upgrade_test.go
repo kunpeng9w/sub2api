@@ -41,6 +41,8 @@ func TestOpenAIUsageRefresh_UpgradeDeniedBeforeCacheOrFlight(t *testing.T) {
 func TestOpenAIUsageRefresh_UpgradeRestrictedReadNeverFallsBackOrResets(t *testing.T) {
 	svc, _, upstream, id := quotaRefreshFixture(t, false, false)
 	upstream.status = http.StatusBadGateway
+	upstream.modelStatus = http.StatusBadGateway
+	upstream.modelHeaders = nil
 	usage, err := svc.GetUsage(upgradeUsageReader(true), id, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, usage.Error)
@@ -53,6 +55,8 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFlightAndCancellationIsolation(t *t
 	started := make(chan struct{}, 4)
 	release := make(chan struct{}, 2)
 	upstream.status = http.StatusBadGateway
+	upstream.modelStatus = http.StatusBadGateway
+	upstream.modelHeaders = nil
 	upstream.requestStarted, upstream.releaseRequest = started, release
 	defer close(release)
 	fullDone := make(chan error, 1)
@@ -104,9 +108,11 @@ func TestOpenAIUsageRefresh_UpgradeFailureCacheIsolation(t *testing.T) {
 		t.Run(fmt.Sprintf("restricted_first=%t", restrictedFirst), func(t *testing.T) {
 			svc, _, upstream, id := quotaRefreshFixture(t, false, false)
 			upstream.status = http.StatusBadGateway
+			upstream.modelStatus = http.StatusBadGateway
+			upstream.modelHeaders = nil
 			full, reader := context.Background(), upgradeUsageReader(true)
 			first, second := full, reader
-			firstRequests, totalRequests := 2, 3
+			firstRequests, totalRequests := 1, 2
 			if restrictedFirst {
 				first, second = reader, full
 				firstRequests = 1
@@ -132,9 +138,11 @@ func TestOpenAIUsageRefresh_UpgradeFailureCacheIsolation(t *testing.T) {
 	}
 }
 
-func TestOpenAIUsageRefresh_UpgradeRestrictedFailurePreservesSuccessfulFallback(t *testing.T) {
+func TestOpenAIUsageRefresh_UpgradeRestrictedFailurePreservesSuccessfulProbe(t *testing.T) {
 	svc, repo, upstream, id := quotaRefreshFixture(t, false, false)
 	upstream.status = http.StatusBadGateway
+	upstream.modelStatus = http.StatusBadGateway
+	upstream.modelHeaders = nil
 	upstream.modelStatus = http.StatusOK
 	upstream.modelHeaders = fallbackQuotaHeaders()
 	full, reader := context.Background(), upgradeUsageReader(true)
@@ -152,7 +160,7 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFailurePreservesSuccessfulFallback(
 	shared, err := svc.GetUsage(reader, id)
 	require.NoError(t, err)
 	require.Empty(t, shared.Error, "a newer shared success supersedes an earlier failure")
-	require.Len(t, upstream.requestLog(), 3)
+	require.Len(t, upstream.requestLog(), 2)
 	failed, err = svc.GetUsage(reader, id, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, failed.Error)
@@ -168,6 +176,6 @@ func TestOpenAIUsageRefresh_UpgradeRestrictedFailurePreservesSuccessfulFallback(
 		require.Equal(t, fresh.FiveHour.Utilization, usage.FiveHour.Utilization)
 		require.Equal(t, fresh.UpdatedAt, usage.UpdatedAt)
 	}
-	require.Len(t, upstream.requestLog(), 4)
+	require.Len(t, upstream.requestLog(), 3)
 	require.Len(t, upstream.modelLog(), 1)
 }

@@ -1,0 +1,30 @@
+[Unit]
+Description=Independent Sub2API network status monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sub2api-network
+Group=sub2api-network
+EnvironmentFile=/etc/sub2api-network/worker.env
+ExecStart=/usr/bin/python3 /opt/sub2api-network/monitor.py --database /var/lib/sub2api-network/status.sqlite3 --rules /etc/sub2api-network/rules.json
+Restart=on-failure
+RestartSec=5
+StateDirectory=sub2api-network
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/sub2api-network
+TimeoutStopSec=135
+
+[Install]
+WantedBy=multi-user.target

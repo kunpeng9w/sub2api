@@ -101,3 +101,20 @@ describe('MonitorCard quota snapshot visibility', () => {
     expect(wrapper.text()).not.toContain('monitorCommon.checkMode.quota')
   })
 })
+
+// 管理端与用户端复用状态格式化，展示状态不依赖改写检测历史。
+describe('MonitorCard current display status', () => {
+  it.each(['paused', 'unknown'] as const)('renders %s with a neutral badge', (status) => {
+    const wrapper = mountCard(makeItem({ primary_status: status }))
+    const badge = wrapper.findAll('span').find((node) => node.text() === `monitorCommon.status.${status}`)
+    expect(badge).toBeDefined()
+    expect(badge?.classes()).toContain('bg-gray-100')
+    expect(badge?.classes()).not.toContain('bg-emerald-100')
+  })
+
+  it('renders an unavailable account with a red badge', () => {
+    const wrapper = mountCard(makeItem({ primary_status: 'failed' }))
+    const badge = wrapper.findAll('span').find((node) => node.text() === 'monitorCommon.status.failed')
+    expect(badge?.classes()).toContain('bg-red-100')
+  })
+})

@@ -248,8 +248,8 @@ func TestRunCheckForModel_Grok_UpstreamFailure(t *testing.T) {
 
 	res := runCheckForModel(context.Background(), MonitorProviderGrok, endpoint, "xai-key", MonitorDefaultGrokModel, nil)
 
-	if res.Status != MonitorStatusError {
-		t.Fatalf("Grok 429 should be recorded as error, got status=%s message=%q", res.Status, res.Message)
+	if res.Status != MonitorStatusFailed {
+		t.Fatalf("Grok 429 should be recorded as failed, got status=%s message=%q", res.Status, res.Message)
 	}
 	if !strings.Contains(res.Message, "upstream HTTP 429") {
 		t.Fatalf("Grok failure should preserve upstream status, got %q", res.Message)
@@ -268,8 +268,8 @@ func TestRunCheckForModel_Grok_RedactsXAIKeyFromUpstreamBody(t *testing.T) {
 
 	res := runCheckForModel(context.Background(), MonitorProviderGrok, endpoint, "request-key", MonitorDefaultGrokModel, nil)
 
-	if res.Status != MonitorStatusError {
-		t.Fatalf("Grok upstream failure should be recorded as error, got %s", res.Status)
+	if res.Status != MonitorStatusFailed {
+		t.Fatalf("Grok upstream failure should be recorded as failed, got %s", res.Status)
 	}
 	if strings.Contains(res.Message, "xai-secret") {
 		t.Fatalf("Grok error message leaked xAI key: %q", res.Message)

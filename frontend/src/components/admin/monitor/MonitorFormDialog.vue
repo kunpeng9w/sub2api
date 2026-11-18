@@ -673,7 +673,9 @@ const accountOptions = computed(() => {
   if (pinned && !linkedAccounts.value.some((a) => a.id === pinned.id)) {
     opts.unshift({ value: String(pinned.id), label: `${pinned.name} (#${pinned.id})` })
   }
-  opts.unshift({ value: '', label: t('monitorCommon.controls.noAccount') })
+  if (!usesQuotaMode.value) {
+    opts.unshift({ value: '', label: t('monitorCommon.controls.noAccount') })
+  }
   return opts
 })
 

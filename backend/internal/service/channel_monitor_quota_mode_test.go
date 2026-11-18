@@ -75,6 +75,9 @@ func newQuotaModeFetcher(accounts map[int64]*Account, usage *stubMonitorUsageSou
 	}
 	for _, account := range accounts {
 		account.ProxyID = int64Ptr(71)
+		if account.Status == "" {
+			account.Status, account.Schedulable = StatusActive, true
+		}
 	}
 	if usage == nil {
 		usage = &stubMonitorUsageSource{}
@@ -149,7 +152,7 @@ func TestRunCheck_QuotaModeUnlinkedAccountDegrades(t *testing.T) {
 	results, err := svc.RunCheck(context.Background(), 2)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
-	require.Equal(t, MonitorStatusDegraded, results[0].Status)
+	require.Equal(t, MonitorStatusError, results[0].Status)
 	require.Contains(t, results[0].Message, "linked account not found")
 	require.False(t, results[0].Quota.Success)
 }
@@ -650,4 +653,126 @@ func TestDuplicateChannelMonitorQuotaModeReencryptsEmptyKey(t *testing.T) {
 	require.Empty(t, dup.APIKey, "plaintext stays empty for quota monitors")
 	require.Len(t, repo.created, 1)
 	require.Equal(t, "NEW:", repo.created[0].APIKey, "empty key must be re-encrypted, not dropped")
+}
+
+// 停调状态必须绕过配额缓存，并随检测结果落库；模型冷却只影响对应模型。
+func TestRunCheck_LinkedAccountTemporaryUnschedulable(t *testing.T) {
+	for _, mode := range []string{MonitorCheckModeQuota, MonitorCheckModeProbe, MonitorCheckModeQuotaProbe} {
+		t.Run(mode, func(t *testing.T) {
+			endpoint := setupFakeOpenAI(t, &openAICaptureHandler{})
+			primary := "gpt-test"
+			if mode == MonitorCheckModeQuota {
+				primary = MonitorDefaultQuotaModel
+			}
+			repo := &quotaModeRepoStub{monitor: &ChannelMonitor{
+				ID: 1, Enabled: true, Provider: MonitorProviderOpenAI, CheckMode: mode,
+				Endpoint: endpoint, APIKey: "OLD:sk-test", PrimaryModel: primary,
+				ExtraModels: []string{"gpt-extra"}, AccountID: int64Ptr(9),
+			}}
+			svc := newQuotaModeService(t, repo)
+			account := &Account{
+				ID: 9, Platform: MonitorProviderOpenAI,
+				Credentials: map[string]any{"model_mapping": map[string]any{
+					"gpt-test": "gpt-upstream", "gpt-extra": "gpt-extra", "*": "gpt-upstream",
+				}},
+			}
+			usage := &stubMonitorUsageSource{usage: &UsageInfo{FiveHour: &UsageProgress{Utilization: 20}}}
+			svc.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{9: account}, usage))
+			check := func(wantPrimary, wantExtra string) {
+				t.Helper()
+				repo.history = nil
+				results, err := svc.RunCheck(context.Background(), 1)
+				require.NoError(t, err)
+				require.NotEmpty(t, results)
+				require.Equal(t, wantPrimary, results[0].Status)
+				if wantPrimary == MonitorStatusFailed {
+					require.Contains(t, results[0].Message, "temporarily unschedulable")
+				}
+				if mode != MonitorCheckModeQuota {
+					require.Len(t, results, 2)
+					require.Equal(t, wantExtra, results[1].Status)
+				}
+				require.Len(t, repo.history, len(results))
+				for i, result := range results {
+					require.Equal(t, result.Status, repo.history[i].Status)
+					require.Equal(t, result.Message, repo.history[i].Message)
+				}
+				if mode != MonitorCheckModeProbe {
+					require.NotNil(t, results[0].Quota)
+					require.True(t, results[0].Quota.Success)
+					require.Equal(t, 1, usage.getCalls(), "reuse the cached quota across scheduling changes")
+				}
+			}
+
+			check(MonitorStatusOperational, MonitorStatusOperational)
+			future, past := time.Now().Add(time.Hour), time.Now().Add(-time.Hour)
+			account.TempUnschedulableUntil = &future
+			check(MonitorStatusFailed, MonitorStatusFailed)
+			account.TempUnschedulableUntil = &past
+			check(MonitorStatusOperational, MonitorStatusOperational)
+			account.TempUnschedulableUntil = nil
+			check(MonitorStatusOperational, MonitorStatusOperational)
+
+			setAccountModelRateLimitSnapshot(account, "gpt-upstream", future, "temporary model failure", time.Now())
+			wantPrimary := MonitorStatusFailed
+			if mode == MonitorCheckModeQuota {
+				wantPrimary = MonitorStatusOperational // 配额占位模型不代表整个账号停调。
+			}
+			check(wantPrimary, MonitorStatusOperational)
+			setAccountModelRateLimitSnapshot(account, "gpt-upstream", past, "expired", time.Now())
+			check(MonitorStatusOperational, MonitorStatusOperational)
+		})
+	}
+}
+
+func TestMonitorSchedulingStatusPreservesExistingFailures(t *testing.T) {
+	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{ID: 1, Provider: MonitorProviderOpenAI, AccountID: int64Ptr(9)}}
+	svc := newQuotaModeService(t, repo)
+	future := time.Now().Add(time.Hour)
+	svc.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{
+		9: {ID: 9, Platform: MonitorProviderOpenAI, TempUnschedulableUntil: &future},
+	}, nil))
+	results := []*CheckResult{
+		{Status: MonitorStatusFailed, Message: "challenge mismatch"},
+		{Status: MonitorStatusError, Message: "upstream HTTP 503"},
+		{Status: MonitorStatusDegraded, Message: "slow response"},
+	}
+	svc.applyLinkedAccountSchedulingStatus(context.Background(), repo.monitor, results)
+	require.Equal(t, MonitorStatusFailed, results[0].Status)
+	require.Equal(t, "challenge mismatch", results[0].Message)
+	require.Equal(t, MonitorStatusError, results[1].Status)
+	require.Equal(t, "upstream HTTP 503", results[1].Message)
+	require.Equal(t, MonitorStatusFailed, results[2].Status)
+	require.Contains(t, results[2].Message, "temporarily unschedulable")
+}
+
+func TestRunCheck_PausedAccountSkipsAutomaticDetection(t *testing.T) {
+	repo := &quotaModeRepoStub{monitor: &ChannelMonitor{
+		ID: 1, Enabled: true, Provider: MonitorProviderOpenAI, PrimaryModel: "quota",
+		CheckMode: MonitorCheckModeQuota, AccountID: int64Ptr(9),
+	}}
+	svc := newQuotaModeService(t, repo)
+	usage := &stubMonitorUsageSource{usage: &UsageInfo{FiveHour: &UsageProgress{Utilization: 20}}}
+	account := &Account{ID: 9, Platform: MonitorProviderOpenAI, Status: StatusActive}
+	svc.SetQuotaFetcher(newQuotaModeFetcher(map[int64]*Account{9: account}, usage))
+	_, err := svc.RunCheck(context.Background(), 1)
+	require.ErrorIs(t, err, ErrChannelMonitorDisabled)
+	require.Empty(t, repo.history)
+	require.Empty(t, repo.markedIDs)
+	require.Zero(t, usage.getCalls())
+	account.Schedulable = true
+	results, err := svc.RunCheck(context.Background(), 1)
+	require.NoError(t, err)
+	require.Equal(t, MonitorStatusOperational, results[0].Status)
+	require.Len(t, repo.history, 1)
+}
+
+func TestMonitorQuotaProbeExhaustionOverridesSuccessfulProbe(t *testing.T) {
+	quota := &domain.MonitorQuotaSnapshot{Success: true, Tiers: []domain.MonitorQuotaTier{{Window: "5h", UsedPercent: 100}}}
+	results := []*CheckResult{{Model: "main", Status: MonitorStatusOperational}, {Model: "extra", Status: MonitorStatusDegraded}}
+	attachQuotaSnapshot(results, quota)
+	for _, res := range results {
+		require.Equal(t, MonitorStatusFailed, res.Status)
+	}
+	require.Nil(t, results[1].Quota)
 }

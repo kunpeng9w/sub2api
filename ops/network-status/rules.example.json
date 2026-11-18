@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "interval_seconds": 1800,
+  "download_bytes": 1000000,
+  "upload_bytes": 1000000,
+  "repetitions": 3,
+  "connect_timeout_seconds": 10,
+  "request_timeout_seconds": 30,
+  "round_timeout_seconds": 600,
+  "daily_budget_bytes": 500000000,
+  "download_min_mbps": 10,
+  "upload_min_mbps": 3,
+  "min_success_ratio": 1,
+  "address_family": "ipv4",
+  "http_version": "http1.1"
+}

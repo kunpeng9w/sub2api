@@ -498,14 +498,15 @@ export default {
 
   // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
-    controls: {"noAccount": 'No linked account (select a proxy)',"proxy": "Egress proxy", "chooseProxy": "Select a proxy (required to run)", "accountProxy": "Uses the linked account’s current proxy. Requests stop if it is unavailable.", "visibility": "Visibility", "adminOnly": "Administrators only", "selected": "Selected users", "allUsers": "All users", "searchUsers": "Search username or email", "viewersRequired": "Select at least one user", "autoCheck": "Automatic checks", "neverChecked": "Never checked", "running": "Checking…", "runNow": "Run check", "sampleAvailability": "Check sample availability", "egressMissing": "Proxy missing or unavailable"},
+    controls: {"noAccount": 'No linked account',"proxy": "Egress proxy", "chooseProxy": "Direct connection (no proxy)", "accountProxy": "Follows the linked account’s egress: direct or through the same proxy. Requests stop if the proxy is unavailable.", "visibility": "Visibility", "adminOnly": "Administrators only", "selected": "Selected users", "allUsers": "All users", "searchUsers": "Search username or email", "viewersRequired": "Select at least one user", "autoCheck": "Automatic checks", "neverChecked": "Never checked", "running": "Checking…", "runNow": "Run check", "sampleAvailability": "Check sample availability", "egressMissing": "Account or egress unavailable"},
     estimate: {"total": "Estimated total ${value}", "remaining": "Remaining ${value}", "sevenDayShare": "{value}% of 7d", "historical": "Using historical total (sampled {time})", "unavailable": "Estimate unavailable", "sampled": "Sampled {time}", "note": "Estimated from usage recorded by this system"},
     status: {
       operational: 'Operational',
       degraded: 'Degraded',
-      failed: 'Failed',
+      failed: 'Unavailable',
       error: 'Error',
-      unknown: '-'
+      paused: 'Paused',
+      unknown: 'Unknown'
     },
     providers: {
       openai: 'OpenAI',
@@ -652,6 +653,7 @@ export default {
       cacheWritePrice: 'Cache Write',
       cacheWrite5mPrice: 'Cache Write (5m)',
       cacheWrite1hPrice: 'Cache Write (1h)',
+      cacheWrite12hPrice: 'Cache Write (12h)',
       cacheReadPrice: 'Cache Read',
       imageInputPrice: 'Image Input',
       imageOutputPrice: 'Image Output',

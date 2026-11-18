@@ -1,0 +1,25 @@
+{
+  "source_sha": "9ae3629d141764211a693c972438f7ac7e9d7ef8",
+  "run_id": 44024942954,
+  "artifact": "monitor-unit-9ae3629d141764211a693c972438f7ac7e9d7ef8",
+  "passed_tests": [
+    {
+      "Package": "github.com/Wei-Shaw/sub2api/internal/custom/quotaestimate",
+      "Test": "TestQuotaEstimateFormulaAndInvalidInputs",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/Wei-Shaw/sub2api/internal/service",
+      "Test": "TestQuotaEstimateAllWindowsAndSampleCutoff",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/Wei-Shaw/sub2api/internal/service",
+      "Test": "TestQuotaEstimateKeepsIndependentWindowSampleTimes",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ]
+}

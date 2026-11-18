@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
+	"github.com/imroc/req/v3"
 )
 
 func TestMonitorProxyProtocolsAndNoRedirect(t *testing.T) {
@@ -168,5 +169,66 @@ func TestMonitorBrokenBindingNeverDials(t *testing.T) {
 	}
 	if _, err := Client(ctx, base, "http://alternate.invalid:1234"); err == nil {
 		t.Fatal("alternate proxy accepted")
+	}
+}
+
+func TestMonitorDirectClientsValidateAndRejectRedirects(t *testing.T) {
+	for _, kind := range []string{"http", "req"} {
+		t.Run(kind, func(t *testing.T) {
+			var calls atomic.Int64
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				w.Header().Set("Location", "/must-not-follow")
+				w.WriteHeader(http.StatusFound)
+			}))
+			defer server.Close()
+			valid := true
+			ctx := With(context.Background(), Policy{Validate: func(context.Context) error {
+				if !valid {
+					return errors.New("route changed")
+				}
+				return nil
+			}})
+			var client *http.Client
+			if kind == "req" {
+				base := req.C().SetProxyURL("http://127.0.0.1:1")
+				wrapped, err := ReqClient(ctx, base, "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if base.GetTransport().Proxy == nil {
+					t.Fatal("shared proxy configuration mutated")
+				}
+				client = wrapped.GetClient()
+			} else {
+				base, err := httpclient.GetClient(httpclient.Options{Timeout: time.Second})
+				if err != nil {
+					t.Fatal(err)
+				}
+				client, err = Client(ctx, base, "")
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			request, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := client.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = response.Body.Close()
+			if response.StatusCode != http.StatusFound || calls.Load() != 1 {
+				t.Fatalf("unexpected direct request: status=%d calls=%d", response.StatusCode, calls.Load())
+			}
+			valid = false
+			if _, err := client.Do(request); err == nil || !strings.Contains(err.Error(), "route changed") {
+				t.Fatalf("want changed route rejection, got %v", err)
+			}
+			if calls.Load() != 1 {
+				t.Fatal("changed route sent traffic")
+			}
+		})
 	}
 }

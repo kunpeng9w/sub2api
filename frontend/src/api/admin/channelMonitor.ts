@@ -18,6 +18,8 @@ export type Provider =
   | 'minimax'
   | 'opencode_go'
 export type MonitorStatus = 'operational' | 'degraded' | 'failed' | 'error'
+/** 当前展示状态；暂停、未知不写入检测历史。 */
+export type MonitorDisplayStatus = MonitorStatus | 'paused' | 'unknown'
 export type BodyOverrideMode = 'off' | 'merge' | 'replace'
 export type APIMode = 'chat_completions' | 'responses'
 /**
@@ -94,7 +96,7 @@ export interface ChannelMonitor {
   created_at: string
   updated_at: string
   /** Latest status of the primary model (empty when no history yet) */
-  primary_status: MonitorStatus | ''
+  primary_status: MonitorDisplayStatus | ''
   /** Latest latency of the primary model in ms (null when no history yet) */
   primary_latency_ms: number | null
   /** Primary model 7-day availability percentage (0-100) */
@@ -116,7 +118,7 @@ export interface ChannelMonitor {
 
 export interface ExtraModelStatus {
   model: string
-  status: MonitorStatus | ''
+  status: MonitorDisplayStatus | ''
   latency_ms: number | null
 }
 

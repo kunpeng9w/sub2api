@@ -514,6 +514,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/network-status',
+    name: 'NetworkStatus',
+    component: () => import('@/views/user/NetworkStatusView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Network Status',
+      titleKey: 'networkStatus.title'
+    }
+  },
+  {
     path: '/monitor',
     name: 'ChannelStatus',
     component: () => import('@/views/user/ChannelStatusView.vue'),

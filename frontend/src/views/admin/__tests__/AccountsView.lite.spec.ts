@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
+import type { Account, AccountUsageInfo } from '@/types'
 
 import AccountsView from '../AccountsView.vue'
 import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
@@ -10,6 +11,7 @@ const {
   listWithEtag,
   getById,
   getBatchTodayStats,
+  getBatchUsage,
   getUpstreamBillingProbeSettings,
   getAllProxies,
   getAllGroups,
@@ -21,6 +23,7 @@ const {
   listWithEtag: vi.fn(),
   getById: vi.fn(),
   getBatchTodayStats: vi.fn(),
+  getBatchUsage: vi.fn(),
   getUpstreamBillingProbeSettings: vi.fn(),
   getAllProxies: vi.fn(),
   getAllGroups: vi.fn(),
@@ -36,6 +39,7 @@ vi.mock('@/api/admin', () => ({
       getById,
       listWithEtag,
       getBatchTodayStats,
+      getBatchUsage,
       getUpstreamBillingProbeSettings,
       delete: vi.fn(),
       batchClearError: vi.fn(),
@@ -62,13 +66,13 @@ vi.mock('vue-i18n', async () => {
 })
 
 const DataTableStub = defineComponent({
-  props: { data: { type: Array, default: () => [] } },
+  props: { data: { type: Array, default: () => [] }, loading: Boolean },
   template: `
     <div>
-      <div v-for="row in data" :key="row.id" :data-account-name="row.name">
+      <template v-if="!loading"><div v-for="row in data" :key="row.id" :data-account-name="row.name">
         <slot name="cell-groups" :row="row" />
         <slot name="cell-actions" :row="row" />
-      </div>
+      </div></template>
     </div>
   `
 })
@@ -101,7 +105,7 @@ function mountView(stubActionMenu = true) {
         AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: { template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>' },
         DataTable: DataTableStub,
-        AccountTableActions: { template: '<div><slot name="after" /></div>' },
+        AccountTableActions: { template: `<div><button data-test="manual-refresh" @click="$emit('refresh')">refresh</button><slot name="after" /></div>` },
         AccountTableFilters: true,
         AccountBulkActionsBar: true,
         Pagination: true,
@@ -163,6 +167,7 @@ describe('admin AccountsView lite account list', () => {
     listWithEtag.mockReset().mockResolvedValue({ notModified: true, etag: 'compact-etag', data: null })
     getById.mockReset().mockResolvedValue(fullAccount)
     getBatchTodayStats.mockReset().mockResolvedValue({ stats: {} })
+    getBatchUsage.mockReset().mockResolvedValue({ usage: {}, errors: {} })
     getUpstreamBillingProbeSettings.mockReset().mockResolvedValue({ enabled: true })
     getAllProxies.mockReset().mockResolvedValue([])
     getAllGroups.mockReset().mockResolvedValue([{ id: 7, name: 'codex', platform: 'openai' }])
@@ -186,6 +191,35 @@ describe('admin AccountsView lite account list', () => {
       expect.objectContaining({ lite: '1' }),
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
+    wrapper.unmount()
+  })
+
+  it('keeps existing rows mounted and busy while a manual list refresh is pending', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    const row = wrapper.get('[data-account-name="compact row"]').element
+    let finish: (value: unknown) => void = () => {}
+    listAccounts.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    await wrapper.get('[data-test="manual-refresh"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.getComponent(DataTableStub).props('loading')).toBe(false)
+    expect(wrapper.get('[data-account-name="compact row"]').element).toBe(row)
+    expect(wrapper.find('[aria-busy="true"]').attributes()).toHaveProperty('inert')
+    finish({ items: [{ ...listRow, name: 'updated row' }], total: 1, page: 1, page_size: 20, pages: 1 })
+    await flushPromises()
+    expect(wrapper.get('[data-account-name="updated row"]').element).toBe(row)
+    expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('still shows initial loading when no rows are available', async () => {
+    let finish: (value: unknown) => void = () => {}
+    listAccounts.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.getComponent(DataTableStub).props('loading')).toBe(true)
+    finish({ items: [listRow], total: 1, page: 1, page_size: 20, pages: 1 })
+    await flushPromises()
     wrapper.unmount()
   })
 
@@ -294,4 +328,57 @@ describe('admin AccountsView lite account list', () => {
     consoleError.mockRestore()
     wrapper.unmount()
   })
+
+  it.each(['resolve', 'reject'] as const)('ignores an older batch completion and retains the newer loading state: %s', async (outcome) => {
+    let resolveOld!: (value: unknown) => void
+    let rejectOld!: (error: Error) => void
+    let resolveNew!: (value: unknown) => void
+    getBatchUsage.mockReturnValueOnce(new Promise((resolve, reject) => { resolveOld = resolve; rejectOld = reject }))
+      .mockReturnValueOnce(new Promise(resolve => { resolveNew = resolve }))
+    const wrapper = mountView()
+    await flushPromises()
+    const vm = wrapper.vm as unknown as {
+      queueBatchedUsage: (account: Account, options: { force: boolean }) => void
+      flushQueuedUsageBatch: () => Promise<void>
+      usageBatchByAccountId: Record<string, AccountUsageInfo | null>
+      usageBatchErrorByAccountId: Record<string, string | null>
+      usageBatchLoadingByAccountId: Record<string, boolean>
+    }
+    const row = listRow as unknown as Account
+    vm.queueBatchedUsage(row, { force: true })
+    const old = vm.flushQueuedUsageBatch()
+    vm.queueBatchedUsage(row, { force: true })
+    const newer = vm.flushQueuedUsageBatch()
+    if (outcome === 'resolve') resolveOld({ usage: { 42: { five_hour: { utilization: 99 } } } })
+    else rejectOld(new Error('old batch failed'))
+    await old
+    expect(vm.usageBatchLoadingByAccountId['42']).toBe(true)
+    expect(vm.usageBatchByAccountId['42']).toBeUndefined()
+    expect(vm.usageBatchErrorByAccountId['42']).toBeNull()
+    resolveNew({ usage: { 42: { five_hour: { utilization: 22 } } } })
+    await newer
+    expect(vm.usageBatchByAccountId['42']?.five_hour?.utilization).toBe(22)
+    expect(vm.usageBatchLoadingByAccountId['42']).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('does not publish a batch response after the account list unmounts', async () => {
+    let resolve!: (value: unknown) => void
+    getBatchUsage.mockReturnValueOnce(new Promise(yes => { resolve = yes }))
+    const wrapper = mountView()
+    await flushPromises()
+    const vm = wrapper.vm as unknown as {
+      queueBatchedUsage: (account: Account, options: { force: boolean }) => void
+      flushQueuedUsageBatch: () => Promise<void>
+      usageBatchByAccountId: Record<string, AccountUsageInfo | null>
+    }
+    vm.queueBatchedUsage(listRow as unknown as Account, { force: true })
+    const pending = vm.flushQueuedUsageBatch()
+    const before = vm.usageBatchByAccountId
+    wrapper.unmount()
+    resolve({ usage: { 42: { five_hour: { utilization: 99 } } } })
+    await pending
+    expect(vm.usageBatchByAccountId).toBe(before)
+  })
+
 })

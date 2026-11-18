@@ -256,7 +256,9 @@ class SystemdIntegrationTests(unittest.TestCase):
         self.command('systemctl', 'start', self.mihomo)
         self.answer('198.18.0.4')
         pid = self.resolver_pid()
-        self.command('systemctl', 'kill', '--signal=KILL', self.mihomo)
+        # Simulate the daemon crashing. Killing its entire cgroup can also kill
+        # ExecStopPost, which is the recovery hook this assertion must exercise.
+        self.command('systemctl', 'kill', '--kill-whom=main', '--signal=KILL', self.mihomo)
         self.answer('203.0.113.8')
         self.assertEqual(self.resolver_pid(), pid)
         self.command('systemctl', 'reset-failed', self.mihomo)

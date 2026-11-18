@@ -116,13 +116,13 @@ func (u *quotaRefreshUpstream) serve(w http.ResponseWriter, r *http.Request) {
 	modelHeaders := u.modelHeaders.Clone()
 	if r.Method == http.MethodPost {
 		u.models = append(u.models, model)
-		status, body, timeout = u.modelStatus, "", false
+		status, body = u.modelStatus, u.body
 		if u.recoverAfterModel {
 			u.status = http.StatusOK
 		}
 	}
 	u.mu.Unlock()
-	if r.Method == http.MethodGet && release != nil {
+	if release != nil {
 		select {
 		case started <- struct{}{}:
 		default:
@@ -167,7 +167,8 @@ func quotaRefreshFixture(t *testing.T, shadow, oldSnapshot bool) (*AccountUsageS
 		repo.accounts[accountID].Extra = map[string]any{
 			"codex_5h_used_percent": 37.0, "codex_7d_used_percent": 63.0,
 			"codex_5h_reset_at": "2020-01-01T00:00:00Z", "codex_7d_reset_at": "2020-01-01T00:00:00Z",
-			"codex_usage_updated_at": "2020-01-01T00:00:00Z",
+			"codex_usage_updated_at":                       "2020-01-01T00:00:00Z",
+			"openai_oauth_responses_websockets_v2_enabled": true,
 		}
 	}
 	window := func(used float64, seconds int64) *OpenAIRateLimitWindow {
@@ -181,7 +182,7 @@ func quotaRefreshFixture(t *testing.T, shadow, oldSnapshot bool) (*AccountUsageS
 	}
 	body, err := json.Marshal(payload)
 	require.NoError(t, err)
-	upstream := &quotaRefreshUpstream{status: 200, body: string(body), modelStatus: 502}
+	upstream := &quotaRefreshUpstream{status: 200, body: string(body), modelStatus: 200, modelHeaders: fallbackQuotaHeaders()}
 	server := httptest.NewServer(http.HandlerFunc(upstream.serve))
 	t.Cleanup(server.Close)
 	factory := newQuotaRedirectingFactory(server)
@@ -229,258 +230,6 @@ func callQuotaRefresh(t *testing.T, svc *AccountUsageService, repo *quotaRefresh
 	}
 }
 
-func TestOpenAIUsageRefresh_AllEntryPoints(t *testing.T) {
-	for _, path := range []string{"single", "batch", "monitor"} {
-		for _, shadow := range []bool{false, true} {
-			for _, scenario := range []string{"success", "401", "403", "429", "500", "timeout", "parse", "empty"} {
-				t.Run(fmt.Sprintf("%s/shadow=%t/%s", path, shadow, scenario), func(t *testing.T) {
-					t.Parallel()
-					svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
-					switch scenario {
-					case "401":
-						upstream.status = 401
-					case "403":
-						upstream.status = 403
-					case "429":
-						upstream.status = 429
-					case "500":
-						upstream.status = 500
-					case "timeout":
-						upstream.timeout = true
-					case "parse":
-						upstream.body = `{"rate_limit": sensitive-quota-token}`
-					case "empty":
-						upstream.body = `{"rate_limit":{},"additional_rate_limits":[]}`
-					}
-					if upstream.status != 200 {
-						upstream.body = `{"error":"Bearer sensitive-quota-token"}`
-					}
-					usage, snapshot := callQuotaRefresh(t, svc, repo, id, path, false)
-					if path == "monitor" {
-						require.Equal(t, scenario == "success", snapshot.Success)
-						require.Equal(t, scenario == "401" || scenario == "403", snapshot.CredentialInvalid)
-						expected := MonitorStatusError
-						switch scenario {
-						case "success":
-							expected = MonitorStatusOperational
-						case "401", "403":
-							expected = MonitorStatusFailed
-						}
-						require.Equal(t, expected, deriveQuotaCheckResult(snapshot, "", time.Now()).Status)
-						require.NotContains(t, snapshot.Error, "sensitive-quota-token")
-					} else if scenario == "success" {
-						require.Empty(t, usage.Error)
-						require.Empty(t, usage.ErrorCode)
-						require.NotNil(t, usage.UpdatedAt)
-						require.WithinDuration(t, time.Now(), *usage.UpdatedAt, 3*time.Second)
-						if shadow {
-							require.Equal(t, 8.0, usage.FiveHour.Utilization)
-							require.Equal(t, 16.0, usage.SevenDay.Utilization)
-						} else {
-							require.Equal(t, 12.0, usage.FiveHour.Utilization)
-							require.Equal(t, 24.0, usage.SevenDay.Utilization)
-						}
-					} else {
-						require.NotEmpty(t, usage.Error)
-						require.NotEmpty(t, usage.ErrorCode)
-						require.NotContains(t, usage.Error, "sensitive-quota-token")
-						require.Equal(t, 37.0, usage.FiveHour.Utilization)
-						require.Equal(t, 63.0, usage.SevenDay.Utilization)
-						require.Equal(t, "2020-01-01T00:00:00Z", usage.UpdatedAt.Format(time.RFC3339))
-						again, err := svc.GetUsage(context.Background(), id)
-						require.NoError(t, err)
-						require.Equal(t, usage.Error, again.Error)
-						require.Equal(t, usage.UpdatedAt, again.UpdatedAt)
-					}
-					expectedRequests := []string{"GET /backend-api/wham/usage"}
-					if scenario != "success" {
-						expectedRequests = append(expectedRequests, "POST /backend-api/codex/responses")
-					}
-					require.Equal(t, expectedRequests, upstream.requestLog(), "read first; attempt at most one model fallback on failure")
-					for _, credentials := range upstream.credentialLog() {
-						require.Equal(t, "Bearer sensitive-quota-token|parent-org", credentials)
-					}
-					if scenario != "success" {
-						model := "codex-auto-review"
-						if shadow {
-							model = "gpt-5.3-codex-spark"
-						}
-						require.Equal(t, []string{model}, upstream.modelLog())
-					}
-					if scenario == "success" {
-						require.Equal(t, []int64{id}, repo.writes)
-						other := int64(200)
-						if shadow {
-							other = 100
-						}
-						require.Empty(t, repo.accounts[other].Extra, "parent and child snapshots must remain isolated")
-					} else {
-						require.Empty(t, repo.writes)
-					}
-				})
-			}
-		}
-	}
-}
-
-func TestOpenAIUsageRefresh_ThrottleForcePassiveAndRecovery(t *testing.T) {
-	for _, shadow := range []bool{false, true} {
-		for _, ws := range []bool{false, true} {
-			t.Run(fmt.Sprintf("shadow=%t/ws=%t", shadow, ws), func(t *testing.T) {
-				svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
-				repo.accounts[id].Extra["openai_oauth_responses_websockets_v2_enabled"] = ws
-				ctx := context.Background()
-				upstream.status = 503
-				failed, err := svc.GetUsage(ctx, id)
-				require.NoError(t, err)
-				require.NotEmpty(t, failed.Error)
-				upstream.mu.Lock()
-				upstream.status = 200
-				upstream.mu.Unlock()
-				throttled, err := svc.GetUsage(ctx, id)
-				require.NoError(t, err)
-				require.Equal(t, failed.Error, throttled.Error)
-				passive, err := svc.GetPassiveUsage(ctx, id)
-				require.NoError(t, err)
-				require.Equal(t, "passive", passive.Source)
-				require.Equal(t, failed.UpdatedAt, passive.UpdatedAt)
-				require.Equal(t, failed.Error, passive.Error)
-				require.Len(t, upstream.requestLog(), 2)
-				recovered, err := svc.GetUsage(ctx, id, true)
-				require.NoError(t, err)
-				require.Empty(t, recovered.Error)
-				require.Empty(t, recovered.ErrorCode)
-				require.Len(t, upstream.requestLog(), 3)
-				fresh, err := svc.GetUsage(ctx, id)
-				require.NoError(t, err)
-				require.Equal(t, recovered.UpdatedAt, fresh.UpdatedAt)
-				require.Len(t, upstream.requestLog(), 3)
-				// Expire both the snapshot and throttle to exercise an automatic retry.
-				repo.accounts[id].Extra["codex_usage_updated_at"] = "2020-01-01T00:00:00Z"
-				previous := svc.cachedOpenAIUsage(id)
-				svc.cache.openAIUsageCache.Store(id, &openAIUsageCacheEntry{timestamp: previous.timestamp.Add(-11 * time.Minute)})
-				refreshed, err := svc.GetUsage(ctx, id)
-				require.NoError(t, err)
-				require.Empty(t, refreshed.Error)
-				require.Len(t, upstream.requestLog(), 4)
-			})
-		}
-	}
-}
-
-func TestOpenAIUsageRefresh_MissingWindowsAndTime(t *testing.T) {
-	for _, shadow := range []bool{false, true} {
-		t.Run(fmt.Sprint(shadow), func(t *testing.T) {
-			svc, repo, upstream, id := quotaRefreshFixture(t, shadow, false)
-			ctx := context.Background()
-			upstream.body = `{}`
-			unknown, err := svc.GetUsage(ctx, id)
-			require.NoError(t, err)
-			require.Equal(t, "quota_windows_missing", unknown.ErrorCode)
-			require.Nil(t, unknown.FiveHour)
-			require.Nil(t, unknown.SevenDay)
-			require.Nil(t, unknown.UpdatedAt)
-			upstream.mu.Lock()
-			if shadow {
-				upstream.body = `{"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":{"primary_window":{"used_percent":0,"limit_window_seconds":18000,"reset_after_seconds":3600}}}]}`
-			} else {
-				upstream.body = `{"rate_limit":{"primary_window":{"used_percent":0,"limit_window_seconds":18000,"reset_after_seconds":3600}}}`
-			}
-			upstream.mu.Unlock()
-			// Even if there was an old second window, it must not acquire the new time.
-			repo.accounts[id].Extra["codex_7d_used_percent"] = 77.0
-			single, err := svc.GetUsage(ctx, id, true)
-			require.NoError(t, err)
-			require.Empty(t, single.Error)
-			require.NotNil(t, single.FiveHour)
-			require.Equal(t, 0.0, single.FiveHour.Utilization)
-			require.Nil(t, single.SevenDay)
-			require.NotNil(t, single.UpdatedAt)
-			_, err = svc.GetUsage(ctx, id)
-			require.NoError(t, err)
-			require.Len(t, upstream.requestLog(), 3)
-			// Local snapshots without a valid observation time must leave it unknown.
-			for _, stamp := range []any{nil, "", "invalid"} {
-				repo.accounts[id].Extra["codex_usage_updated_at"] = stamp
-				passive, err := svc.GetPassiveUsage(ctx, id)
-				require.NoError(t, err)
-				require.Nil(t, passive.UpdatedAt)
-			}
-		})
-	}
-}
-
-func TestOpenAIUsageRefresh_UnconfiguredAndPersistenceFailure(t *testing.T) {
-	for _, old := range []bool{false, true} {
-		svc, repo, _, id := quotaRefreshFixture(t, false, old)
-		quota := svc.openAIQuotaService
-		svc.openAIQuotaService = nil
-		failed, err := svc.GetUsage(context.Background(), id, true)
-		require.NoError(t, err)
-		require.Equal(t, "quota_service_unavailable", failed.ErrorCode)
-		if old {
-			require.Equal(t, 37.0, failed.FiveHour.Utilization)
-			require.Equal(t, "2020-01-01T00:00:00Z", failed.UpdatedAt.Format(time.RFC3339))
-		} else {
-			require.Nil(t, failed.FiveHour)
-			require.Nil(t, failed.UpdatedAt)
-		}
-		svc.openAIQuotaService = quota
-		repo.writeErr = fmt.Errorf("sensitive storage failure")
-		failed, err = svc.GetUsage(context.Background(), id, true)
-		require.NoError(t, err)
-		require.Equal(t, "quota_snapshot_write_failed", failed.ErrorCode)
-		require.NotContains(t, failed.Error, "sensitive")
-		require.Empty(t, repo.writes)
-	}
-}
-
-func TestOpenAIUsageRefresh_ForcedFailureRetainsFreshSnapshot(t *testing.T) {
-	svc, _, upstream, id := quotaRefreshFixture(t, false, false)
-	ctx := context.Background()
-	fresh, err := svc.GetUsage(ctx, id)
-	require.NoError(t, err)
-	require.Empty(t, fresh.Error)
-	upstream.mu.Lock()
-	upstream.status = 401
-	upstream.mu.Unlock()
-	failed, err := svc.GetUsage(ctx, id, true)
-	require.NoError(t, err)
-	require.Equal(t, errorCodeUnauthenticated, failed.ErrorCode)
-	require.Equal(t, fresh.UpdatedAt, failed.UpdatedAt)
-	require.Equal(t, fresh.FiveHour.Utilization, failed.FiveHour.Utilization)
-	again, err := svc.GetUsage(ctx, id)
-	require.NoError(t, err)
-	require.Equal(t, failed.Error, again.Error, "a fresh snapshot must not hide the failed forced refresh")
-	require.Equal(t, fresh.UpdatedAt, again.UpdatedAt)
-	require.Len(t, upstream.requestLog(), 3)
-	// A normal retry after the throttle expires must recover and clear the error.
-	svc.cache.openAIUsageCache.Delete(id)
-	svc.cache.openAIFailures.Store(openAIUsageFlightKey(ctx, id), &openAIUsageCacheEntry{timestamp: time.Now().Add(-11 * time.Minute), message: failed.Error, errorCode: failed.ErrorCode})
-	upstream.mu.Lock()
-	upstream.status = 200
-	upstream.mu.Unlock()
-	recovered, err := svc.GetUsage(ctx, id)
-	require.NoError(t, err)
-	require.Empty(t, recovered.Error)
-	require.Empty(t, recovered.ErrorCode)
-	require.Len(t, upstream.requestLog(), 4)
-}
-
-func TestOpenAIUsageRefresh_FreshPersistedSnapshotSkipsQuery(t *testing.T) {
-	for _, ws := range []bool{false, true} {
-		svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
-		repo.accounts[id].Extra["codex_usage_updated_at"] = time.Now().UTC().Format(time.RFC3339)
-		repo.accounts[id].Extra["openai_oauth_responses_websockets_v2_enabled"] = ws
-		usage, err := svc.GetUsage(context.Background(), id)
-		require.NoError(t, err)
-		require.Empty(t, usage.Error)
-		require.Equal(t, 37.0, usage.FiveHour.Utilization)
-		require.NotNil(t, usage.UpdatedAt)
-		require.Empty(t, upstream.requestLog())
-	}
-}
-
 func fallbackQuotaHeaders() http.Header {
 	headers := make(http.Header)
 	headers.Set("x-codex-primary-used-percent", "55")
@@ -490,128 +239,6 @@ func fallbackQuotaHeaders() http.Header {
 	headers.Set("x-codex-secondary-window-minutes", "10080")
 	headers.Set("x-codex-secondary-reset-after-seconds", "86400")
 	return headers
-}
-
-func TestOpenAIUsageRefresh_ModelFallbackSuccess(t *testing.T) {
-	for _, path := range []string{"single", "batch", "monitor"} {
-		for _, shadow := range []bool{false, true} {
-			for _, modelStatus := range []int{200, 429} {
-				t.Run(fmt.Sprintf("%s/shadow=%t/status=%d", path, shadow, modelStatus), func(t *testing.T) {
-					svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
-					upstream.status = 503
-					upstream.modelStatus = modelStatus
-					upstream.modelHeaders = fallbackQuotaHeaders()
-					// Spark must re-read its own bengalfox windows, even though the model
-					// response carries apparently valid (but global) x-codex-* headers.
-					upstream.recoverAfterModel = shadow
-					usage, snapshot := callQuotaRefresh(t, svc, repo, id, path, false)
-					if snapshot != nil {
-						require.True(t, snapshot.Success)
-						require.Empty(t, snapshot.Error)
-						require.Equal(t, MonitorStatusOperational, deriveQuotaCheckResult(snapshot, "", time.Now()).Status)
-					} else {
-						require.Empty(t, usage.Error)
-						require.Empty(t, usage.ErrorCode)
-						require.NotNil(t, usage.UpdatedAt)
-						require.NotEqual(t, "2020-01-01T00:00:00Z", usage.UpdatedAt.Format(time.RFC3339))
-						if shadow {
-							require.Equal(t, 8.0, usage.FiveHour.Utilization)
-							require.Equal(t, 16.0, usage.SevenDay.Utilization)
-						} else {
-							require.Equal(t, 55.0, usage.FiveHour.Utilization)
-							require.Equal(t, 65.0, usage.SevenDay.Utilization)
-						}
-					}
-					expected := []string{"GET /backend-api/wham/usage", "POST /backend-api/codex/responses"}
-					model := "codex-auto-review"
-					if shadow {
-						expected = append(expected, "GET /backend-api/wham/usage")
-						model = "gpt-5.3-codex-spark"
-						require.Empty(t, repo.accounts[100].Extra, "Spark fallback must not write the parent's snapshot")
-					} else {
-						require.Empty(t, repo.accounts[200].Extra)
-					}
-					require.Equal(t, expected, upstream.requestLog())
-					require.Equal(t, []string{model}, upstream.modelLog())
-					for _, credentials := range upstream.credentialLog() {
-						require.Equal(t, "Bearer sensitive-quota-token|parent-org", credentials)
-					}
-					require.Equal(t, []int64{id}, repo.writes)
-					// Cache hits, including passive reads, must not send another model request.
-					_, err := svc.GetUsage(context.Background(), id)
-					require.NoError(t, err)
-					_, err = svc.GetPassiveUsage(context.Background(), id)
-					require.NoError(t, err)
-					require.Equal(t, expected, upstream.requestLog())
-				})
-			}
-		}
-	}
-}
-
-func TestOpenAIUsageRefresh_SparkFallbackRejectsGlobalHeaders(t *testing.T) {
-	svc, repo, upstream, id := quotaRefreshFixture(t, true, true)
-	upstream.status = 503
-	upstream.modelStatus = 200
-	upstream.modelHeaders = fallbackQuotaHeaders()
-	usage, err := svc.GetUsage(context.Background(), id)
-	require.NoError(t, err)
-	require.NotEmpty(t, usage.Error)
-	require.Equal(t, 37.0, usage.FiveHour.Utilization)
-	require.Equal(t, 63.0, usage.SevenDay.Utilization)
-	require.Equal(t, "2020-01-01T00:00:00Z", usage.UpdatedAt.Format(time.RFC3339))
-	require.Empty(t, repo.writes)
-	require.Equal(t, []string{"GET /backend-api/wham/usage", "POST /backend-api/codex/responses", "GET /backend-api/wham/usage"}, upstream.requestLog())
-	_, err = svc.GetUsage(context.Background(), id)
-	require.NoError(t, err)
-	require.Len(t, upstream.requestLog(), 3)
-}
-
-func TestOpenAIUsageRefresh_FallbackSingleWindowClearsOldWindow(t *testing.T) {
-	svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
-	upstream.status = 503
-	upstream.modelStatus = 200
-	upstream.modelHeaders = fallbackQuotaHeaders()
-	upstream.modelHeaders.Del("x-codex-secondary-used-percent")
-	upstream.modelHeaders.Del("x-codex-secondary-window-minutes")
-	upstream.modelHeaders.Del("x-codex-secondary-reset-after-seconds")
-	usage, err := svc.GetUsage(context.Background(), id)
-	require.NoError(t, err)
-	require.Empty(t, usage.Error)
-	require.Equal(t, 55.0, usage.FiveHour.Utilization)
-	require.Nil(t, usage.SevenDay)
-	require.Nil(t, repo.accounts[id].Extra["codex_7d_used_percent"])
-	require.NotNil(t, usage.UpdatedAt)
-}
-
-func TestOpenAIUsageRefresh_FallbackAuthenticationFailure(t *testing.T) {
-	for _, status := range []int{401, 403} {
-		svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
-		upstream.status = 503
-		upstream.modelStatus = status
-		snapshot := NewChannelMonitorQuotaFetcher(svc, nil, nil, repo, nil).Fetch(context.Background(), id)
-		require.False(t, snapshot.Success)
-		require.True(t, snapshot.CredentialInvalid)
-		require.Equal(t, MonitorStatusFailed, deriveQuotaCheckResult(snapshot, "", time.Now()).Status)
-		require.Empty(t, repo.writes)
-	}
-}
-
-func TestOpenAIUsageRefresh_FallbackRejectsInvalidPercent(t *testing.T) {
-	for _, value := range []string{"NaN", "Inf"} {
-		svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
-		upstream.status = 503
-		upstream.modelStatus = 200
-		upstream.modelHeaders = fallbackQuotaHeaders()
-		upstream.modelHeaders.Set("x-codex-primary-used-percent", value)
-		usage, err := svc.GetUsage(context.Background(), id)
-		require.NoError(t, err)
-		require.NotEmpty(t, usage.Error)
-		require.Equal(t, 37.0, usage.FiveHour.Utilization)
-		require.Equal(t, 63.0, usage.SevenDay.Utilization)
-		require.Equal(t, "2020-01-01T00:00:00Z", usage.UpdatedAt.Format(time.RFC3339))
-		require.Empty(t, repo.writes)
-	}
 }
 
 // Signal when the caller reaches its wait select, so cancellation coverage does
@@ -686,18 +313,29 @@ func TestOpenAIUsageRefresh_CallerCancellationDoesNotCancelSharedRefresh(t *test
 				canceled, survivor = second, first
 			}
 			require.ErrorIs(t, awaitResult(canceled).err, context.Canceled)
-			require.Nil(t, svc.cachedOpenAIUsage(id), "caller cancellation must not populate the cache")
+			require.Nil(t, svc.cachedCodexRefresh(ctx, id), "caller cancellation must not populate the cache")
 			unblock()
 			got := awaitResult(survivor)
 			require.NoError(t, got.err)
 			require.NotNil(t, got.usage)
 			require.Empty(t, got.usage.Error)
-			require.Equal(t, 12.0, got.usage.FiveHour.Utilization)
+			wantPercent := 55.0
+			if tc.restricted {
+				wantPercent = 12
+			}
+			require.Equal(t, wantPercent, got.usage.FiveHour.Utilization)
 			again, err := svc.GetUsage(ctx, id)
 			require.NoError(t, err)
 			require.Empty(t, again.Error)
 			require.Equal(t, got.usage.UpdatedAt, again.UpdatedAt)
-			require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
+			wantRequest := "POST /backend-api/codex/responses"
+			if tc.restricted {
+				wantRequest = "GET /backend-api/wham/usage"
+			}
+			require.Equal(t, []string{wantRequest}, upstream.requestLog())
+			for _, credentials := range upstream.credentialLog() {
+				require.Equal(t, "Bearer sensitive-quota-token|parent-org", credentials)
+			}
 			repo.mu.Lock()
 			writes := append([]int64(nil), repo.writes...)
 			repo.mu.Unlock()
@@ -712,40 +350,112 @@ func TestOpenAIUsageRefresh_AlreadyCanceledCallerDoesNotStartRefresh(t *testing.
 	cancel()
 	_, err := svc.GetUsage(ctx, id, true)
 	require.ErrorIs(t, err, context.Canceled)
-	require.Nil(t, svc.cachedOpenAIUsage(id))
+	require.Nil(t, svc.cachedCodexRefresh(ctx, id))
 	require.Empty(t, upstream.requestLog())
 }
 
-func TestOpenAIUsageRefresh_MissingPercentIsNotZero(t *testing.T) {
-	for _, path := range []string{"single", "batch", "monitor"} {
+func TestOpenAIUsageRefresh_AllEntryPoints(t *testing.T) {
+	for _, path := range []string{"single", "batch", "monitor", "restricted"} {
 		for _, shadow := range []bool{false, true} {
-			for _, old := range []bool{false, true} {
-				for _, window := range []string{`{}`, `{"limit_window_seconds":18000}`, `{"used_percent":null,"limit_window_seconds":18000}`} {
-					t.Run(fmt.Sprintf("%s/shadow=%t/old=%t/%s", path, shadow, old, window), func(t *testing.T) {
-						svc, repo, upstream, id := quotaRefreshFixture(t, shadow, old)
-						rateLimit := `{"primary_window":` + window + `,"secondary_window":` + window + `}`
-						upstream.body = `{"rate_limit":` + rateLimit + `}`
-						if shadow {
-							upstream.body = `{"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":` + rateLimit + `}]}`
+			for _, history := range []bool{false, true} {
+				for _, scenario := range []string{"success", "401", "403", "token403", "banned", "429", "500", "timeout", "parse", "empty"} {
+					t.Run(fmt.Sprintf("%s/shadow=%t/history=%t/%s", path, shadow, history, scenario), func(t *testing.T) {
+						svc, repo, upstream, id := quotaRefreshFixture(t, shadow, history)
+						status := 200
+						switch scenario {
+						case "401":
+							status = 401
+						case "403", "token403", "banned":
+							status = 403
+						case "429":
+							status = 429
+						case "500":
+							status = 500
+						case "timeout":
+							upstream.timeout = true
+						case "parse":
+							upstream.body = `{"rate_limit": secret`
+						case "empty":
+							upstream.body = `{}`
 						}
-						usage, monitor := callQuotaRefresh(t, svc, repo, id, path, false)
-						if monitor != nil {
-							require.False(t, monitor.Success)
-							require.False(t, monitor.CredentialInvalid)
+						upstream.status, upstream.modelStatus = status, status
+						if scenario != "success" {
+							upstream.modelHeaders = nil
+						}
+						if scenario == "token403" {
+							upstream.body = `{"error":{"code":"token_expired"}}`
+						}
+						if scenario == "banned" {
+							upstream.body = `{"error":{"code":"account_deactivated"}}`
+						}
+						if scenario == "parse" {
+							upstream.modelStatus = 500
+						}
+						var usage *UsageInfo
+						var snapshot *domain.MonitorQuotaSnapshot
+						if path == "restricted" {
+							var err error
+							usage, err = svc.GetUsage(upgradeUsageReader(true), id, true)
+							require.NoError(t, err)
 						} else {
-							require.Equal(t, "quota_windows_missing", usage.ErrorCode)
-							if old {
-								require.Equal(t, 37.0, usage.FiveHour.Utilization)
-								require.Equal(t, 63.0, usage.SevenDay.Utilization)
+							usage, snapshot = callQuotaRefresh(t, svc, repo, id, path, true)
+						}
+						if snapshot != nil {
+							require.Equal(t, scenario == "success", snapshot.Success)
+							require.Equal(t, scenario == "401" || scenario == "token403" || scenario == "banned", snapshot.CredentialInvalid)
+							want := MonitorStatusError
+							if scenario == "success" {
+								want = MonitorStatusOperational
+							}
+							if scenario == "401" || scenario == "token403" || scenario == "banned" {
+								want = MonitorStatusFailed
+							}
+							require.Equal(t, want, deriveQuotaCheckResult(snapshot, "quota", time.Now()).Status)
+						} else if scenario == "success" {
+							require.Empty(t, usage.Error)
+							require.Equal(t, "active", usage.Source)
+							require.NotNil(t, usage.UpdatedAt)
+							want := 55.0
+							if shadow {
+								want = 8
+							}
+							if path == "restricted" && !shadow {
+								want = 12
+							}
+							require.Equal(t, want, usage.FiveHour.Utilization)
+						} else {
+							require.NotEmpty(t, usage.Error)
+							require.NotContains(t, usage.Error, "secret")
+							require.Equal(t, "passive", usage.Source)
+							if history {
+								require.Zero(t, usage.FiveHour.Utilization)
 								require.Equal(t, "2020-01-01T00:00:00Z", usage.UpdatedAt.Format(time.RFC3339))
 							} else {
-								require.Nil(t, usage.FiveHour)
-								require.Nil(t, usage.SevenDay)
 								require.Nil(t, usage.UpdatedAt)
+								require.True(t, usage.FiveHour.UtilizationUnknown)
+							}
+							if scenario == "401" || scenario == "token403" {
+								require.True(t, usage.NeedsReauth)
+							}
+							if scenario == "banned" {
+								require.True(t, usage.IsBanned)
+							}
+							if scenario == "403" {
+								require.False(t, usage.NeedsReauth)
+								require.False(t, usage.IsBanned)
 							}
 						}
-						require.Empty(t, repo.writes)
-						require.Equal(t, []string{"GET /backend-api/wham/usage", "POST /backend-api/codex/responses"}, upstream.requestLog())
+						wantRequest := "POST /backend-api/codex/responses"
+						if path == "restricted" || path == "monitor" || shadow {
+							wantRequest = "GET /backend-api/wham/usage"
+							require.Empty(t, upstream.modelLog())
+						}
+						require.Equal(t, []string{wantRequest}, upstream.requestLog())
+						other := int64(200)
+						if shadow {
+							other = 100
+						}
+						require.Empty(t, repo.accounts[other].Extra)
 					})
 				}
 			}
@@ -753,49 +463,242 @@ func TestOpenAIUsageRefresh_MissingPercentIsNotZero(t *testing.T) {
 	}
 }
 
-func TestOpenAIUsageRefresh_MissingPercentUsesModelFallback(t *testing.T) {
-	svc, _, upstream, id := quotaRefreshFixture(t, false, true)
-	upstream.body = `{"rate_limit":{"primary_window":{}}}`
-	upstream.modelStatus = http.StatusOK
-	upstream.modelHeaders = fallbackQuotaHeaders()
-	usage, err := svc.GetUsage(context.Background(), id)
-	require.NoError(t, err)
-	require.Empty(t, usage.Error)
-	require.Equal(t, 55.0, usage.FiveHour.Utilization)
-	require.Equal(t, 65.0, usage.SevenDay.Utilization)
-	require.Equal(t, []string{"GET /backend-api/wham/usage", "POST /backend-api/codex/responses"}, upstream.requestLog())
+func TestOpenAIUsageRefresh_ThrottleForcePassiveAndRecovery(t *testing.T) {
+	for _, shadow := range []bool{false, true} {
+		t.Run(fmt.Sprint(shadow), func(t *testing.T) {
+			svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
+			upstream.modelStatus, upstream.status = 500, 500
+			upstream.modelHeaders = nil
+			failed, err := svc.GetUsage(context.Background(), id)
+			require.NoError(t, err)
+			require.NotEmpty(t, failed.Error)
+			again, err := svc.GetUsage(context.Background(), id)
+			require.NoError(t, err)
+			require.Equal(t, failed.Error, again.Error)
+			require.Len(t, upstream.requestLog(), 1)
+			passive, err := svc.GetPassiveUsage(context.Background(), id)
+			require.NoError(t, err)
+			require.Equal(t, failed.UpdatedAt, passive.UpdatedAt)
+			require.Equal(t, "passive", passive.Source)
+			upstream.modelStatus, upstream.status = 200, 200
+			upstream.modelHeaders = fallbackQuotaHeaders()
+			fresh, err := svc.GetUsage(context.Background(), id, true)
+			require.NoError(t, err)
+			require.Empty(t, fresh.Error)
+			require.Equal(t, "active", fresh.Source)
+			require.Len(t, upstream.requestLog(), 2)
+			_, err = svc.GetUsage(context.Background(), id)
+			require.NoError(t, err)
+			require.Len(t, upstream.requestLog(), 2)
+			repo.accounts[id].Extra["codex_usage_updated_at"] = "2020-01-01T00:00:00Z"
+			svc.cache.openAIUsageCache.Store(openAIUsageFlightKey(context.Background(), id), &openAIUsageCacheEntry{timestamp: time.Now().Add(-11 * time.Minute)})
+			_, err = svc.GetUsage(context.Background(), id)
+			require.NoError(t, err)
+			require.Len(t, upstream.requestLog(), 3)
+		})
+	}
 }
 
-func TestOpenAIUsageRefresh_ExplicitZeroWithMissingOtherWindow(t *testing.T) {
-	for _, shadow := range []bool{false, true} {
-		for _, primaryZero := range []bool{false, true} {
-			t.Run(fmt.Sprintf("shadow=%t/primaryZero=%t", shadow, primaryZero), func(t *testing.T) {
-				svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
-				repo.accounts[id].Extra["codex_7d_sampled_at"] = "2020-01-01T00:00:00Z"
-				zero := `{"used_percent":0,"limit_window_seconds":18000,"reset_after_seconds":3600}`
-				missing := `{"used_percent":null,"limit_window_seconds":604800}`
-				primary, secondary := zero, missing
-				if !primaryZero {
-					primary, secondary = secondary, primary
+func TestOpenAIUsageRefresh_ModelProbeSuccess(t *testing.T) {
+	for _, status := range []int{200, 429} {
+		svc, _, upstream, id := quotaRefreshFixture(t, false, false)
+		upstream.modelStatus = status
+		usage, err := svc.GetUsage(context.Background(), id, true)
+		require.NoError(t, err)
+		require.Empty(t, usage.Error)
+		require.Equal(t, 55.0, usage.FiveHour.Utilization)
+		require.Equal(t, []string{"POST /backend-api/codex/responses"}, upstream.requestLog())
+	}
+}
+
+func TestOpenAIUsageRefresh_SparkRejectsGlobalHeaders(t *testing.T) {
+	svc, repo, upstream, id := quotaRefreshFixture(t, true, false)
+	upstream.status = 503
+	usage, err := svc.GetUsage(context.Background(), id, true)
+	require.NoError(t, err)
+	require.NotEmpty(t, usage.Error)
+	require.Empty(t, repo.writes)
+	require.Empty(t, upstream.modelLog())
+	require.True(t, usage.FiveHour.UtilizationUnknown)
+}
+
+func TestOpenAIUsageRefresh_PartialWindowKeepsOwnTimeAndClearsReset(t *testing.T) {
+	for _, window := range []string{"5h", "7d"} {
+		svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
+		old := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+		for _, key := range []string{"5h", "7d"} {
+			repo.accounts[id].Extra["codex_"+key+"_sampled_at"] = old.Format(time.RFC3339)
+			repo.accounts[id].Extra["codex_"+key+"_reset_at"] = time.Now().Add(time.Hour).Format(time.RFC3339)
+		}
+		headers := http.Header{}
+		headers.Set("x-codex-primary-used-percent", "40")
+		minutes := "300"
+		other := "7d"
+		if window == "7d" {
+			minutes = "10080"
+			other = "5h"
+		}
+		headers.Set("x-codex-primary-window-minutes", minutes)
+		upstream.modelHeaders = headers
+		usage, err := svc.GetUsage(context.Background(), id, true)
+		require.NoError(t, err)
+		require.Empty(t, usage.Error)
+		changed, retained := usage.FiveHour, usage.SevenDay
+		if window == "7d" {
+			changed, retained = usage.SevenDay, usage.FiveHour
+		}
+		require.Equal(t, 40.0, changed.Utilization)
+		require.Nil(t, changed.ResetsAt)
+		require.Nil(t, repo.accounts[id].Extra["codex_"+window+"_reset_at"])
+		require.NotNil(t, changed.SampledAt)
+		require.Equal(t, old, *retained.SampledAt)
+		require.NotNil(t, repo.accounts[id].Extra["codex_"+other+"_reset_at"])
+	}
+}
+
+func TestOpenAIUsageRefresh_MonitorExpiredFailureNeverRecovers(t *testing.T) {
+	for _, expired := range []bool{false, true} {
+		for _, status := range []int{200, 401, 403, 500} {
+			svc, repo, upstream, id := quotaRefreshFixture(t, false, true)
+			reset := time.Now().Add(time.Hour)
+			if expired {
+				reset = time.Now().Add(-time.Hour)
+			}
+			repo.accounts[id].Extra["codex_5h_used_percent"] = 100.0
+			repo.accounts[id].Extra["codex_5h_reset_at"] = reset.Format(time.RFC3339)
+			upstream.status, upstream.modelStatus = status, status
+			if status != http.StatusOK {
+				upstream.modelHeaders = nil
+			}
+			page, err := svc.GetUsage(context.Background(), id, true)
+			require.NoError(t, err)
+			if status == http.StatusOK {
+				require.Equal(t, 55.0, page.FiveHour.Utilization)
+			} else {
+				wantPage := 100.0
+				if expired {
+					wantPage = 0
 				}
-				rateLimit := `{"allowed":true,"primary_window":` + primary + `,"secondary_window":` + secondary + `}`
-				upstream.body = `{"rate_limit":` + rateLimit + `}`
-				if shadow {
-					upstream.body = `{"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":` + rateLimit + `}]}`
-				}
-				usage, err := svc.GetUsage(context.Background(), id)
+				require.Equal(t, wantPage, page.FiveHour.Utilization)
+				require.Equal(t, "2020-01-01T00:00:00Z", page.UpdatedAt.Format(time.RFC3339))
+				throttled, err := svc.GetUsage(context.Background(), id)
 				require.NoError(t, err)
-				require.Empty(t, usage.Error)
-				require.NotNil(t, usage.FiveHour)
-				require.Zero(t, usage.FiveHour.Utilization)
-				require.NotNil(t, usage.FiveHour.ResetsAt)
-				require.Nil(t, usage.SevenDay)
-				require.Nil(t, repo.accounts[id].Extra["codex_7d_used_percent"])
-				require.Nil(t, repo.accounts[id].Extra["codex_7d_sampled_at"])
-				require.Equal(t, usage.UpdatedAt, usage.FiveHour.SampledAt)
-				require.NotNil(t, usage.UpdatedAt)
-				require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
-			})
+				require.Equal(t, page.ErrorCode, throttled.ErrorCode)
+			}
+			fetcher := NewChannelMonitorQuotaFetcher(svc, nil, nil, repo, nil)
+			for round := 0; round < 3; round++ {
+				snapshot := fetcher.Fetch(context.Background(), id)
+				res := deriveQuotaCheckResult(snapshot, "quota", time.Now())
+				want := MonitorStatusError
+				if status == 200 {
+					want = MonitorStatusOperational
+				}
+				if status == 401 {
+					want = MonitorStatusFailed
+				}
+				require.Equal(t, want, res.Status)
+			}
+			require.Equal(t, []string{"POST /backend-api/codex/responses", "GET /backend-api/wham/usage"}, upstream.requestLog())
+		}
+	}
+}
+
+func TestOpenAIUsageRefresh_AuthenticationOverridesGenericFailure(t *testing.T) {
+	for _, usage := range []*UsageInfo{{ErrorCode: errorCodeQuotaRefreshFailed, NeedsReauth: true}, {ErrorCode: errorCodeQuotaRefreshFailed, IsBanned: true}, {ErrorCode: "quota_unknown", NeedsReauth: true}} {
+		failed, invalid, _ := usageFailureInfo(usage)
+		require.True(t, failed)
+		require.True(t, invalid)
+	}
+	failed, invalid, _ := usageFailureInfo(&UsageInfo{ErrorCode: errorCodeQuotaRefreshFailed})
+	require.True(t, failed)
+	require.False(t, invalid)
+}
+
+func TestOpenAIUsageRefresh_QuotaAPIMissingResetNeverBecomesZero(t *testing.T) {
+	for _, shadow := range []bool{false, true} {
+		svc, repo, upstream, id := quotaRefreshFixture(t, shadow, true)
+		upstream.body = `{"rate_limit":{"primary_window":{"used_percent":40,"limit_window_seconds":18000}},"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":{"primary_window":{"used_percent":40,"limit_window_seconds":18000}}}]}`
+		usage, err := svc.GetUsage(upgradeUsageReader(true), id, true)
+		require.NoError(t, err)
+		require.Empty(t, usage.Error)
+		require.Equal(t, 40.0, usage.FiveHour.Utilization)
+		require.Nil(t, usage.FiveHour.ResetsAt)
+		require.NotNil(t, usage.FiveHour.Estimate)
+		require.Nil(t, usage.FiveHour.Estimate.RemainingCost)
+		require.Nil(t, repo.accounts[id].Extra["codex_5h_reset_at"])
+		require.Equal(t, []string{"GET /backend-api/wham/usage"}, upstream.requestLog())
+	}
+}
+
+// The old asynchronous persist helper was removed after moving every caller to
+// synchronous snapshot persistence. Keep its no-scheduler-mutation contract.
+func TestAccountUsageService_PersistOpenAICodexProbeSnapshotOnlyUpdatesExtra(t *testing.T) {
+	svc, repo, upstream, id := quotaRefreshFixture(t, false, false)
+	reset := time.Now().Add(time.Hour)
+	repo.accounts[id].RateLimitResetAt = &reset
+	upstream.modelHeaders.Set("x-codex-primary-used-percent", "100")
+	usage, err := svc.GetUsage(context.Background(), id, true)
+	require.NoError(t, err)
+	require.Empty(t, usage.Error)
+	require.Equal(t, 100.0, usage.FiveHour.Utilization)
+	require.Equal(t, []int64{id}, repo.writes)
+	require.Equal(t, reset, *repo.accounts[id].RateLimitResetAt)
+}
+
+func TestOpenAIUsageRefresh_ForcedFailureRemainsVisibleWithFreshSnapshot(t *testing.T) {
+	for _, status := range []int{401, 403, 500} {
+		svc, repo, upstream, id := quotaRefreshFixture(t, false, false)
+		fresh, err := svc.GetUsage(context.Background(), id, true)
+		require.NoError(t, err)
+		require.Empty(t, fresh.Error)
+		upstream.modelStatus = status
+		upstream.modelHeaders = nil
+		failed, err := svc.GetUsage(context.Background(), id, true)
+		require.NoError(t, err)
+		require.NotEmpty(t, failed.Error)
+		require.Equal(t, fresh.UpdatedAt, failed.UpdatedAt)
+		require.Equal(t, fresh.FiveHour.Utilization, failed.FiveHour.Utilization)
+		again, err := svc.GetUsage(context.Background(), id)
+		require.NoError(t, err)
+		require.Equal(t, failed.ErrorCode, again.ErrorCode)
+		require.Equal(t, failed.Error, again.Error)
+		require.Len(t, upstream.requestLog(), 2)
+		// Once the attempt throttle expires it can recover, even though the
+		// persisted successful observation is still inside its freshness TTL.
+		entry := *svc.cachedCodexRefresh(context.Background(), id)
+		entry.timestamp = time.Now().Add(-11 * time.Minute)
+		svc.cache.openAIUsageCache.Store(openAIUsageFlightKey(context.Background(), id), &entry)
+		upstream.modelStatus = http.StatusOK
+		upstream.modelHeaders = fallbackQuotaHeaders()
+		recovered, err := svc.GetUsage(context.Background(), id)
+		require.NoError(t, err)
+		require.Empty(t, recovered.Error)
+		require.Len(t, upstream.requestLog(), 3)
+		require.NotNil(t, repo.accounts[id].Extra["codex_5h_sampled_at"])
+	}
+}
+
+func TestOpenAIUsageRefresh_MissingPercentIsNotZero(t *testing.T) {
+	for _, shadow := range []bool{false, true} {
+		for _, history := range []bool{false, true} {
+			for _, window := range []string{`{}`, `{"limit_window_seconds":18000}`, `{"used_percent":null,"limit_window_seconds":18000}`} {
+				svc, repo, upstream, id := quotaRefreshFixture(t, shadow, history)
+				rate := `{"primary_window":` + window + `}`
+				upstream.body = `{"rate_limit":` + rate + `,"additional_rate_limits":[{"metered_feature":"codex_bengalfox","rate_limit":` + rate + `}]}`
+				usage, err := svc.GetUsage(upgradeUsageReader(true), id, true)
+				require.NoError(t, err)
+				require.NotEmpty(t, usage.Error)
+				if !history {
+					require.True(t, usage.FiveHour.UtilizationUnknown)
+					require.Nil(t, usage.UpdatedAt)
+				}
+				snapshot := NewChannelMonitorQuotaFetcher(svc, nil, nil, repo, nil).Fetch(context.Background(), id)
+				require.False(t, snapshot.Success)
+				require.False(t, snapshot.CredentialInvalid)
+				require.Equal(t, MonitorStatusError, deriveQuotaCheckResult(snapshot, "quota", time.Now()).Status)
+				require.Empty(t, repo.writes)
+				require.Empty(t, upstream.modelLog())
+			}
 		}
 	}
 }

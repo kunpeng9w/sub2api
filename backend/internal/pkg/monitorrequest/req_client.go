@@ -17,6 +17,9 @@ func ReqClient(ctx context.Context, base *req.Client, route string) (*req.Client
 		return base, nil
 	}
 	client := base.Clone().SetCommonRetryCount(0)
+	if route == "" {
+		client.SetProxy(nil)
+	}
 	client.GetClient().CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	client.GetTransport().WrapRoundTripFunc(func(rt http.RoundTripper) req.HttpRoundTripFunc {
 		return func(r *http.Request) (*http.Response, error) {

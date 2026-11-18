@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/monitorrequest"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"golang.org/x/sync/singleflight"
@@ -250,13 +253,21 @@ func (f *ChannelMonitorQuotaFetcher) fetchUsage(ctx context.Context, account *Ac
 	if f.usage == nil {
 		return quotaErrorSnapshot("usage", "usage service is not configured", now)
 	}
-	usage, err := f.usage.GetUsageForAccount(ctx, account)
+	var usage *UsageInfo
+	var err error
+	if dedicated, ok := f.usage.(interface {
+		GetMonitorUsageForAccount(context.Context, *Account) (*UsageInfo, error)
+	}); ok {
+		usage, err = dedicated.GetMonitorUsageForAccount(ctx, account)
+	} else {
+		usage, err = f.usage.GetUsageForAccount(ctx, account)
+	}
 	if err != nil {
 		msg := truncateMessage(sanitizeErrorMessage(err.Error()))
 		return &domain.MonitorQuotaSnapshot{
 			Source:            "usage",
 			Success:           false,
-			CredentialInvalid: isCredentialErrorMessage(msg),
+			CredentialInvalid: isMonitorCredentialError(err),
 			Error:             msg,
 			FetchedAt:         now,
 		}
@@ -326,7 +337,7 @@ func usageQuotaTiers(usage *UsageInfo) []domain.MonitorQuotaTier {
 }
 
 func appendProgressTier(tiers *[]domain.MonitorQuotaTier, window, label string, p *UsageProgress) {
-	if p == nil {
+	if p == nil || p.UtilizationUnknown {
 		return
 	}
 	tier := domain.MonitorQuotaTier{
@@ -392,7 +403,7 @@ func (f *ChannelMonitorQuotaFetcher) fetchCNQuota(ctx context.Context, account *
 		return &domain.MonitorQuotaSnapshot{
 			Source:            "cn_quota",
 			Success:           false,
-			CredentialInvalid: isCredentialErrorMessage(msg),
+			CredentialInvalid: isMonitorCredentialError(err),
 			Error:             msg,
 			FetchedAt:         now,
 		}
@@ -437,7 +448,7 @@ func (f *ChannelMonitorQuotaFetcher) fetchCNBalance(ctx context.Context, account
 		return &domain.MonitorQuotaSnapshot{
 			Source:            "cn_balance",
 			Success:           false,
-			CredentialInvalid: isCredentialErrorMessage(msg),
+			CredentialInvalid: isMonitorCredentialError(err),
 			Error:             msg,
 			FetchedAt:         now,
 		}
@@ -488,12 +499,12 @@ func quotaErrorSnapshot(source, message string, now time.Time) *domain.MonitorQu
 // （海外 GetUsage 的错误没有结构化状态码，只能看文本）。
 func isCredentialErrorMessage(msg string) bool {
 	msg = strings.ToLower(msg)
-	return strings.Contains(msg, "401") ||
-		strings.Contains(msg, "403") ||
+	return strings.Contains(msg, "http 401") ||
+		strings.Contains(msg, "status 401") ||
+		strings.Contains(msg, "returned 401") ||
 		strings.Contains(msg, "unauthorized") ||
-		strings.Contains(msg, "forbidden") ||
 		strings.Contains(msg, "invalid_api_key") ||
-		strings.Contains(msg, "authentication")
+		strings.Contains(msg, "authentication failed")
 }
 
 // usageFailureInfo 识别 GetUsage 经「值通道」返回的失败：antigravity/grok
@@ -507,25 +518,37 @@ func usageFailureInfo(usage *UsageInfo) (failed, credentialInvalid bool, msg str
 	if usage == nil {
 		return false, false, ""
 	}
-	if usage.ErrorCode == "quota_unknown" {
+	credentialInvalid = usage.NeedsReauth || usage.IsBanned || usage.IsForbidden || usage.ErrorCode == errorCodeUnauthenticated || usage.ErrorCode == errorCodeForbidden || usage.ErrorCode == "account_banned"
+	if !credentialInvalid && usage.ErrorCode == "quota_unknown" {
 		return false, false, ""
 	}
-	failed = usage.Error != "" || usage.NeedsReauth || usage.IsBanned ||
-		usage.IsForbidden || usage.ErrorCode != ""
+	failed = credentialInvalid || usage.Error != "" || usage.ErrorCode != ""
 	if !failed {
 		return false, false, ""
 	}
-	credentialInvalid = usage.NeedsReauth || usage.IsBanned || usage.IsForbidden ||
-		usage.ErrorCode == errorCodeUnauthenticated || usage.ErrorCode == errorCodeForbidden
-	msg = firstNonEmpty(usage.Error, usage.ForbiddenReason, usage.ErrorCode, "usage fetch failed")
-	return failed, credentialInvalid, msg
+	return true, credentialInvalid, firstNonEmpty(usage.Error, usage.ForbiddenReason, usage.ErrorCode, "usage fetch failed")
+}
+
+func isMonitorCredentialError(err error) bool {
+	if infraerrors.Code(err) == http.StatusUnauthorized || (infraerrors.Reason(err) == "OPENAI_CREDENTIAL_INVALID" || infraerrors.Reason(err) == "OPENAI_ACCOUNT_BANNED") {
+		return true
+	}
+	// Typed upstream/network errors already carry their classification. Their
+	// text may contain arbitrary URL ports (e.g. 40123), not an HTTP status.
+	var appError *infraerrors.ApplicationError
+	if errors.As(err, &appError) {
+		return false
+	}
+	return isCredentialErrorMessage(err.Error())
 }
 
 // deriveQuotaCheckResult 把配额快照推导为检测状态（复用既有 status 枚举，
 // 时间线/可用率机制自动生效）：
 //   - 查询成功且无告警        → operational
-//   - 任一窗口使用率 >= 阈值或余额低于阈值/不可用 → degraded
-//   - 账号未关联（配置问题）    → degraded
+//   - 全局 5h/7d 窗口耗尽 → failed
+//   - 全局 5h/7d 窗口接近额度上限 → degraded
+//   - 缺少全局 5h/7d 窗口 → error（展示为未知）
+//   - 账号未关联或无法查询 → error
 //   - 凭据失效（401/403）     → failed
 //   - 网络/解析等其他错误      → error
 func deriveQuotaCheckResult(snapshot *domain.MonitorQuotaSnapshot, model string, checkedAt time.Time) *CheckResult {
@@ -540,40 +563,11 @@ func deriveQuotaCheckResult(snapshot *domain.MonitorQuotaSnapshot, model string,
 	case !snapshot.Success && snapshot.CredentialInvalid:
 		res.Status = MonitorStatusFailed
 		res.Message = snapshot.Error
-	case !snapshot.Success && strings.Contains(snapshot.Error, "linked account not found"):
-		res.Status = MonitorStatusDegraded
-		res.Message = snapshot.Error
 	case !snapshot.Success:
 		res.Status = MonitorStatusError
 		res.Message = snapshot.Error
 	default:
-		if hint := quotaDegradedHint(snapshot); hint != "" {
-			res.Status = MonitorStatusDegraded
-			res.Message = hint
-		} else {
-			res.Status = MonitorStatusOperational
-		}
+		res.Status, res.Message = monitorQuotaWindowStatus(snapshot)
 	}
 	return res
-}
-
-// quotaDegradedHint 生成 degraded 的 message（指出触发告警的窗口/余额）；
-// 空串表示无告警。
-func quotaDegradedHint(snapshot *domain.MonitorQuotaSnapshot) string {
-	for _, tier := range snapshot.Tiers {
-		if tier.UsedPercent >= monitorQuotaDegradedUsedPercent {
-			name := tier.Window
-			if tier.Label != "" {
-				name = tier.Label + "/" + tier.Window
-			}
-			return fmt.Sprintf("quota high: %s at %s%%", name, strconv.FormatFloat(tier.UsedPercent, 'f', 1, 64))
-		}
-	}
-	if snapshot.BalanceLow {
-		if snapshot.Balance != nil {
-			return fmt.Sprintf("balance low: %s %s", strconv.FormatFloat(*snapshot.Balance, 'f', -1, 64), firstNonEmpty(snapshot.Currency, "?"))
-		}
-		return fmt.Sprintf("balance low (%s)", firstNonEmpty(snapshot.Currency, "?"))
-	}
-	return ""
 }

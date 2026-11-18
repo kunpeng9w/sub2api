@@ -105,6 +105,10 @@ const (
 	MonitorStatusFailed      = "failed"
 	MonitorStatusError       = "error"
 
+	// 展示状态不写入历史表。
+	MonitorStatusPaused  = "paused"
+	MonitorStatusUnknown = "unknown"
+
 	// monitorAvailability7Days / 15 / 30 用于聚合查询窗口。
 	monitorAvailability7Days  = 7
 	monitorAvailability15Days = 15
