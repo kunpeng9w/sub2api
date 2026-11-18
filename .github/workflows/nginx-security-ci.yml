@@ -1,0 +1,28 @@
+name: Nginx login rate limit verification
+
+on:
+  push:
+    paths:
+      - 'ops/config/nginx/sub2api.conf'
+      - 'ops/changes/20261118-nginx-login-limit/**'
+      - '.github/workflows/nginx-security-ci.yml'
+  pull_request:
+    paths:
+      - 'ops/config/nginx/sub2api.conf'
+      - 'ops/changes/20261118-nginx-login-limit/**'
+      - '.github/workflows/nginx-security-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nginx-login-limit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Nginx for isolated verification
+        run: sudo apt-get update && sudo apt-get install -y nginx
+      - name: Verify syntax, login throttling, client identity and other routes
+        run: python3 ops/changes/20261118-nginx-login-limit/verify.py
