@@ -422,3 +422,47 @@ func strictEgressHTTPUpstream(t *testing.T, cfg *config.Config, accounts service
 	s.audit = service.NewEgressAuditor("", nil)
 	return s
 }
+
+func TestStrictEgressClaudeUsageUsesBoundProxyOrManagedDefault(t *testing.T) {
+	var bound, direct, backup atomic.Int64
+	reply := func(counter *atomic.Int64) *httptest.Server {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			counter.Add(1)
+			_, _ = io.WriteString(w, `{"five_hour":{"utilization":25}}`)
+		}))
+		t.Cleanup(server.Close)
+		return server
+	}
+	selected, fallback, origin := reply(&bound), reply(&backup), reply(&direct)
+	proxy := strictEgressBoundProxy(t, selected.URL)
+	backupID := int64(72)
+	proxy.FallbackMode = service.FallbackModeProxy
+	proxy.BackupProxyID = &backupID
+	account := &service.Account{ID: 4, Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, ProxyID: &proxy.ID, Proxy: proxy}
+	proxies := &strictEgressProxies{value: proxy}
+	cfg := &config.Config{Gateway: config.GatewayConfig{ClaudeEgress: config.ClaudeEgressConfig{Enabled: true, ProxyURL: fallback.URL}}}
+	httpUpstream := strictEgressHTTPUpstream(t, cfg, &strictEgressAccounts{value: account}, proxies)
+	fetcher := &claudeUsageService{usageURL: origin.URL, httpUpstream: httpUpstream}
+	options := &service.ClaudeUsageFetchOptions{AccountID: account.ID, ProxyURL: selected.URL, AccessToken: "fixture"}
+	usage, err := fetcher.FetchUsageWithOptions(t.Context(), options)
+	require.NoError(t, err)
+	require.Equal(t, 25.0, usage.FiveHour.Utilization)
+	require.EqualValues(t, 1, bound.Load())
+
+	proxies.err = errors.New("bound proxy no longer available")
+	_, err = fetcher.FetchUsageWithOptions(t.Context(), options)
+	require.Error(t, err)
+	require.EqualValues(t, 71, *account.ProxyID)
+	require.EqualValues(t, 1, bound.Load())
+	require.Zero(t, direct.Load())
+	require.Zero(t, backup.Load())
+
+	account.ProxyID, account.Proxy = nil, nil
+	options.ProxyURL = ""
+	fetcher.usageURL = "http://api.anthropic.com/api/oauth/usage"
+	usage, err = fetcher.FetchUsageWithOptions(t.Context(), options)
+	require.NoError(t, err)
+	require.Equal(t, 25.0, usage.FiveHour.Utilization)
+	require.EqualValues(t, 1, backup.Load())
+	require.Zero(t, direct.Load())
+}

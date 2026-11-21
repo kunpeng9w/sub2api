@@ -103,8 +103,12 @@ func TestQuotaEstimateClaudeUnusedObservation(t *testing.T) {
 		var raw ClaudeUsageResponse
 		require.NoError(t, json.Unmarshal([]byte(tc.body), &raw))
 		svc := &AccountUsageService{}
-		usage := svc.buildUsageInfo(&raw, &sample)
-		require.Equal(t, tc.inactive, usage.FiveHour.WindowInactive, tc.body)
+		usage := svc.buildMonitorClaudeUsage(&raw, sample)
+		if tc.inactive {
+			require.True(t, usage.FiveHour.WindowInactive, tc.body)
+		} else {
+			require.Nil(t, usage.FiveHour, tc.body)
+		}
 	}
 }
 func TestQuotaEstimateHistoryNewerObservationReplaces(t *testing.T) {
@@ -149,13 +153,13 @@ func TestQuotaEstimateClaudeNewGatewaySampleSupersedesInactive(t *testing.T) {
 		"passive_usage_5h_sampled_at":          sample.UTC().Format(time.RFC3339Nano),
 	}}
 	svc := &AccountUsageService{cache: NewUsageCache(), usageLogRepo: &usageBatchLogRepoStub{}}
-	usage, err := svc.getPassiveUsageForAccount(context.Background(), account)
+	usage, err := svc.getMonitorPassiveClaudeUsage(context.Background(), account)
 	require.NoError(t, err)
 	require.True(t, usage.FiveHour.WindowInactive)
 	require.Nil(t, usage.FiveHour.ResetsAt)
 	account.Extra["session_window_utilization"] = 0.25
 	account.Extra["passive_usage_5h_sampled_at"] = sample.Add(time.Second).UTC().Format(time.RFC3339Nano)
-	usage, err = svc.getPassiveUsageForAccount(context.Background(), account)
+	usage, err = svc.getMonitorPassiveClaudeUsage(context.Background(), account)
 	require.NoError(t, err)
 	require.False(t, usage.FiveHour.WindowInactive)
 	require.Equal(t, 25.0, usage.FiveHour.Utilization)

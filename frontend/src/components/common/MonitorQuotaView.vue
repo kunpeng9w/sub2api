@@ -18,9 +18,11 @@
           label-width="auto"
           :color="row.color"
           :utilization="row.tier.used_percent"
-          :resets-at="row.tier.reset_at ?? null"
-          :window-inactive="row.tier.window_inactive"
+          :resets-at="row.tier.window_inactive ? null : row.tier.reset_at ?? null"
         />
+        <div v-if="row.tier.window_inactive" class="text-right text-[10px] text-gray-500 dark:text-gray-400">
+          {{ t('usage.windowInactive') }}
+        </div>
       </div>
     </div>
 

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import AccountUsageCell from '../AccountUsageCell.vue'
-import UsageProgressBar from '../UsageProgressBar.vue'
 import type { Account, AccountUsageInfo } from '@/types'
 
 const { getUsage } = vi.hoisted(() => ({
@@ -21,7 +20,7 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
-      t: (key: string, params?: Record<string, unknown>) => params?.time ? `${key} ${params.time}` : key
+      t: (key: string) => key
     })
   }
 })
@@ -114,24 +113,6 @@ const cnUsageCellStubs = {
 }
 
 describe('AccountUsageCell', () => {
-  it('OpenAI 未激活状态传递到两个用量窗口', async () => {
-    getUsage.mockResolvedValue({
-      five_hour: { utilization: 0, resets_at: null, remaining_seconds: 0, window_inactive: true },
-      seven_day: { utilization: 0, resets_at: null, remaining_seconds: 0, window_inactive: true }
-    })
-    const wrapper = mount(AccountUsageCell, {
-      props: { account: makeAccount({ id: 2004, platform: 'openai', type: 'oauth' }) },
-      global: { stubs: { OpenAIQuotaResetCell: true } }
-    })
-    await flushPromises()
-    const bars = wrapper.findAllComponents(UsageProgressBar)
-    expect(bars).toHaveLength(2)
-    expect(bars.every((bar) => bar.props('windowInactive') === true)).toBe(true)
-    expect(wrapper.text().match(/usage.windowInactive/g)).toHaveLength(2)
-    expect(wrapper.text()).not.toContain('usage.resetNow')
-    wrapper.unmount()
-  })
-
   it.each([
     ['anthropic', 'oauth'], ['anthropic', 'setup-token'], ['gemini', 'oauth'], ['gemini', 'apikey']
   ] as const)('refreshes %s %s snapshots without forcing upstream reads and reuses the new cache', async (platform, type) => {
@@ -693,7 +674,7 @@ describe('AccountUsageCell', () => {
       source: 'passive',
       updated_at: observedAt,
       five_hour: null,
-      seven_day: { utilization: 100, sampled_at: observedAt, resets_at: null, remaining_seconds: 0 },
+      seven_day: { utilization: 100, resets_at: null, remaining_seconds: 0 },
       seven_day_sonnet: null
     })
     const stubs = {
@@ -738,7 +719,7 @@ describe('AccountUsageCell', () => {
       const refreshedAt = '2026-11-12T15:08:56Z'
       getUsage.mockResolvedValueOnce({
         ...snapshot(), source: 'active', updated_at: refreshedAt,
-        seven_day: { utilization: 0, sampled_at: refreshedAt, resets_at: null, remaining_seconds: 0 }
+        seven_day: { utilization: 0, resets_at: null, remaining_seconds: 0 }
       })
       await wrapper.get('button').trigger('click')
       await flushPromises()
@@ -946,23 +927,23 @@ describe('AccountUsageCell', () => {
   })
 
   it.each([
-    { id: 98510, utilization: 0, cost: 12 },
-    { id: 98511, utilization: -1, cost: 12 },
-    { id: 98512, utilization: Number.NaN, cost: 12 },
-    { id: 98513, utilization: Number.POSITIVE_INFINITY, cost: 12 },
-    { id: 98514, utilization: 40, cost: 0 },
-    { id: 98515, utilization: 40, cost: -1 },
-    { id: 98516, utilization: 40, cost: Number.POSITIVE_INFINITY },
-    { id: 98517, utilization: 40, cost: undefined },
-    { id: 98518, utilization: undefined, cost: 12 }
-  ])('Claude 缺少有效费用或使用率时隐藏估算 (%o)', async ({ id, utilization, cost }) => {
+    { utilization: 0, cost: 12 },
+    { utilization: -1, cost: 12 },
+    { utilization: Number.NaN, cost: 12 },
+    { utilization: Number.POSITIVE_INFINITY, cost: 12 },
+    { utilization: 40, cost: 0 },
+    { utilization: 40, cost: -1 },
+    { utilization: 40, cost: Number.POSITIVE_INFINITY },
+    { utilization: 40, cost: undefined },
+    { utilization: undefined, cost: 12 }
+  ])('Claude 缺少有效费用或使用率时隐藏估算 (%o)', async ({ utilization, cost }) => {
     const window = {
       utilization, resets_at: null, remaining_seconds: 0,
       window_stats: { requests: 1, tokens: 100, cost }
     }
     getUsage.mockResolvedValue({ five_hour: window, seven_day: window })
     const wrapper = mount(AccountUsageCell, {
-      props: { account: makeAccount({ id, platform: 'anthropic', type: 'setup-token' }) },
+      props: { account: makeAccount({ id: 6763, platform: 'anthropic', type: 'setup-token' }) },
       global: {
         stubs: {
           UsageProgressBar: {
@@ -991,8 +972,7 @@ describe('AccountUsageCell', () => {
         utilization: 40,
         resets_at: null,
         remaining_seconds: 0,
-        window_stats: { requests: 2, tokens: 200, cost: 12 },
-        estimate: { total_cost: 99, remaining_cost: 59.4 }
+        window_stats: { requests: 2, tokens: 200, cost: 12 }
       }
     })
 
@@ -1023,7 +1003,7 @@ describe('AccountUsageCell', () => {
     { id: 6803, utilization: Number.NaN, cost: 12 },
     { id: 6804, utilization: 40, cost: 0 },
     { id: 6805, utilization: 40, cost: Number.POSITIVE_INFINITY }
-  ])('窗口费用或使用率无效时不显示预计总费用 (%o)', async ({ id, utilization, cost }) => {
+  ])('OpenAI OAuth 7d 输入无效时不显示预计总费用 (%o)', async ({ id, utilization, cost }) => {
     getUsage.mockResolvedValue({
       seven_day: {
         utilization,
@@ -2338,67 +2318,4 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).not.toContain('7d S')
     expect(wrapper.text()).not.toContain('7d F')
   })
-  it.each([false, true])('OpenAI 刷新失败保留旧配额与实际时间（批量：%s）', async (managed) => {
-    const timestamp = '2026-01-02T03:04:05Z'
-    const historical = {
-      five_hour: { utilization: 37, sampled_at: timestamp, resets_at: timestamp, remaining_seconds: 0 },
-      seven_day: { utilization: 63, sampled_at: timestamp, resets_at: timestamp, remaining_seconds: 0 },
-      seven_day_sonnet: null,
-      updated_at: timestamp
-    }
-    getUsage.mockResolvedValue(historical)
-    const requestBatchedUsage = vi.fn()
-    const wrapper = mount(AccountUsageCell, {
-      props: {
-        account: makeAccount({ id: managed ? 9501 : 9500, platform: 'openai', type: 'oauth' }),
-        ...(managed ? { requestBatchedUsage, batchedUsage: historical } : {})
-      },
-      global: { stubs: {
-        UsageProgressBar: { props: ['label', 'utilization'], template: '<div>{{ label }}|{{ utilization }}</div>' },
-        OpenAIQuotaResetCell: { template: '<div><slot name="pre-actions" /></div>' }
-      } }
-    })
-    await flushPromises()
-    const failed = { ...historical, error: 'OpenAI quota query failed', error_code: 'quota_query_failed' }
-    if (managed) {
-      await wrapper.setProps({ batchedUsage: failed })
-    } else {
-      getUsage.mockResolvedValue(failed)
-      await wrapper.get('button').trigger('click')
-      await flushPromises()
-      expect(getUsage).toHaveBeenLastCalledWith(9500, 'active', true)
-    }
-    expect(wrapper.text()).toContain('5h|37')
-    expect(wrapper.text()).toContain('7d|63')
-    expect(wrapper.get('[data-test="openai-usage-error"]').text()).toContain('quotaRefreshFailedCached')
-    expect(wrapper.get('[data-test="openai-observed-5h"] time').attributes('datetime')).toBe(timestamp)
-    if (managed) {
-      await wrapper.setProps({ batchedUsage: historical, batchedUsageError: null })
-    } else {
-      getUsage.mockResolvedValue(historical)
-      await wrapper.get('button').trigger('click')
-      await flushPromises()
-    }
-    expect(wrapper.find('[data-test="openai-usage-error"]').exists()).toBe(false)
-    wrapper.unmount()
-  })
-
-  it.each([false, true])('OpenAI 无快照时失败显示未知，不显示虚假零用量（批量：%s）', async (managed) => {
-    const failed = { five_hour: null, seven_day: null, seven_day_sonnet: null, updated_at: null, error: 'OpenAI quota query returned no usable windows', error_code: 'quota_windows_missing' }
-    getUsage.mockResolvedValue(failed)
-    const wrapper = mount(AccountUsageCell, {
-      props: {
-        account: makeAccount({ id: managed ? 9503 : 9502, platform: 'openai', type: 'oauth' }),
-        ...(managed ? { requestBatchedUsage: vi.fn(), batchedUsage: failed } : {})
-      },
-      global: { stubs: { UsageProgressBar: true, OpenAIQuotaResetCell: true } }
-    })
-    await flushPromises()
-    expect(wrapper.get('[data-test="openai-usage-error"]').text()).toContain('quotaRefreshFailedUnknown')
-    expect(wrapper.text()).toContain('quotaUnknown')
-    expect(wrapper.findComponent({ name: 'UsageProgressBar' }).exists()).toBe(false)
-    expect(wrapper.find('[data-test="openai-snapshot-time"]').exists()).toBe(false)
-    wrapper.unmount()
-  })
-
 })

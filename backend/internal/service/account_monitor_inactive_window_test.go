@@ -11,42 +11,26 @@ import (
 )
 
 func TestBuildCodexUsageProgressInactiveWindowRepeatedQueries(t *testing.T) {
-	for _, shadow := range []bool{false, true} {
-		name := "codex"
-		if shadow {
-			name = "spark"
+	for _, minute := range []int{34, 45} {
+		sampledAt := time.Date(2026, 11, 6, 8, minute, 0, 0, time.UTC)
+		zero := 0.0
+		reset5, reset7 := 18000, 604800
+		updates := buildCodexUsageExtraUpdates(&OpenAICodexUsageSnapshot{
+			PrimaryUsedPercent: &zero, PrimaryWindowMinutes: new(300), PrimaryResetAfterSeconds: &reset5,
+			SecondaryUsedPercent: &zero, SecondaryWindowMinutes: new(10080), SecondaryResetAfterSeconds: &reset7,
+		}, sampledAt)
+		for _, window := range []string{"5h", "7d"} {
+			// Legacy snapshots already contain a calculated deadline. The
+			// display must suppress it even when read well after sampling.
+			require.NotEmpty(t, updates["codex_"+window+"_reset_at"])
+			progress := buildObservedCodexUsageProgress(updates, window, sampledAt.Add(10*time.Minute))
+			require.NotNil(t, progress)
+			require.True(t, progress.WindowInactive)
+			require.Zero(t, progress.Utilization)
+			require.Nil(t, progress.ResetsAt)
+			require.Zero(t, progress.RemainingSeconds)
+			require.Equal(t, sampledAt, *progress.SampledAt)
 		}
-		t.Run(name, func(t *testing.T) {
-			for _, minute := range []int{34, 45} {
-				sampledAt := time.Date(2026, 11, 6, 8, minute, 0, 0, time.UTC)
-				limits := &OpenAIRateLimit{
-					PrimaryWindow: &OpenAIRateLimitWindow{
-						UsedPercent: 0, LimitWindowSeconds: 18000, ResetAfterSeconds: 18000,
-					},
-					SecondaryWindow: &OpenAIRateLimitWindow{
-						UsedPercent: 0, LimitWindowSeconds: 604800, ResetAfterSeconds: 604800,
-					},
-				}
-				usage := &OpenAIQuotaUsage{RateLimit: limits}
-				updates := buildOpenAIAutoResetUsageUpdates(usage, sampledAt)
-				if shadow {
-					usage.AdditionalRateLimits = []OpenAIAdditionalRateLimit{{MeteredFeature: "codex_bengalfox", RateLimit: limits}}
-					updates = buildCodexSparkWindowExtraUpdates(usage, sampledAt)
-				}
-				for _, window := range []string{"5h", "7d"} {
-					// Legacy snapshots already contain a calculated deadline. The
-					// display must suppress it even when read well after sampling.
-					require.NotEmpty(t, updates["codex_"+window+"_reset_at"])
-					progress := buildCodexUsageProgressFromExtra(updates, window, sampledAt.Add(10*time.Minute))
-					require.NotNil(t, progress)
-					require.True(t, progress.WindowInactive)
-					require.Zero(t, progress.Utilization)
-					require.Nil(t, progress.ResetsAt)
-					require.Zero(t, progress.RemainingSeconds)
-					require.Equal(t, sampledAt, *progress.SampledAt)
-				}
-			}
-		})
 	}
 }
 
@@ -68,7 +52,7 @@ func TestBuildCodexUsageProgressInactiveWindowBoundaries(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resetAt := now.Add(time.Hour)
-			progress := buildCodexUsageProgressFromExtra(map[string]any{
+			progress := buildObservedCodexUsageProgress(map[string]any{
 				"codex_5h_sample_complete":     true,
 				"codex_5h_used_percent":        tc.used,
 				"codex_5h_reset_after_seconds": tc.resetAfter,
@@ -118,7 +102,7 @@ func TestBuildCodexUsageProgressPartialObservationInvalidatesInactive(t *testing
 				}
 				require.NotContains(t, extra, "codex_"+other+"_sample_complete")
 				extra[QuotaEstimateSnapshotPrefix+window] = QuotaEstimateSnapshot{TotalCost: 30, SampledAt: sample.Add(-time.Hour)}
-				require.True(t, buildCodexUsageProgressFromExtra(extra, window, sample).WindowInactive)
+				require.True(t, buildObservedCodexUsageProgress(extra, window, sample).WindowInactive)
 				partial := &OpenAICodexUsageSnapshot{PrimaryWindowMinutes: &minutes}
 				switch field {
 				case "used":
@@ -137,7 +121,7 @@ func TestBuildCodexUsageProgressPartialObservationInvalidatesInactive(t *testing
 				} else {
 					require.Equal(t, reset, extra[key+"_reset_after_seconds"], "metadata-only updates retain the prior deadline")
 				}
-				p := buildCodexUsageProgressFromExtra(extra, window, time.Now())
+				p := buildObservedCodexUsageProgress(extra, window, time.Now())
 				require.False(t, p.WindowInactive)
 				require.Nil(t, p.ResetsAt)
 				usage := &UsageInfo{}
@@ -154,10 +138,10 @@ func TestBuildCodexUsageProgressPartialObservationInvalidatesInactive(t *testing
 					require.Nil(t, result.SevenDay.Estimate.TotalCost)
 				}
 				merge(full, sample.Add(2*time.Second))
-				require.True(t, buildCodexUsageProgressFromExtra(extra, window, time.Now()).WindowInactive)
+				require.True(t, buildObservedCodexUsageProgress(extra, window, time.Now()).WindowInactive)
 				reset--
 				merge(full, sample.Add(3*time.Second))
-				active := buildCodexUsageProgressFromExtra(extra, window, time.Now())
+				active := buildObservedCodexUsageProgress(extra, window, time.Now())
 				require.False(t, active.WindowInactive)
 				require.NotNil(t, active.ResetsAt)
 			})
@@ -172,5 +156,5 @@ func TestBuildCodexUsageProgressLegacyObservationDoesNotProveInactive(t *testing
 		"codex_5h_reset_after_seconds": 18000,
 		"codex_5h_sampled_at":          now.Format(time.RFC3339Nano),
 	}
-	require.False(t, buildCodexUsageProgressFromExtra(extra, "5h", now).WindowInactive)
+	require.False(t, buildObservedCodexUsageProgress(extra, "5h", now).WindowInactive)
 }

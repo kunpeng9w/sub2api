@@ -152,6 +152,9 @@ jobs:
         run: |
           set -o pipefail
           pnpm --dir frontend exec vitest run src/components/keys/__tests__/UseKeyModal.spec.ts 2>&1 | tee "$RUNNER_TEMP/template-tests.log"
+      - name: Verify locale compilation and collision checks
+        if: ${{ !inputs.build_only }}
+        run: pnpm --dir frontend exec vitest run src/i18n/__tests__/{localesMessageCompile,localesNoKeyCollision,runtimeSecurity}.spec.ts
       - name: Lint extracted client configuration helper
         if: ${{ !inputs.build_only }}
         run: pnpm --dir frontend exec eslint src/custom/client-config/claudeCode.ts

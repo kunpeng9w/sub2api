@@ -74,7 +74,6 @@ const props = withDefaults(
     utilization: number // Percentage (0-100+)
     utilizationUnknown?: boolean
     resetsAt?: string | null
-    windowInactive?: boolean
     color: 'indigo' | 'emerald' | 'purple' | 'amber'
     windowStats?: WindowStats | null
     estimatedTotalCost?: number | null
@@ -192,14 +191,12 @@ const displayPercent = computed(() => {
 
 const shouldShowResetTime = computed(() => {
   if (props.utilizationUnknown) return false
-  if (props.windowInactive) return true
   if (props.resetsAt) return true
   return Boolean(props.showNowWhenIdle && props.utilization <= 0)
 })
 
 // Format reset time
 const formatResetTime = computed(() => {
-  if (props.windowInactive) return t('usage.windowInactive')
   if (!props.resetsAt) {
     // Idle rolling window without a known reset time: treat as immediately available.
     return props.showNowWhenIdle && props.utilization <= 0 ? t('usage.resetNow') : '-'

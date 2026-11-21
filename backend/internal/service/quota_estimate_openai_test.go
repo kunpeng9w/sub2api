@@ -46,7 +46,7 @@ func TestQuotaEstimateOpenAIPartialObservationKeepsOtherWindowCutoff(t *testing.
 			mergeAccountExtra(account, buildCodexUsageExtraUpdates(partial, now))
 			repo := &estimateWindowRepo{}
 			svc := &AccountUsageService{usageLogRepo: repo}
-			usage := svc.attachQuotaEstimates(context.Background(), account, openAIUsageFromExtra(account.Extra, now))
+			usage := svc.attachQuotaEstimates(context.Background(), account, monitorOpenAIUsageFromExtra(account.Extra, now))
 			require.Equal(t, newer, *usage.UpdatedAt)
 			require.Len(t, repo.queries, 2)
 			for i, window := range []string{"5h", "7d"} {
@@ -82,7 +82,7 @@ func TestQuotaEstimateOpenAIUnknownWindowSampleDoesNotUseAccountTimestamp(t *tes
 			}}
 			repo := &estimateWindowRepo{}
 			svc := &AccountUsageService{usageLogRepo: repo}
-			usage := svc.attachQuotaEstimates(context.Background(), account, openAIUsageFromExtra(account.Extra, now))
+			usage := svc.attachQuotaEstimates(context.Background(), account, monitorOpenAIUsageFromExtra(account.Extra, now))
 			require.Equal(t, 20.0, usage.FiveHour.Utilization)
 			require.Equal(t, 30.0, usage.SevenDay.Utilization)
 			for _, progress := range []*UsageProgress{usage.FiveHour, usage.SevenDay} {
@@ -114,7 +114,7 @@ func TestQuotaEstimateOpenAIMetadataDoesNotResamplePercentage(t *testing.T) {
 		"codex_5h_reset_after_seconds": 7200,
 	}}
 	mergeAccountExtra(account, updates)
-	usage := openAIUsageFromExtra(account.Extra, now)
+	usage := monitorOpenAIUsageFromExtra(account.Extra, now)
 	require.Equal(t, older, *usage.FiveHour.SampledAt)
 	require.Equal(t, older.Add(2*time.Hour), *usage.FiveHour.ResetsAt, "another observation must not extend a relative reset")
 }
@@ -124,19 +124,22 @@ func TestQuotaEstimateOpenAIActiveAndSparkQueriesStampOnlyReturnedWindow(t *test
 		for _, minutes := range []int{300, 10080} {
 			now := time.Now().UTC().Truncate(time.Second)
 			account := &Account{ID: 1, Platform: PlatformOpenAI}
-			limit := &OpenAIRateLimit{PrimaryWindow: &OpenAIRateLimitWindow{
-				UsedPercent: 40, LimitWindowSeconds: int64(minutes * 60), ResetAfterSeconds: 3600,
+			used, reset := 40.0, 3600
+			limit := &monitorOpenAIRateLimit{PrimaryWindow: &monitorOpenAIRateLimitWindow{
+				UsedPercent: &used, LimitWindowSeconds: minutes * 60, ResetAfterSeconds: &reset,
 			}}
-			quota := &OpenAIQuotaUsage{RateLimit: limit, FetchedAt: now.Unix()}
+			quota := &monitorOpenAIQuotaResponse{RateLimit: limit}
 			if shadow {
 				parent := int64(2)
 				account.ParentAccountID = &parent
 				account.QuotaDimension = QuotaDimensionSpark
-				quota.AdditionalRateLimits = []OpenAIAdditionalRateLimit{{MeteredFeature: "codex_bengalfox", RateLimit: limit}}
+				quota.AdditionalRateLimits = append(quota.AdditionalRateLimits, struct {
+					MeteredFeature string                  `json:"metered_feature"`
+					RateLimit      *monitorOpenAIRateLimit `json:"rate_limit"`
+				}{"codex_bengalfox", limit})
 				quota.RateLimit = nil
 			}
-			updates := openAIQuotaDisplayUpdates(account, quota)
-			usage := openAIUsageFromExtra(updates, now)
+			usage := buildMonitorOpenAIUsage(account, quota, now)
 			progress, absent := usage.FiveHour, usage.SevenDay
 			if minutes == 10080 {
 				progress, absent = usage.SevenDay, usage.FiveHour
