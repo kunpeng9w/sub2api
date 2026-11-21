@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        baseline: ['56ef3746843ba857d281b39049a36fa82d9cad56', '9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c']
+        baseline: ['56ef3746843ba857d281b39049a36fa82d9cad56', 'dc22d82aebb3b3484c98512678b435bbf48afd58']
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -102,7 +102,7 @@ jobs:
           git diff --exit-code dab829a4e9b7d1cc307189aea8b0319eb29e29d0 -- backend/migrations/249_mcp_oauth.sql
       - name: Preserve deployed migrations and upstream 252 verbatim
         run: |
-          git diff --exit-code 9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c -- $(git ls-tree -r --name-only 9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c backend/migrations/ | grep -E '\.sql$')
+          git diff --exit-code dc22d82aebb3b3484c98512678b435bbf48afd58 -- 'backend/migrations/*.sql'
           git diff --exit-code 5af9afb588c4b014b3df9db7d4073af1f8ae01b6 -- backend/migrations/252_channel_pricing_ultrafast_multiplier.sql
       - name: Run real migration runner against disposable databases
         working-directory: backend

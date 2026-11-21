@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import AccountUsageCell from '../AccountUsageCell.vue'
 import type { Account, AccountUsageInfo } from '@/types'
+import { buildAccountUsageRefreshKey } from '@/utils/accountUsageRefresh'
 
 const { getUsage, queued } = vi.hoisted(() => ({
   getUsage: vi.fn(),
@@ -33,7 +34,10 @@ const stubs = {
   UsageProgressBar: { props: ['utilization'], template: '<div data-test="percent">{{ utilization }}</div>' },
   OpenAIQuotaResetCell: { template: '<div><slot name="pre-actions" /></div>' }
 }
-type UsageCell = { loadActiveUsage: () => Promise<void>; loadUsage: (options: { bypassCache: boolean }) => Promise<void>; _usageCache: Map<number, { data: AccountUsageInfo; ts: number }> }
+type UsageCell = {
+  loadActiveUsage: () => Promise<void>
+  _usageCache: Map<number, { data: AccountUsageInfo; ts: number; refreshKey: string }>
+}
 
 beforeEach(() => {
   getUsage.mockReset()
@@ -64,6 +68,30 @@ describe('quota request identity and generation', () => {
     const cache = (wrapper.vm as unknown as UsageCell)._usageCache
     expect(cache.get(99102)?.data.five_hour?.utilization).toBe(22)
     expect(cache.has(99101)).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('keeps the new snapshot and cache when an old response for the same account arrives late', async () => {
+    const old = deferred<AccountUsageInfo>()
+    getUsage.mockReturnValueOnce(old.promise).mockResolvedValueOnce(usage(33))
+    const original = account(99107)
+    const wrapper = mount(AccountUsageCell, { props: { account: original }, global: { stubs } })
+    const oldRun = queued[0]!.run()
+
+    const next = { ...original, extra: { codex_5h_used_percent: 33 } }
+    await wrapper.setProps({ account: next })
+    expect(queued).toHaveLength(2)
+    await queued[1]!.run()
+    await flushPromises()
+    expect(wrapper.get('[data-test="percent"]').text()).toBe('33')
+
+    old.resolve(usage(99))
+    await oldRun
+    await flushPromises()
+    expect(wrapper.get('[data-test="percent"]').text()).toBe('33')
+    const cache = (wrapper.vm as unknown as UsageCell)._usageCache
+    expect(cache.get(original.id)?.data.five_hour?.utilization).toBe(33)
+    expect(cache.get(original.id)?.refreshKey).toBe(buildAccountUsageRefreshKey(next))
     wrapper.unmount()
   })
 
