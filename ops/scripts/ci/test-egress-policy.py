@@ -1,12 +1,13 @@
 """Pure simulations only. No real nft/ip/systemctl, namespace or external network."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(os.environ["SUB2API_EGRESS_FIXTURES"]) / "ops/changes/20261028-egress-policy"
 
 
 def load(name, path):

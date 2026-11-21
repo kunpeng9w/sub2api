@@ -4,12 +4,12 @@ on:
   push:
     paths:
       - 'ops/config/nginx/sub2api.conf'
-      - 'ops/changes/20261118-nginx-login-limit/**'
+      - 'ops/scripts/ci/verify-nginx-login-limit.py'
       - '.github/workflows/nginx-security-ci.yml'
   pull_request:
     paths:
       - 'ops/config/nginx/sub2api.conf'
-      - 'ops/changes/20261118-nginx-login-limit/**'
+      - 'ops/scripts/ci/verify-nginx-login-limit.py'
       - '.github/workflows/nginx-security-ci.yml'
   workflow_dispatch:
 
@@ -25,4 +25,4 @@ jobs:
       - name: Install Nginx for isolated verification
         run: sudo apt-get update && sudo apt-get install -y nginx
       - name: Verify syntax, login throttling, client identity and other routes
-        run: python3 ops/changes/20261118-nginx-login-limit/verify.py
+        run: python3 ops/scripts/ci/verify-nginx-login-limit.py

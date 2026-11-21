@@ -83,11 +83,21 @@ def main():
             'Nginx template lost the deployed WebSocket forwarding configuration.')
     # Check relative links in the maintained entry points (dated evidence is archival).
     docs = ['ops/README.md', 'ops/validation/README.md',
-            'ops/changes/20261107-upgrade-v0.2.20/README.md',
+            'ops/archive.md', 'ops/rollback.md', 'ops/upstream-sync.md',
+            'ops/network-status/README.md', 'ops/scripts/mihomo-dns/README.md',
             'ops/scripts/egress-guard/README.md']
     for name in docs:
         path = ROOT / name
         for target in re.findall(r'\[[^\]]*\]\(([^)]+)\)', path.read_text()):
+            if name == 'ops/archive.md' and target.startswith('https://'):
+                archive = re.fullmatch(
+                    r'https://github\.com/kunpeng9w/sub2api/(tree|blob)/([a-f0-9]{40})/((?:ops|docs)/[^#]+)(?:#.*)?',
+                    target,
+                )
+                require(archive is not None, f'Archive link must identify a full commit and original path: {target}')
+                kind, commit, original = archive.groups()
+                require(git('cat-file', '-t', f'{commit}:{original}').strip() == kind,
+                        f'Incorrect archive link target type: {target}')
             if '://' in target or target.startswith('#'):
                 continue
             require((path.parent / target.split('#', 1)[0]).exists(),

@@ -9,10 +9,6 @@ import unittest
 
 HERE = Path(__file__).resolve().parent
 APP = '/home/pk/workspace/sub2api'
-RELEASE = '/home/pk/workspace/sub2api-egress-delivery/5957d502d942d4cfebd9595e269beae5e397e45c'
-OLD_SHA = '8de67bdabaa7fb63ccd138cbd4aab5c1c3c362498d99dec6b34dd9d6cc4e443e'
-NEW_SHA = 'deb10cee0365d57554a33b6ac71303f18efb41f1a23e5e12cc9c396de819b3f2'
-ARCHIVE_SHA = '25a4e28ed462b9c826078dc156cd07ed8a6695052d9048622b0ac358519f0cc1'
 
 MOCK = r'''#!/usr/bin/python3
 import json, os, pathlib, shutil, sys
@@ -84,22 +80,24 @@ class DeployRecipeTests(unittest.TestCase):
             path.chmod(0o755)
         source = (HERE/'deploy.sh').read_text()
         # Transform only the fixture copy. The production recipe remains pinned.
-        source = source.replace(RELEASE, str(self.release)).replace(APP, str(self.app))
-        source = source.replace('/root/sub2api-ws-reuse-audit-', str(self.root/'backups/sub2api-ws-reuse-audit-'))
+        source = source.replace(APP, str(self.app))
+        source = source.replace('/root/sub2api-deploy-', str(self.root/'backups/sub2api-deploy-'))
         source = source.replace('/proc/', str(self.root/'proc')+'/')
         source = source.replace('/usr/local/libexec/egress_guard.py', str(self.root/'commands/guard'))
         source = source.replace('[[ $EUID -eq 0 ]]', 'true')
-        for old, data in [(OLD_SHA, b'previous'), (NEW_SHA, b'candidate'), (ARCHIVE_SHA, b'archive')]:
-            source = source.replace(old, hashlib.sha256(data).hexdigest())
+        self.digests = [hashlib.sha256(data).hexdigest()
+                        for data in (b'archive', b'candidate', b'previous')]
         self.script = self.root/'deploy.sh'
         self.script.write_text(source)
         self.env = os.environ.copy()
         self.env.update(DEPLOY_FIXTURE=str(self.root), PATH=str(self.root/'commands')+':'+self.env['PATH'])
         self.config = (self.app/'data/config.yaml').read_bytes()
 
-    def run_recipe(self, mode='--apply', scenario=''):
+    def run_recipe(self, mode='--apply', scenario='', digests=None):
         env = dict(self.env, SCENARIO=scenario)
-        return subprocess.run(['bash', str(self.script), mode], env=env, text=True, capture_output=True)
+        args = self.digests if digests is None else digests
+        return subprocess.run(['bash', str(self.script), mode, str(self.release), *args],
+                              env=env, text=True, capture_output=True)
 
     def state(self):
         return json.loads((self.root/'state.json').read_text())
@@ -107,6 +105,13 @@ class DeployRecipeTests(unittest.TestCase):
     def assert_untouched(self):
         self.assertEqual(self.state()['events'], [])
         self.assertEqual(list((self.root/'backups').iterdir()), [])
+
+    def test_invalid_parameters_never_stop_or_install(self):
+        for mode, digests in [('--unknown', self.digests), ('--apply', []),
+                              ('--apply', ['invalid', *self.digests[1:]])]:
+            with self.subTest(mode=mode, digests=digests):
+                self.assertEqual(self.run_recipe(mode, digests=digests).returncode, 2)
+                self.assert_untouched()
 
     def test_preflight_never_stops_or_installs(self):
         result = self.run_recipe('--check')

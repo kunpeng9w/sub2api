@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         if: ${{ !inputs.network_only }}
         with:
@@ -39,7 +39,7 @@ jobs:
       - name: Verify committed source formatting
         if: ${{ !inputs.network_only }}
         run: |
-          unformatted=$(git diff --name-only -z HEAD^ HEAD -- '*.go' | xargs -0 -r gofmt -l)
+          unformatted=$(git diff --diff-filter=ACMR --name-only -z HEAD^ HEAD -- '*.go' | xargs -0 -r gofmt -l)
           test -z "$unformatted" || { echo "$unformatted"; exit 1; }
       - name: Download dependencies before isolating tests
         if: ${{ !inputs.network_only }}
@@ -86,7 +86,13 @@ jobs:
       - name: Simulate network policy and manual deployment transitions
         run: |
           set -o pipefail
-          python -m unittest discover -s ops/changes/20261028-egress-policy -p 'test_*.py' -v 2>&1 | tee "$RUNNER_TEMP/egress-policy-tests.log"
+          export SUB2API_EGRESS_FIXTURES
+          SUB2API_EGRESS_FIXTURES=$(mktemp -d)
+          git archive 7480c174cc737fc0abd2b27db4021e64800f06e1 \
+            ops/changes/20261028-egress-policy ops/config/systemd/mihomo.service | tar -x -C "$SUB2API_EGRESS_FIXTURES"
+          mkdir -p "$SUB2API_EGRESS_FIXTURES/backend/internal/pkg/claudedomain"
+          cp backend/internal/pkg/claudedomain/domains.txt "$SUB2API_EGRESS_FIXTURES/backend/internal/pkg/claudedomain/"
+          python ops/scripts/ci/test-egress-policy.py -v 2>&1 | tee "$RUNNER_TEMP/egress-policy-tests.log"
       - uses: actions/upload-artifact@v7
         if: always()
         with:

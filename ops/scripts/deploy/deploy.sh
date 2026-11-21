@@ -4,15 +4,20 @@ set -euo pipefail
 umask 077
 
 APP_DIR=/home/pk/workspace/sub2api
-RELEASE_DIR=/home/pk/workspace/sub2api-egress-delivery/5ed77ee58816d638350e26ff22f10918f8dff82a
-EXPECTED_ARCHIVE=218abba00e736e3d4999bd060fbc16fb01c4700d4be16193fb5cd99a67887142
-EXPECTED_BINARY=89d3c99845988494d44ede994911b288263b7b7b10e302ca78bfbc0ee2943a32
-EXPECTED_PREVIOUS=1966de62f70ac92bb8840e6c886b7d4885cd88765cfdf13af2ed4e795e6300a8
 GUARD=/usr/local/libexec/egress_guard.py
 
-[[ $# -eq 1 && ( $1 == --check || $1 == --apply ) ]] || {
-  echo "Usage: sudo bash $0 --check|--apply" >&2; exit 2;
-}
+if [[ $# -ne 5 || ( $1 != --check && $1 != --apply ) ]]; then
+  echo "Usage: sudo bash $0 --check|--apply RELEASE_DIR ARCHIVE_SHA256 BINARY_SHA256 PREVIOUS_SHA256" >&2
+  exit 2
+fi
+mode=$1
+RELEASE_DIR=$2
+EXPECTED_ARCHIVE=$3
+EXPECTED_BINARY=$4
+EXPECTED_PREVIOUS=$5
+for digest in "$EXPECTED_ARCHIVE" "$EXPECTED_BINARY" "$EXPECTED_PREVIOUS"; do
+  [[ $digest =~ ^[a-f0-9]{64}$ ]] || { echo 'Expected lowercase SHA-256 digests.' >&2; exit 2; }
+done
 [[ $EUID -eq 0 ]] || { echo 'Run with sudo bash.' >&2; exit 2; }
 
 hash_file() { sha256sum -- "$1" | cut -d ' ' -f 1; }
@@ -55,12 +60,12 @@ fi
 [[ $current == "$EXPECTED_PREVIOUS" ]] || {
   echo 'Running version differs from the reviewed baseline; no changes made.' >&2; exit 1;
 }
-if [[ $1 == --check ]]; then
+if [[ $mode == --check ]]; then
   echo 'Preflight passed. No files installed and no services stopped.'
   exit 0
 fi
 
-backup=$(mktemp -d "/root/sub2api-proxy-priority-$(TZ=Asia/Singapore date +%Y%m%d-%H%M%S).XXXXXX")
+backup=$(mktemp -d "/root/sub2api-deploy-$(TZ=Asia/Singapore date +%Y%m%d-%H%M%S).XXXXXX")
 cp -p -- "$APP_DIR/bin/sub2api" "$backup/sub2api.previous"
 cp -pL -- "$APP_DIR/data/config.yaml" "$backup/config.yaml"
 (cd "$backup" && sha256sum sub2api.previous config.yaml > SHA256SUMS)
@@ -107,7 +112,7 @@ bash -n "$backup/rollback.sh"
 echo "Backup: $backup"
 echo "Manual rollback: sudo bash $backup/rollback.sh"
 
-stage=$(mktemp "$APP_DIR/bin/.sub2api-priority.XXXXXX")
+stage=$(mktemp "$APP_DIR/bin/.sub2api-deploy.XXXXXX")
 needs_rollback=0
 cleanup() {
   rc=$?
@@ -144,5 +149,5 @@ pid=$(systemctl show sub2api -p MainPID --value)
 cmp -s -- "$APP_DIR/data/config.yaml" "$backup/config.yaml"
 "$GUARD" verify >/dev/null
 needs_rollback=0
-echo 'Deployment passed: commit 5ed77ee58816d638350e26ff22f10918f8dff82a, running binary verified, health=ok.'
+echo "Deployment passed: running binary SHA-256 $EXPECTED_BINARY verified, health=ok."
 echo "Backup and rollback script: $backup"

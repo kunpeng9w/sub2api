@@ -2,7 +2,6 @@ name: Source and operations verification
 
 on:
   push:
-    # Includes codex/merge-upstream-v0.2.22; final evidence uses this exact head SHA.
   pull_request:
   workflow_dispatch:
     inputs:
@@ -68,17 +67,8 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install PyYAML==6.0.3
       - run: python ops/scripts/check-repository.py
-      - name: Read-only customization metrics and upstream merge rehearsal
-        if: github.ref_name == 'codex/customization-refactor' || github.head_ref == 'codex/customization-refactor'
-        run: |
-          git fetch --no-tags https://github.com/Wei-Shaw/sub2api.git b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b
-          python3 ops/changes/20261117-customization-refactor/report.py --output "$RUNNER_TEMP/customization-report.json"
-      - uses: actions/upload-artifact@v7
-        if: github.ref_name == 'codex/customization-refactor' || github.head_ref == 'codex/customization-refactor'
-        with:
-          name: customization-report-${{ github.sha }}
-          path: ${{ runner.temp }}/customization-report.json
-          if-no-files-found: error
+      - name: Application deployment preflight and binary rollback fixtures
+        run: python -m unittest discover -s ops/scripts/deploy -p 'test_*.py' -v
       - name: Existing egress control and installer tests (isolated mocks)
         working-directory: ops/scripts/egress-guard
         env:
