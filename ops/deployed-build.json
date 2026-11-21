@@ -1,22 +1,22 @@
 {
   "schema_version": 2,
-  "observed_at": "2026-11-18T13:54:30.452313+08:00",
+  "observed_at": "2026-11-21T13:48:15+08:00",
   "upstream": {
     "repository": "https://github.com/Wei-Shaw/sub2api.git",
-    "tag": "v0.2.23",
-    "commit": "5af9afb588c4b014b3df9db7d4073af1f8ae01b6",
-    "merged_commit": "2af3f1e15c98c893a89255a037f551046883b8c0"
+    "tag": "v0.2.24",
+    "commit": "328db26f450edbdf9f8d4344a3ea903ac6396842",
+    "merged_commit": "328db26f450edbdf9f8d4344a3ea903ac6396842"
   },
   "running_build": {
     "path": "/home/pk/workspace/sub2api/bin/sub2api",
-    "version": "0.2.23",
-    "sha256": "f2bebe5334ff017bf2b7d55f9684fc6e6621cb901e5140e9c1180ddc74ac7f06",
-    "git_commit_of_build": "dc22d82aebb3b3484c98512678b435bbf48afd58",
-    "build_time_utc": "2026-11-18T05:33:57Z",
+    "version": "0.2.24",
+    "sha256": "02a2073bd1f68ed240b48739219b3d6875d45f89fd7e1d5781800ec61b362081",
+    "git_commit_of_build": "da86e815d09ce5b3d0b53738617663e98a5bd51d",
+    "build_time_utc": "2026-11-21T04:57:12Z",
     "target": "linux/amd64",
     "embedded_frontend": true,
     "build_type": "source",
-    "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44244840668"
+    "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44868415451"
   },
   "runtime": {
     "run_mode": "standard",
@@ -27,62 +27,53 @@
   },
   "deployment": {
     "performed": true,
-    "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-v0.2.23-20261118T134900",
-    "final_stopped_database_backup": true,
+    "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-da86e815d-1n4PPyXG",
+    "started_at": "2026-11-21T13:46:21+08:00",
+    "ready_at": "2026-11-21T13:46:29+08:00",
+    "binary_and_config_backup": "/root/sub2api-deploy-20261121-134623.SuGUky",
+    "rollback_script": "/root/sub2api-deploy-20261121-134623.SuGUky/rollback.sh",
     "backup_sha256_verified": true,
-    "backup_restore_drill_performed": false,
-    "migration_count_before": 306,
     "migration_count_after": 307,
-    "added_migrations": [
-      "252_channel_pricing_ultrafast_multiplier.sql"
-    ],
-    "existing_migration_checksums_preserved": true,
-    "key_table_counts_preserved": true,
+    "added_migrations": [],
+    "migration_sources_match_previous_build": true,
     "https_checks": {
       "/health": {
         "status": 200,
         "bytes": 15,
-        "content_type": "application/json; charset=utf-8"
+        "content_type": "application/json"
       },
       "/": {
         "status": 200,
-        "bytes": 3390,
-        "content_type": "text/html; charset=utf-8"
+        "bytes": 3413,
+        "content_type": "text/html"
+      },
+      "/assets/index-ByyS4XH-.js": {
+        "status": 200,
+        "bytes": 194191,
+        "content_type": "text/javascript"
       },
       "/api/v1/settings/public": {
         "status": 200,
-        "bytes": 2605,
-        "content_type": "application/json; charset=utf-8"
-      },
-      "/assets/index-DbMJ-k8n.js": {
-        "status": 200,
-        "bytes": 194191,
-        "content_type": "text/javascript; charset=utf-8"
+        "bytes": 2628,
+        "content_type": "application/json"
       },
       "/api/v1/admin/accounts": {
         "status": 401,
         "bytes": 58,
-        "content_type": "application/json; charset=utf-8"
+        "content_type": "application/json"
       }
     },
     "observed_live_successes": [
-      "/api/v1/auth/me",
-      "/api/v1/channel-monitors",
       "/v1/responses",
-      "/v1/models"
+      "/api/v1/auth/me"
     ],
     "limitations": [
-      "Dedicated fresh-login verification unavailable: the historical operator admin account did not exist before deployment; actual /api/v1/auth/me requests succeeded after deployment.",
-      "No dedicated WS/SSE/image/capacity validation performed during deployment; production Responses requests observed successful.",
-      "Backup archive directory and SHA256 checked; actual restore drill not performed."
+      "Fresh interactive login, WebSocket and intentional proxy failure were not separately exercised in production."
     ],
-    "previous_running_version": "0.2.22",
-    "previous_running_commit": "9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c",
-    "previous_running_sha256": "35a4363f8602e78eb5ed9d9f2681d22f29a7c14acff928eb43cbfd0e81004cd2",
-    "pull_request": "https://github.com/kunpeng9w/sub2api/pull/8",
-    "merge_commit": "f1c26fcbd74aa4871f58a1634645066dc2a17453",
-    "branch_workflows_passed": 7,
-    "pull_request_workflows_passed": 7,
+    "previous_running_version": "0.2.24",
+    "previous_running_commit": "7480c174cc737fc0abd2b27db4021e64800f06e1",
+    "previous_running_sha256": "88baae36873e516b3a41e48322b9cf08e12e90635ff815138b737031b78e1dbe",
+    "pull_request": "https://github.com/kunpeng9w/sub2api/pull/11",
     "service_restarts": 0,
     "error_or_panic_count": 0
   },
@@ -206,6 +197,186 @@
       "previous_running_version": "0.2.21",
       "previous_running_commit": "0161258af6ca167f5885c145b454d3a982839939",
       "previous_running_sha256": "631c007affe5c35ef1cf532d899e901c7ceeb6d5f587c5b7901e9f80f5af1bde"
+    }
+  },
+  "previous_deployment_20261118": {
+    "schema_version": 2,
+    "observed_at": "2026-11-18T13:54:30.452313+08:00",
+    "upstream": {
+      "repository": "https://github.com/Wei-Shaw/sub2api.git",
+      "tag": "v0.2.24",
+      "commit": "328db26f450edbdf9f8d4344a3ea903ac6396842",
+      "merged_commit": "328db26f450edbdf9f8d4344a3ea903ac6396842"
+    },
+    "running_build": {
+      "path": "/home/pk/workspace/sub2api/bin/sub2api",
+      "version": "0.2.24",
+      "sha256": "88baae36873e516b3a41e48322b9cf08e12e90635ff815138b737031b78e1dbe",
+      "git_commit_of_build": "7480c174cc737fc0abd2b27db4021e64800f06e1",
+      "build_time_utc": "2026-11-21T02:18:57Z",
+      "target": "linux/amd64",
+      "embedded_frontend": true,
+      "build_type": "source",
+      "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44855044639"
+    },
+    "runtime": {
+      "run_mode": "standard",
+      "application_bind": "127.0.0.1:8080",
+      "egress_guard_phase": "confirmed",
+      "egress_mode": "claude-only",
+      "mihomo_state": "inactive"
+    },
+    "deployment": {
+      "performed": true,
+      "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-v0.2.23-20261118T134900",
+      "final_stopped_database_backup": true,
+      "backup_sha256_verified": true,
+      "backup_restore_drill_performed": false,
+      "migration_count_before": 306,
+      "migration_count_after": 307,
+      "added_migrations": [
+        "252_channel_pricing_ultrafast_multiplier.sql"
+      ],
+      "existing_migration_checksums_preserved": true,
+      "key_table_counts_preserved": true,
+      "https_checks": {
+        "/health": {
+          "status": 200,
+          "bytes": 15,
+          "content_type": "application/json; charset=utf-8"
+        },
+        "/": {
+          "status": 200,
+          "bytes": 3390,
+          "content_type": "text/html; charset=utf-8"
+        },
+        "/api/v1/settings/public": {
+          "status": 200,
+          "bytes": 2605,
+          "content_type": "application/json; charset=utf-8"
+        },
+        "/assets/index-DbMJ-k8n.js": {
+          "status": 200,
+          "bytes": 194191,
+          "content_type": "text/javascript; charset=utf-8"
+        },
+        "/api/v1/admin/accounts": {
+          "status": 401,
+          "bytes": 58,
+          "content_type": "application/json; charset=utf-8"
+        }
+      },
+      "observed_live_successes": [
+        "/api/v1/auth/me",
+        "/api/v1/channel-monitors",
+        "/v1/responses",
+        "/v1/models"
+      ],
+      "limitations": [
+        "Dedicated fresh-login verification unavailable: the historical operator admin account did not exist before deployment; actual /api/v1/auth/me requests succeeded after deployment.",
+        "No dedicated WS/SSE/image/capacity validation performed during deployment; production Responses requests observed successful.",
+        "Backup archive directory and SHA256 checked; actual restore drill not performed."
+      ],
+      "previous_running_version": "0.2.22",
+      "previous_running_commit": "9339f5c5d7fcfd8e1ee33ba9567b6537e98b506c",
+      "previous_running_sha256": "35a4363f8602e78eb5ed9d9f2681d22f29a7c14acff928eb43cbfd0e81004cd2",
+      "pull_request": "https://github.com/kunpeng9w/sub2api/pull/8",
+      "merge_commit": "f1c26fcbd74aa4871f58a1634645066dc2a17453",
+      "branch_workflows_passed": 7,
+      "pull_request_workflows_passed": 7,
+      "service_restarts": 0,
+      "error_or_panic_count": 0
+    }
+  },
+  "previous_deployment_20261121_111920": {
+    "schema_version": 2,
+    "observed_at": "2026-11-21T11:20:20+08:00",
+    "upstream": {
+      "repository": "https://github.com/Wei-Shaw/sub2api.git",
+      "tag": "v0.2.24",
+      "commit": "328db26f450edbdf9f8d4344a3ea903ac6396842",
+      "merged_commit": "328db26f450edbdf9f8d4344a3ea903ac6396842"
+    },
+    "running_build": {
+      "path": "/home/pk/workspace/sub2api/bin/sub2api",
+      "version": "0.2.24",
+      "sha256": "88baae36873e516b3a41e48322b9cf08e12e90635ff815138b737031b78e1dbe",
+      "git_commit_of_build": "7480c174cc737fc0abd2b27db4021e64800f06e1",
+      "build_time_utc": "2026-11-21T02:18:57Z",
+      "target": "linux/amd64",
+      "embedded_frontend": true,
+      "build_type": "source",
+      "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44855044639"
+    },
+    "runtime": {
+      "run_mode": "standard",
+      "application_bind": "127.0.0.1:8080",
+      "egress_guard_phase": "confirmed",
+      "egress_mode": "claude-only",
+      "mihomo_state": "inactive"
+    },
+    "deployment": {
+      "performed": true,
+      "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-v0.2.24-20261121T111857-dCLPMu",
+      "stopped_at": "2026-11-21T11:19:06+08:00",
+      "ready_at": "2026-11-21T11:19:12+08:00",
+      "final_stopped_database_backup": true,
+      "backup_sha256_verified": true,
+      "backup_restore_drill_performed": false,
+      "migration_count_before": 307,
+      "migration_count_after": 307,
+      "added_migrations": [],
+      "existing_migration_checksums_preserved": true,
+      "key_table_counts_preserved": true,
+      "https_checks": {
+        "/health": {
+          "status": 200,
+          "bytes": 15,
+          "content_type": "application/json; charset=utf-8"
+        },
+        "/": {
+          "status": 200,
+          "bytes": 3413,
+          "content_type": "text/html; charset=utf-8"
+        },
+        "/assets/index-0BrWCbQq.js": {
+          "status": 200,
+          "bytes": 194191,
+          "content_type": "text/javascript; charset=utf-8"
+        },
+        "/api/v1/settings/public": {
+          "status": 200,
+          "bytes": 2628,
+          "content_type": "application/json; charset=utf-8"
+        },
+        "/api/v1/admin/accounts": {
+          "status": 401,
+          "bytes": 58,
+          "content_type": "application/json; charset=utf-8"
+        }
+      },
+      "observed_live_successes": [
+        "/v1/responses",
+        "/api/v1/auth/me"
+      ],
+      "limitations": [
+        "Fresh login, WebSocket, SSE, image and capacity paths were not separately exercised in production.",
+        "Backup archive directory and SHA256 verified. A restore drill was not performed."
+      ],
+      "previous_running_version": "0.2.23",
+      "previous_running_commit": "dc22d82aebb3b3484c98512678b435bbf48afd58",
+      "previous_running_sha256": "f2bebe5334ff017bf2b7d55f9684fc6e6621cb901e5140e9c1180ddc74ac7f06",
+      "pull_request": "https://github.com/kunpeng9w/sub2api/pull/9",
+      "merge_commit": "7480c174cc737fc0abd2b27db4021e64800f06e1",
+      "branch_workflows_passed": 7,
+      "pull_request_workflows_passed": 7,
+      "main_workflows_passed": [
+        "https://github.com/kunpeng9w/sub2api/actions/runs/44855044639",
+        "https://github.com/kunpeng9w/sub2api/actions/runs/44855044636",
+        "https://github.com/kunpeng9w/sub2api/actions/runs/44855044595"
+      ],
+      "service_restarts": 0,
+      "error_or_panic_count": 0
     }
   }
 }
