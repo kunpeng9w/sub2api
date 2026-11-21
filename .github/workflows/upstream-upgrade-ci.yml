@@ -25,7 +25,7 @@ jobs:
           version: 9
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Resolve the locked frontend dependencies
         run: pnpm --dir frontend install --lockfile-only
       - name: Generate Ent, Wire and format tracked Go files
@@ -55,14 +55,14 @@ jobs:
           version: 9
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm --dir frontend install --frozen-lockfile
       - name: Full frontend tests including MCP, permissions and all exports
         run: |
           set -o pipefail
-          bash ops/changes/20261105-channel-monitor/test-isolated.sh pnpm --dir frontend exec vitest run --maxWorkers=2 --minWorkers=1 2>&1 | tee "$RUNNER_TEMP/frontend-full.log"
+          bash ops/scripts/ci/test-isolated.sh pnpm --dir frontend exec vitest run --maxWorkers=2 --minWorkers=1 2>&1 | tee "$RUNNER_TEMP/frontend-full.log"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -121,8 +121,6 @@ jobs:
           path: ${{ runner.temp }}/upgrade-migrations.log
   cross-regressions:
     name: Permission, cancellation, drain, resources, bridge and image regressions
-    env:
-      SUB2API_MONITOR_ISOLATED_TESTS: "1"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -140,12 +138,12 @@ jobs:
           GOMAXPROCS: '2'
         run: |
           set -o pipefail
-          bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -race -json -tags=unit -p 1 -count=1 ./internal/config ./internal/service ./internal/repository ./internal/pkg/httputil ./internal/handler ./internal/handler/admin ./internal/server/routes \
+          bash ../ops/scripts/ci/test-isolated.sh go test -race -json -tags=unit -p 1 -count=1 ./internal/config ./internal/service ./internal/repository ./internal/pkg/httputil ./internal/handler ./internal/handler/admin ./internal/server/routes \
             -run 'TestValidateConcurrencyPingInterval|TestUsageBillingLane|TestOpenAIPassthroughModelFilter|TestCodexRequestBodyIdentity|TestBuildOpenAIWSHeadersNamespaces|TestOpenAIGatewayService_BuildOpenAIWSHeadersDeviceMode|TestBuildVertexGeminiAccountURL|TestBuildUsageInfo_ScopedFableLimits|TestPassiveUsage.*Fable|TestOpenAIUsageRefresh|TestUsageFailureInfo|TestScopedAdmin|TestEgressAudit|TestHTTPUpstreamDrain|TestStrictEgress|TestChannelMonitor|TestQuotaEstimate|TestUsageWindow|TestOpenAISevenDay|TestAccountUsageService_SetupToken|Test.*(BodyBudget|BodyMemory|ReadTimeout|WriteTimeout|NonStream|WSHTTPBridge|Images)' \
             -timeout=20m 2>&1 | tee "$RUNNER_TEMP/upgrade-cross-regressions.log"
       - name: Require upstream semantic and custom adapter execution evidence
         run: |
-          python3 ops/changes/20261117-customization-refactor/verify-evidence.py "$RUNNER_TEMP/upgrade-cross-regressions.log" \
+          python3 ops/scripts/ci/verify-evidence.py "$RUNNER_TEMP/upgrade-cross-regressions.log" \
             internal/config:TestValidateConcurrencyPingInterval \
             internal/service:TestOpenAIPassthroughModelFilterEligibility \
             internal/service:TestOpenAIPassthroughModelFilterGroupCatalog \
@@ -166,4 +164,4 @@ jobs:
         working-directory: backend
         env:
           GOMAXPROCS: '2'
-        run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -race -tags=unit -p 1 -count=50 ./internal/service -run '^TestEgressAuditProbeNonblockingIsolationAndExpiry$' -timeout=2m
+        run: bash ../ops/scripts/ci/test-isolated.sh go test -race -tags=unit -p 1 -count=50 ./internal/service -run '^TestEgressAuditProbeNonblockingIsolationAndExpiry$' -timeout=2m

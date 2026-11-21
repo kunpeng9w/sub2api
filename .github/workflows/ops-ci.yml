@@ -53,7 +53,7 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: network-status-ci
           PYTHONDONTWRITEBYTECODE: '1'
-        run: bash ops/changes/20261105-channel-monitor/test-isolated.sh python3 -m unittest discover -s ops/network-status -p 'test_*.py' -v
+        run: bash ops/scripts/ci/test-isolated.sh python3 -m unittest discover -s ops/network-status -p 'test_*.py' -v
 
   operations:
     if: ${{ !inputs.build_only }}
@@ -109,7 +109,7 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
       - name: Audit component race checks
-        run: bash ops/changes/20261101-egress-audit/test-isolated.sh -race -v
+        run: bash ops/scripts/ci/test-egress-audit.sh -race -v
       - name: Verify audit integration and existing transport semantics
         working-directory: backend
         env:
@@ -138,7 +138,7 @@ jobs:
           version: 9
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - uses: actions/setup-go@v6

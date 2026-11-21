@@ -6,7 +6,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/openai-usage-refresh-ci.yml'
-      - 'Makefile'
+      - 'ops/scripts/ci/**'
       - 'backend/**'
       - 'frontend/**'
   workflow_dispatch:
@@ -53,7 +53,7 @@ jobs:
             -timeout 15m 2>&1 | tee "$RUNNER_TEMP/openai-usage-service.jsonl"
       - name: Require quota and refresh test execution evidence
         run: |
-          python3 ../ops/changes/20261117-customization-refactor/verify-evidence.py "$RUNNER_TEMP/openai-usage-service.jsonl" \
+          python3 ../ops/scripts/ci/verify-evidence.py "$RUNNER_TEMP/openai-usage-service.jsonl" \
             internal/service:TestQuotaEstimateFormulaAndInvalidInputs \
             internal/service:TestQuotaEstimateAllWindowsAndSampleCutoff \
             internal/service:TestQuotaEstimateKeepsIndependentWindowSampleTimes \
@@ -134,7 +134,7 @@ jobs:
           version: 9
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm --dir frontend install --frozen-lockfile
@@ -148,7 +148,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           set -o pipefail
-          make test-frontend-openai-usage 2>&1 | tee "$RUNNER_TEMP/openai-usage-components.log"
+          pnpm --dir frontend exec vitest run --maxWorkers=2 --minWorkers=1 \
+            src/views/admin/__tests__/AccountsView.lite.spec.ts \
+            src/components/account/__tests__/AccountUsageCell.spec.ts \
+            src/components/account/__tests__/AccountUsageCell.async.spec.ts \
+            src/components/account/__tests__/UsageProgressBar.spec.ts \
+            src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \
+            src/utils/__tests__/accountUsageRefresh.spec.ts \
+            src/views/admin/__tests__/AccountsView.usageWindowsHint.spec.ts 2>&1 | tee "$RUNNER_TEMP/openai-usage-components.log"
       - name: Verify locale completeness
         id: locales
         if: ${{ !cancelled() }}

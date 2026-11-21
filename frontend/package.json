@@ -3,9 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
     "dev": "vite",
     "check:i18n": "vitest run src/i18n/__tests__/localeKeyCompleteness.spec.ts",
@@ -70,8 +67,8 @@
       "postcss@<8.5.18": ">=8.5.18",
       "dompurify@<3.4.17": ">=3.4.17",
       "source-map-js@<1.2.2": ">=1.2.2",
-      "follow-redirects@<1.16.2": "1.16.2",
-      "decode-uri-component@<0.5.1": "0.5.1"
+      "follow-redirects@<1.16.2": ">=1.16.2",
+      "decode-uri-component@<0.5.1": ">=0.5.1"
     }
   }
 }

@@ -1,35 +1,16 @@
-.PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical test-frontend-openai-usage
-
-FRONTEND_OPENAI_USAGE_VITEST := \
-	src/views/admin/__tests__/AccountsView.lite.spec.ts \
-	src/components/common/__tests__/QuotaEstimateView.spec.ts \
-	src/views/user/__tests__/ChannelStatusV1View.bulkRun.spec.ts \
-	src/views/user/__tests__/ChannelStatusV1View.refresh.spec.ts \
-	src/views/user/__tests__/ChannelStatusV1View.details.spec.ts \
-	src/components/account/__tests__/AccountUsageCell.spec.ts \
-	src/components/account/__tests__/AccountUsageCell.async.spec.ts \
-	src/components/account/__tests__/UsageProgressBar.spec.ts \
-	src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \
-	src/components/common/__tests__/MonitorQuotaView.spec.ts \
-	src/components/user/__tests__/MonitorCard.quota.spec.ts \
-	src/utils/__tests__/accountUsageRefresh.spec.ts \
-	src/views/admin/__tests__/AccountsView.usageWindowsHint.spec.ts
+.PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
 
 FRONTEND_CRITICAL_VITEST := \
 	src/i18n/__tests__/localeKeyCompleteness.spec.ts \
-	src/i18n/__tests__/localesMessageCompile.spec.ts \
-	src/i18n/__tests__/localesNoKeyCollision.spec.ts \
-	src/i18n/__tests__/runtimeSecurity.spec.ts \
 	src/api/__tests__/client.spec.ts \
 	src/api/__tests__/tokenRefresh.spec.ts \
 	src/api/__tests__/keys.bulkUpdate.spec.ts \
 	src/composables/__tests__/useModelWhitelist.spec.ts \
 	src/components/account/__tests__/OpenAIReferralCell.spec.ts \
 	src/components/account/__tests__/OpenAIReferralCell.transport.spec.ts \
-	$(FRONTEND_OPENAI_USAGE_VITEST) \
+	src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \
 	src/constants/__tests__/platforms.spec.ts \
 	src/components/account/__tests__/credentialsBuilder.platformCatalog.spec.ts \
-	src/components/account/__tests__/AccountProxyField.spec.ts \
 	src/components/account/__tests__/CNProviderQuotaCell.spec.ts \
 	src/components/account/__tests__/CreateAccountModal.spec.ts \
 	src/components/account/__tests__/EditAccountModal.spec.ts \
@@ -76,7 +57,3 @@ test-frontend:
 
 test-frontend-critical:
 	@pnpm --dir frontend exec vitest run $(FRONTEND_CRITICAL_VITEST)
-
-# OpenAI quota refresh regression tests (all upstream calls are mocked).
-test-frontend-openai-usage:
-	@pnpm --dir frontend exec vitest run $(FRONTEND_OPENAI_USAGE_VITEST) --maxWorkers=2 --minWorkers=1

@@ -501,7 +501,7 @@ Build and run from source code for development or customization.
 #### Prerequisites
 
 - Go 1.21+
-- Node.js 22+
+- Node.js 24+
 - PostgreSQL 15+
 - Redis 7+
 

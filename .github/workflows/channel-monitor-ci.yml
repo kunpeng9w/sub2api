@@ -6,7 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'ops/changes/20261105-channel-monitor/**'
+      - 'ops/scripts/ci/**'
       - '.github/workflows/channel-monitor-ci.yml'
   workflow_dispatch:
 permissions:
@@ -18,8 +18,6 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    env:
-      SUB2API_MONITOR_ISOLATED_TESTS: "1"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -30,7 +28,7 @@ jobs:
         working-directory: backend
         run: go mod download
       - name: Verify isolated process retains Docker fixture access
-        run: bash ops/changes/20261105-channel-monitor/test-isolated.sh docker info --format '{{json .ServerVersion}}'
+        run: bash ops/scripts/ci/test-isolated.sh docker info --format '{{json .ServerVersion}}'
       - name: Generate Ent and Wire, format source
         working-directory: backend
         run: |
@@ -51,11 +49,11 @@ jobs:
         working-directory: backend
         run: |
           set -o pipefail
-          bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -json -tags=unit -p 2 ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/httpclient ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m 2>&1 | tee "$RUNNER_TEMP/monitor-unit.jsonl"
+          bash ../ops/scripts/ci/test-isolated.sh go test -json -tags=unit -p 2 ./internal/service ./internal/repository ./internal/handler/... ./internal/server/routes ./internal/pkg/monitorrequest ./internal/pkg/httpclient ./internal/pkg/antigravity -run 'Test.*(Monitor|QuotaEstimat|UsageWindow|RunCheck|Schedule|Unschedule|InFlight|StrictEgress|AccountEgress|ClaudeEgress|OpenAISevenDay)' -count=1 -timeout=12m 2>&1 | tee "$RUNNER_TEMP/monitor-unit.jsonl"
       - name: Require monitor status and lifecycle test execution evidence
         working-directory: backend
         run: |
-          python3 ../ops/changes/20261117-customization-refactor/verify-evidence.py "$RUNNER_TEMP/monitor-unit.jsonl" \
+          python3 ../ops/scripts/ci/verify-evidence.py "$RUNNER_TEMP/monitor-unit.jsonl" \
             internal/service:TestMonitorCurrentStatusAcrossViews \
             internal/service:TestMonitorStatusReusesAccountAndHonorsJitter \
             internal/service:TestMonitorQuotaExhaustion \
@@ -69,7 +67,7 @@ jobs:
           if-no-files-found: error
       - name: Monitor database integration with isolated fixtures
         working-directory: backend
-        run: bash ../ops/changes/20261105-channel-monitor/test-isolated.sh go test -tags=integration -p 2 ./internal/repository -run 'TestQuotaEstimateSnapshotRoundTrip|TestChannelMonitorSortOrderRoundTrip|TestChannelMonitorManualViewerProxyRoundTrip|TestUsageLogRepoSuite/TestMonitorUsageWindowStatsBatch' -count=1 -timeout=10m
+        run: bash ../ops/scripts/ci/test-isolated.sh go test -tags=integration -p 2 ./internal/repository -run 'TestQuotaEstimateSnapshotRoundTrip|TestChannelMonitorSortOrderRoundTrip|TestChannelMonitorManualViewerProxyRoundTrip|TestUsageLogRepoSuite/TestMonitorUsageWindowStatsBatch' -count=1 -timeout=10m
       - name: Backend build
         working-directory: backend
         run: go build -o "$RUNNER_TEMP/sub2api" ./cmd/server
@@ -87,14 +85,14 @@ jobs:
           version: 9
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm --dir frontend install --frozen-lockfile
       - name: Typecheck
         run: pnpm --dir frontend typecheck
       - name: Component regression with mocked APIs
-        run: bash ops/changes/20261105-channel-monitor/test-isolated.sh pnpm --dir frontend exec vitest run src/components/common/__tests__/MonitorQuotaView.spec.ts src/components/account/__tests__/AccountUsageCell.spec.ts src/components/account/__tests__/AccountUsageCell.async.spec.ts src/components/account/__tests__/UsageProgressBar.spec.ts src/components/user/__tests__/MonitorCard.quota.spec.ts src/views/user/__tests__/ChannelStatusV1View.bulkRun.spec.ts src/views/user/__tests__/ChannelStatusV1View.refresh.spec.ts src/views/user/__tests__/ChannelStatusV1View.details.spec.ts src/views/admin/__tests__/MonitorFormDialog.accountSelector.spec.ts src/views/admin/__tests__/ChannelMonitorView.duplicate.spec.ts src/components/common/__tests__/QuotaEstimateView.spec.ts src/api/__tests__/channelMonitor.run.spec.ts
+        run: bash ops/scripts/ci/test-isolated.sh pnpm --dir frontend exec vitest run src/components/common/__tests__/MonitorQuotaView.spec.ts src/components/account/__tests__/AccountUsageCell.spec.ts src/components/account/__tests__/AccountUsageCell.async.spec.ts src/components/account/__tests__/UsageProgressBar.spec.ts src/components/user/__tests__/MonitorCard.quota.spec.ts src/views/user/__tests__/ChannelStatusV1View.bulkRun.spec.ts src/views/user/__tests__/ChannelStatusV1View.refresh.spec.ts src/views/user/__tests__/ChannelStatusV1View.details.spec.ts src/views/admin/__tests__/MonitorFormDialog.accountSelector.spec.ts src/views/admin/__tests__/ChannelMonitorView.duplicate.spec.ts src/components/common/__tests__/QuotaEstimateView.spec.ts src/api/__tests__/channelMonitor.run.spec.ts
       - name: Lint changed UI and shared estimate components
         run: pnpm --dir frontend exec eslint src/custom/client-config/claudeCode.ts src/api/admin/channelMonitor.ts src/api/channelMonitor.ts src/components/account/AccountUsageCell.vue src/components/account/UsageProgressBar.vue src/components/admin/monitor/MonitorFormDialog.vue src/components/admin/monitor/MonitorActionsCell.vue src/components/common/MonitorQuotaView.vue src/components/common/QuotaEstimateView.vue src/components/user/monitor/MonitorCard.vue src/components/user/monitor/MonitorHero.vue src/components/user/monitor/MonitorCardGrid.vue src/components/user/MonitorDetailDialog.vue src/views/user/ChannelStatusV1View.vue
       - name: Frontend build
