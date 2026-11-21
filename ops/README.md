@@ -2,7 +2,7 @@
 
 当前部署版本、运行模式、二进制 SHA-256、构建来源和备份位置以部署记录为准。[部署记录](deployed-build.json)
 
-公网流量经 Nginx 转发到本机 Sub2API。应用使用 PostgreSQL、Redis 和 Mihomo，前端随 Linux amd64 程序一同构建。
+公网流量经 Nginx 转发到本机 Sub2API。应用使用 PostgreSQL 和 Redis，官方 Claude 域名使用定向出口，前端随 Linux amd64 程序一同构建。
 
 ## 配置入口
 
@@ -11,7 +11,7 @@
 | Sub2API | [应用模板](config/application.yaml.example) | `data/config.yaml` |
 | Nginx | [HTTPS、流式转发和登录限流](config/nginx/sub2api.conf) | `/etc/nginx/sites-available/sub2api` |
 | systemd | [应用、备份、出口保护及回程单元](config/systemd/) | `/etc/systemd/system/` |
-| Mihomo | [代理模板](config/mihomo/config.yaml.example) | `/etc/mihomo/config.yaml` |
+| Mihomo | [Claude 定向代理模板](config/mihomo/config.yaml.example) | `/etc/mihomo/config.yaml` |
 | PostgreSQL | [本机实例参数](config/postgresql/99-sub2api.conf) | `/etc/postgresql/16/main/conf.d/99-sub2api.conf` |
 | Redis | [本机实例模板](config/redis/redis.conf.example) | `/etc/redis/redis.conf` |
 | Certbot | [ACME 续期模板](config/certbot/idontknow.site.conf.example) | `/etc/letsencrypt/renewal/` |
@@ -29,6 +29,8 @@ ip rule show
 journalctl -u sub2api -n 100 --no-pager
 sha256sum /home/pk/workspace/sub2api/bin/sub2api
 ```
+
+Mihomo 可以按运维安排停止，DNS 和出口保护仍应运行。
 
 备份 timer 每天新加坡时间 03:30 运行，备份期间短暂停止应用。检查 timer、备份目录和最新备份日志。[备份 timer](config/systemd/sub2api-backup.timer) · [备份脚本](scripts/backup.sh)
 

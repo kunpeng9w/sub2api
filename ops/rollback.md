@@ -4,7 +4,7 @@
 
 ## 二进制更新与回滚
 
-以下入口用于原生 systemd 实例的应用程序更新，要求当前实例的 Claude 定向出口和出口保护已启用。使用已核验的产物目录以及归档包、新程序、当前程序的 SHA-256。
+以下入口用于原生 systemd 实例的应用程序更新，要求当前实例的 Claude 定向出口和出口保护已启用。预检逐个检查 Sub2API、dnsmasq-claude 和出口保护服务，并验证保护规则。Mihomo 单元应已加载，允许正常运行或按计划停止。使用已核验的产物目录以及归档包、新程序、当前程序的 SHA-256。
 
 ```bash
 sudo bash ops/scripts/deploy/deploy.sh --check \

@@ -20,9 +20,20 @@ name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 def save(): state_file.write_text(json.dumps(state))
 if name == 'systemctl':
-    if args[0] == 'is-active': sys.exit(0 if state['active'] else 3)
+    if args[0] == 'is-active':
+        units = {'sub2api': state['active'], 'dnsmasq-claude': True, 'sub2api-egress': True}
+        units[os.environ.get('SCENARIO', '')] = False
+        sys.exit(0 if any(units[unit] for unit in args[2:]) else 3)
     if args[0] == 'show':
         field = args[args.index('-p')+1]
+        if args[1] == 'mihomo':
+            scenario = os.environ.get('SCENARIO')
+            if field == 'LoadState':
+                print('not-found' if scenario == 'missing-mihomo' else 'loaded')
+            else:
+                assert field == 'ActiveState'
+                print({'active-mihomo': 'active', 'failed-mihomo': 'failed'}.get(scenario, 'inactive'))
+            sys.exit(0)
         print({'WorkingDirectory': str(app), 'ExecStart': '{ path='+str(app/'bin/sub2api')+' ; }', 'MainPID': '4321' if state['active'] else '0'}[field])
         sys.exit(0)
     assert args[1:] == ['sub2api'], args
@@ -54,6 +65,7 @@ elif name == 'install':
     shutil.copyfile(args[-2], args[-1]); pathlib.Path(args[-1]).chmod(0o755)
 elif name == 'guard':
     assert args == ['verify'], args
+    print(json.dumps({'mode': 'claude-only', 'consistent': os.environ.get('SCENARIO') != 'broken-guard'}))
 elif name == 'sleep': pass
 else: raise AssertionError(name)
 '''
@@ -118,6 +130,19 @@ class DeployRecipeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assert_untouched()
         self.assertEqual((self.app/'bin/sub2api').read_bytes(), b'previous')
+
+    def test_unavailable_unit_or_guard_stops_before_deployment(self):
+        for scenario in ('sub2api', 'dnsmasq-claude', 'sub2api-egress', 'failed-mihomo', 'missing-mihomo', 'broken-guard'):
+            with self.subTest(scenario=scenario):
+                result = self.run_recipe(scenario=scenario)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('Preflight failed', result.stderr)
+                self.assert_untouched()
+
+    def test_preflight_accepts_running_mihomo(self):
+        result = self.run_recipe('--check', scenario='active-mihomo')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_untouched()
 
     def test_success_and_manual_binary_only_rollback(self):
         result = self.run_recipe()

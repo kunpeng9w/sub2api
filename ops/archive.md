@@ -4,6 +4,7 @@
 
 | 日期 | 原始记录 |
 |---|---|
+| 2026-10-25 | [旧版 UID 出口保护安装器、测试与验证记录](https://github.com/kunpeng9w/sub2api/tree/7480c174cc737fc0abd2b27db4021e64800f06e1/ops/scripts/egress-guard) |
 | 2026-10-27 | [Claude Code 模型目录验证](https://github.com/kunpeng9w/sub2api/blob/7480c174cc737fc0abd2b27db4021e64800f06e1/ops/validation/codex-model-catalog-20261027.md) |
 | 2026-10-28 | [严格代理策略、两阶段实施、回滚与证据](https://github.com/kunpeng9w/sub2api/tree/7480c174cc737fc0abd2b27db4021e64800f06e1/ops/changes/20261028-egress-policy) |
 | 2026-10-29 | [账户代理优先级部署及验收](https://github.com/kunpeng9w/sub2api/tree/7480c174cc737fc0abd2b27db4021e64800f06e1/ops/changes/20261029-account-proxy-priority) |

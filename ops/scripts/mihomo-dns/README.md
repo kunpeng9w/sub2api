@@ -2,7 +2,7 @@
 
 系统 DNS 始终由 `dnsmasq-claude` 在 `127.0.0.1:53` 提供，普通上游保持独立。只有 Mihomo 启动且其 DNS 端口就绪后，才将 `anthropic.com`、`claude.ai`、`claude.com` 的解析交给 Mihomo。停止、崩溃、启动失败后移除专用转发，恢复普通上游。
 
-当前是待部署实现，执行结果另行记录；源码提交或 CI 不会自动修改线上配置。
+本机使用以下 systemd 钩子随 Mihomo 启停切换 DNS 转发。
 
 ## 实现与边界
 

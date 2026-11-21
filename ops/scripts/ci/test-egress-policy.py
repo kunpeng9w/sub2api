@@ -1,13 +1,13 @@
 """Pure simulations only. No real nft/ip/systemctl, namespace or external network."""
 import importlib.util
 import json
-import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+import yaml
 
-HERE = Path(os.environ["SUB2API_EGRESS_FIXTURES"]) / "ops/changes/20261028-egress-policy"
+OPS = Path(__file__).resolve().parents[2]
+GUARD_DIR = OPS / "scripts/egress-guard"
 
 
 def load(name, path):
@@ -17,10 +17,9 @@ def load(name, path):
     return module
 
 
-guard_module = load("candidate_guard", HERE / "templates/egress_guard.py")
-controller = load("candidate_controller", HERE / "templates/mihomo_control.py")
-generator = load("candidate_generator", HERE / "generate_templates.py")
-private_config = load("candidate_private_config", HERE / "prepare_private_config.py")
+guard_module = load("egress_guard", GUARD_DIR / "egress_guard.py")
+controller = load("mihomo_control", GUARD_DIR / "mihomo_control.py")
+dns = load("mihomo_dns", OPS / "scripts/mihomo-dns/mihomo_dns.py")
 
 
 class FakeKernel:
@@ -60,71 +59,36 @@ class PolicySimulationTests(unittest.TestCase):
         Path(directory, "state.json").write_text(json.dumps({"version": 1, "phase": "confirmed"}))
         return guard
 
-    def test_generated_templates_match_one_domain_source(self):
-        for name, content in generator.render().items():
-            self.assertEqual((HERE / "templates" / name).read_text(), content, name)
-
-    def test_manual_bash_blocks_are_syntax_only_validated(self):
-        import re
-        import subprocess
-        for name in ["DEPLOY.md", "ROLLBACK.md", "PHASE2-MANUAL.md"]:
-            for index, block in enumerate(re.findall(r"```bash\n(.*?)```", (HERE / name).read_text(), re.S)):
-                # -n only parses: no install, systemd, routing or network call runs.
-                result = subprocess.run(["bash", "-n"], input=block, capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, f"{name} block {index}: {result.stderr}")
-
-    def test_manual_context_guard_rejects_lost_variables_before_work(self):
-        import re
-        import subprocess
-        text = (HERE / "PHASE2-MANUAL.md").read_text()
-        blocks = re.findall(r"```bash\n(.*?)```", text, re.S)
-        block = next(block for block in blocks if 'prepare_private_config.py' in block)
-        # Execute only the pure shell context guard, never the operational commands.
-        guard = block.split('test -f "$PRIVATE_DIR/session.env"', 1)[0]
-        self.assertNotIn('python3', guard)
-        valid = {"APP_DIR": "/app", "POLICY_DIR": "/policy",
-                 "PRIVATE_DIR": "/root/sub2api-phase2-20261029.fixture",
-                 "CLOUD_ASSIST_WAS_ACTIVE": "1"}
-        for missing in valid:
-            with self.subTest(missing=missing):
-                env = {key: value for key, value in valid.items() if key != missing}
-                result = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", guard + "\nprintf 'CONTEXT_ACCEPTED'"], env=env, text=True, capture_output=True)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertNotIn("CONTEXT_ACCEPTED", result.stdout)
-        for directory in ["", "/", "/phase2", "/root/sub2api-egress-20261029.fixture"]:
-            with self.subTest(directory=directory):
-                result = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", guard + "\nprintf 'CONTEXT_ACCEPTED'"], env={**valid, "PRIVATE_DIR": directory}, text=True, capture_output=True)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertNotIn("CONTEXT_ACCEPTED", result.stdout)
-        result = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", guard + "\nprintf 'CONTEXT_ACCEPTED'"], env=valid, text=True, capture_output=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "CONTEXT_ACCEPTED")
-
-    def test_only_fake_prefix_enters_tun_and_no_dns_dependency(self):
-        import yaml
-        c = yaml.safe_load(generator.render()["mihomo.yaml.example"])
-        self.assertEqual(c["tun"]["route-address"], ["198.18.0.0/16"])
-        self.assertFalse(c["tun"]["auto-redirect"])
-        self.assertFalse(c["tun"]["strict-route"])
-        self.assertEqual(c["tun"]["dns-mode"], "disabled")
-        self.assertEqual(c["tun"]["dns-hijack"], [])
-        self.assertEqual(c["rules"][-1], "MATCH,REJECT")
-        self.assertNotIn("proxy-groups", c)
-        self.assertTrue(c["profile"]["store-fake-ip"])
-        self.assertNotIn("mihomo.service", (HERE / "templates/dnsmasq-claude.service").read_text())
+    def test_deployment_routes_only_official_domains_via_mihomo(self):
+        domains = (OPS.parent / "backend/internal/pkg/claudedomain/domains.txt").read_text().split()
+        config = yaml.safe_load((OPS / "config/mihomo/config.yaml.example").read_text())
+        self.assertEqual(set(dns.DOMAINS), set(domains))
+        self.assertEqual(config["rules"], [f"DOMAIN-SUFFIX,{d},US-Proxy" for d in domains] + ["MATCH,REJECT"])
+        self.assertEqual(config["dns"]["fake-ip-filter"],
+                         [f"DOMAIN-SUFFIX,{d},fake-ip" for d in domains] + ["MATCH,real-ip"])
+        self.assertEqual(config["tun"]["route-address"], [guard_module.PREFIX])
+        self.assertFalse(config["tun"]["auto-redirect"])
+        self.assertFalse(config["tun"]["strict-route"])
+        self.assertEqual(config["tun"]["dns-mode"], "disabled")
+        self.assertEqual(config["tun"]["dns-hijack"], [])
+        self.assertNotIn("proxy-groups", config)
+        self.assertTrue(config["profile"]["store-fake-ip"])
+        app = yaml.safe_load((OPS / "config/application.yaml.example").read_text())
+        self.assertTrue(app["gateway"]["claude_egress"]["enabled"])
+        self.assertEqual(app["gateway"]["claude_egress"]["proxy_url"],
+                         f"http://{config['bind-address']}:{config['mixed-port']}")
         self.assertNotIn("uid", guard_module.rules())
 
-    def test_candidate_service_preserves_existing_ssh_return_lifecycle(self):
-        original = (HERE.parents[1] / "config/systemd/mihomo.service").read_text().splitlines()
-        candidate = (HERE / "templates/mihomo.service").read_text().splitlines()
-        hooks = [line for line in original if "mihomo-ssh-route" in line]
-        self.assertEqual(len(hooks), 2)
-        for hook in hooks:
-            self.assertIn(hook, candidate)
-        start = next(i for i, line in enumerate(candidate) if line.startswith("ExecStart="))
-        add = candidate.index("ExecStartPre=/usr/local/libexec/mihomo-ssh-route add")
-        self.assertLess(add, start)
-        self.assertIn("ExecStopPost=/usr/local/libexec/mihomo-ssh-route del", candidate)
+    def test_deployed_units_preserve_ssh_and_independent_dns(self):
+        units = OPS / "config/systemd"
+        lines = (units / "mihomo.service").read_text().splitlines()
+        start = next(i for i, line in enumerate(lines) if line.startswith("ExecStart="))
+        self.assertLess(lines.index("ExecStartPre=/usr/local/libexec/mihomo-ssh-route add"), start)
+        self.assertIn("ExecStopPost=/usr/local/libexec/mihomo-ssh-route del", lines)
+        self.assertIn("ExecStartPre=/usr/local/libexec/egress_guard.py verify", lines)
+        self.assertIn("ExecStart=/usr/local/libexec/egress_guard.py restore",
+                      (units / "sub2api-egress.service").read_text().splitlines())
+        self.assertNotIn("mihomo.service", (units / "dnsmasq-claude.service").read_text())
 
     def test_migration_keeps_locked_intent_and_installs_only_owned_table(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -209,21 +173,6 @@ class PolicySimulationTests(unittest.TestCase):
         def run(args): events.append(args); raise RuntimeError("simulated broken guard")
         with self.assertRaises(RuntimeError): controller.control("start", run)
         self.assertEqual(len(events), 1)
-
-    def test_private_preparation_preserves_application_settings_without_installing(self):
-        import yaml
-        with tempfile.TemporaryDirectory() as directory:
-            base = Path(directory); output = base / "private"
-            source = base / "old-mihomo.yaml"
-            source.write_text(yaml.safe_dump({"proxies": [{"name": "old", "type": "http", "server": "proxy.invalid", "port": 8022, "password": "simulated-only"}]}))
-            app = base / "old-app.yaml"; app.write_text(yaml.safe_dump({"database": {"dbname": "simulated"}, "gateway": {"max_body_size": 12}}))
-            private_config.prepare(source, app, output)
-            self.assertFalse(yaml.safe_load((output / "application-phase1.yaml").read_text())["gateway"]["claude_egress"]["enabled"])
-            second = yaml.safe_load((output / "application-phase2.yaml").read_text())
-            self.assertEqual(second["gateway"]["max_body_size"], 12)
-            self.assertEqual(second["database"]["dbname"], "simulated")
-            self.assertEqual((output / "mihomo.yaml").stat().st_mode & 0o777, 0o600)
-            self.assertIn("old", source.read_text())
 
 
 if __name__ == "__main__":

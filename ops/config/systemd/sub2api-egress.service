@@ -1,13 +1,13 @@
 [Unit]
-Description=Restore persistent Sub2API egress protection
+Description=Persistent Claude-only egress guard
+Before=mihomo.service sub2api.service
 After=local-fs.target
-Before=sub2api.service mihomo.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/libexec/egress_guard.py restore
 RemainAfterExit=yes
-# No ExecStop: shutdown or dependency failure must never release protection.
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

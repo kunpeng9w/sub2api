@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       network_only:
-        description: 'Only mock network transitions and parse manual commands (application source unchanged)'
+        description: 'Verify the deployed network policy and simulate guard transitions'
         type: boolean
         default: false
 
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 2
       - uses: actions/setup-go@v6
         if: ${{ !inputs.network_only }}
         with:
@@ -83,15 +83,9 @@ jobs:
             internal/repository:TestProxyExpirySuite/TestSweep_LegacyDirectModePreservesBinding \
             internal/repository:TestProxyExpirySuite/TestSweep_LegacyBackupModePreservesBinding \
             internal/repository:TestProxyExpirySuite/TestSweep_SkipsChangedSnapshot
-      - name: Simulate network policy and manual deployment transitions
+      - name: Verify current deployment templates and simulate egress policy
         run: |
           set -o pipefail
-          export SUB2API_EGRESS_FIXTURES
-          SUB2API_EGRESS_FIXTURES=$(mktemp -d)
-          git archive 7480c174cc737fc0abd2b27db4021e64800f06e1 \
-            ops/changes/20261028-egress-policy ops/config/systemd/mihomo.service | tar -x -C "$SUB2API_EGRESS_FIXTURES"
-          mkdir -p "$SUB2API_EGRESS_FIXTURES/backend/internal/pkg/claudedomain"
-          cp backend/internal/pkg/claudedomain/domains.txt "$SUB2API_EGRESS_FIXTURES/backend/internal/pkg/claudedomain/"
           python ops/scripts/ci/test-egress-policy.py -v 2>&1 | tee "$RUNNER_TEMP/egress-policy-tests.log"
       - uses: actions/upload-artifact@v7
         if: always()

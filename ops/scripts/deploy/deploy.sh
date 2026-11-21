@@ -35,10 +35,26 @@ sys.exit(0 if isinstance(payload, dict) and payload.get("status") == "ok" else 1
 [[ $(hash_file "$RELEASE_DIR/sub2api-linux-amd64.tar.gz") == "$EXPECTED_ARCHIVE" ]]
 [[ $(hash_file "$RELEASE_DIR/sub2api") == "$EXPECTED_BINARY" ]]
 [[ -f "$APP_DIR/bin/sub2api" && ! -L "$APP_DIR/bin/sub2api" ]]
-systemctl is-active --quiet sub2api mihomo dnsmasq-claude sub2api-egress
+for unit in sub2api dnsmasq-claude sub2api-egress; do
+  if ! systemctl is-active --quiet "$unit"; then
+    echo "Preflight failed: $unit is not active." >&2
+    exit 1
+  fi
+done
+# Claude-only routing supports a deliberately stopped Mihomo with independent DNS.
+[[ $(systemctl show mihomo -p LoadState --value) == loaded ]] || { echo "Preflight failed: mihomo unit not loaded." >&2; exit 1; }
+case $(systemctl show mihomo -p ActiveState --value) in
+  active|inactive) ;;
+  *) echo "Preflight failed: mihomo must be active or cleanly stopped." >&2; exit 1 ;;
+esac
 [[ $(systemctl show sub2api -p WorkingDirectory --value) == "$APP_DIR" ]]
 systemctl show sub2api -p ExecStart --value | grep -Fq "path=$APP_DIR/bin/sub2api ;"
-"$GUARD" verify >/dev/null
+"$GUARD" verify | python3 -c '
+import json, sys
+state = json.load(sys.stdin)
+if state.get("mode") != "claude-only" or state.get("consistent") is not True:
+    sys.exit("Preflight failed: Claude-only egress protection is unavailable.")
+'
 health || { echo "Preflight failed: health endpoint is not ready; no changes made." >&2; exit 1; }
 python3 - "$APP_DIR/data/config.yaml" <<'PY'
 import sys

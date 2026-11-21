@@ -1,234 +1,179 @@
 #!/usr/bin/python3
-"""Persistent, UID-scoped egress guard. Only an explicit controller stop unlocks."""
-import contextlib
-import fcntl
+"""Candidate v2 guard. Installed only by the operator during phase 2."""
+import argparse
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
-import pwd
 import subprocess
-import sys
 import tempfile
+import fcntl
 
-STATE_DIR = Path('/var/lib/sub2api-egress')
-STATE = STATE_DIR / 'state.json'
-LOCK = Path('/run/lock/sub2api-egress.lock')
-NFT = '/usr/sbin/nft'
-SYSTEMCTL = '/usr/bin/systemctl'
-TABLE = 'sub2api_egress_guard'
-TUN = 'mihomo'
-USER = 'sub2api'
+STATE_DIR = Path("/var/lib/sub2api-egress")
+TABLE = "sub2api_egress_guard"
+PREFIX = "198.18.0.0/16"
+TUN = "mihomo"
+RULE_PRIORITY = 2000
+ROUTE_TABLE = 2022
 
 
 class GuardError(RuntimeError):
     pass
 
 
-def run(args, *, input=None):
-    result = subprocess.run(args, input=input, text=True, capture_output=True)
-    if result.returncode:
-        raise GuardError(f'{args[0]} failed: {result.stderr.strip()}')
-    return result.stdout
+def run(args, *, input=None, optional=False):
+    result = subprocess.run(args, input=input, capture_output=True, text=True)
+    if result.returncode and not optional:
+        raise GuardError(f"{args[0]} failed: {result.stderr.strip()}")
+    return result.stdout if result.returncode == 0 else ""
 
 
-@contextlib.contextmanager
-def exclusive(path=LOCK):
-    fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
-    try:
-        if os.fstat(fd).st_uid != 0:
-            raise GuardError('Control lock must be owned by root')
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(fd)
-
-
-def rules(uid):
-    # Run before Mihomo's OUTPUT redirect at priority -150. Do not allow all
-    # established connections: a pre-existing direct connection must be blocked.
+def rules():
     return f'''table inet {TABLE} {{
     chain output {{
         type filter hook output priority -160; policy accept;
-        meta skuid {uid} jump protected
-    }}
-    chain protected {{
-        oifname "lo" ip daddr 127.0.0.0/8 counter accept
-        oifname "lo" ip6 daddr ::1 counter accept
-        oifname "{TUN}" counter accept
-        counter reject with icmpx type admin-prohibited
+        ip daddr {PREFIX} oifname "{TUN}" counter accept
+        ip daddr {PREFIX} counter reject with icmpx type admin-prohibited
     }}
 }}
 '''
 
 
-def canonical_digest(document):
+def digest(document):
     def clean(value):
         if isinstance(value, dict):
-            return {k: clean(v) for k, v in value.items()
-                    if k not in ('handle', 'packets', 'bytes')}
+            return {key: clean(item) for key, item in value.items() if key not in ("handle", "packets", "bytes")}
         if isinstance(value, list):
-            return [clean(v) for v in value]
+            return [clean(item) for item in value]
         return value
-    entries = [clean(v) for v in document['nftables'] if 'metainfo' not in v]
-    return hashlib.sha256(json.dumps(entries, sort_keys=True).encode()).hexdigest()
+    semantic = [clean(entry) for entry in document["nftables"] if "metainfo" not in entry]
+    return hashlib.sha256(json.dumps(semantic, sort_keys=True).encode()).hexdigest()
 
 
 class Guard:
-    def __init__(self, directory=STATE_DIR, executor=run, uid=None):
+    def __init__(self, directory=STATE_DIR, execute=run):
         self.directory = Path(directory)
-        self.state_path = self.directory / 'state.json'
-        self.execute = executor
-        self.uid = pwd.getpwnam(USER).pw_uid if uid is None else uid
+        self.path = self.directory / "state.json"
+        self.execute = execute
 
     def read(self):
+        if self.directory.is_symlink() or self.path.is_symlink():
+            raise GuardError("guard state must not be a symlink")
         try:
-            metadata = self.directory.lstat()
-            file_metadata = self.state_path.lstat()
-            if (self.directory.is_symlink() or self.state_path.is_symlink()
-                    or metadata.st_uid != 0 or metadata.st_mode & 0o077
-                    or file_metadata.st_uid != 0 or file_metadata.st_mode & 0o077):
-                raise GuardError('State must be root-owned and private')
-            state = json.loads(self.state_path.read_text())
+            value = json.loads(self.path.read_text())
         except (OSError, ValueError) as exc:
-            raise GuardError('Missing or unreadable guard state; refusing to assume unlocked') from exc
-        if (state.get('version') != 1 or state.get('phase') not in ('off', 'trial', 'confirmed')
-                or state.get('uid') != self.uid or state.get('tun') != TUN):
-            raise GuardError('Invalid state or changed service UID; operator repair required')
-        return state
+            raise GuardError("guard state missing or damaged; refusing to assume unlocked") from exc
+        if value.get("version") != 2 or value.get("mode") != "claude-only" or value.get("phase") not in ("trial", "confirmed") or value.get("prefix") != PREFIX or value.get("tun") != TUN:
+            raise GuardError("guard state is not the approved Claude-only policy")
+        return value
 
-    def write(self, state):
-        fd, temporary = tempfile.mkstemp(prefix='.state-', dir=self.directory)
+    def write(self, value):
+        self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(dir=self.directory, prefix=".state-")
         try:
-            with os.fdopen(fd, 'w') as output:
-                json.dump(state, output, sort_keys=True)
-                output.write('\n')
+            with os.fdopen(fd, "w") as output:
+                json.dump(value, output, sort_keys=True)
                 output.flush()
                 os.fsync(output.fileno())
-            os.replace(temporary, self.state_path)
-            directory_fd = os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY)
+            os.replace(temporary, self.path)
+            dfd = os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY)
             try:
-                os.fsync(directory_fd)
+                os.fsync(dfd)
             finally:
-                os.close(directory_fd)
+                os.close(dfd)
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
 
-    def initialize(self):
-        if self.state_path.exists() or self.state_path.is_symlink():
-            raise GuardError('State already exists; initialization never resets a lock')
-        self.directory.mkdir(mode=0o700, parents=False, exist_ok=True)
-        metadata = self.directory.lstat()
-        if self.directory.is_symlink() or metadata.st_uid != 0 or metadata.st_mode & 0o077:
-            raise GuardError('State directory must be root-owned and mode 0700')
-        if self.exists():
-            raise GuardError('Rules already exist; refusing unlocked initialization')
-        self.write({'version': 1, 'phase': 'off', 'uid': self.uid, 'tun': TUN,
-                    'rules_digest': None})
+    def policy_rule_present(self):
+        document = json.loads(self.execute(["/usr/sbin/ip", "-j", "rule", "show"]))
+        matching = [rule for rule in document if rule.get("priority") == RULE_PRIORITY]
+        if not matching:
+            return False
+        if len(matching) != 1:
+            raise GuardError("reserved policy-rule priority is already in use")
+        rule = matching[0]
+        destination = str(rule.get("dst", ""))
+        # iproute2 versions emit either a CIDR string or separate dst/dstlen
+        # fields. Compare networks so both represent the same owned rule.
+        if "/" not in destination and "dstlen" in rule:
+            destination += "/" + str(rule["dstlen"])
+        try:
+            correct_destination = ipaddress.ip_network(destination) == ipaddress.ip_network(PREFIX)
+        except ValueError:
+            correct_destination = False
+        if not correct_destination or str(rule.get("table")) != str(ROUTE_TABLE):
+            raise GuardError("reserved policy-rule priority is already in use")
+        return True
 
-    def exists(self):
-        document = json.loads(self.execute([NFT, '-j', 'list', 'tables']))
-        return any(entry.get('table', {}).get('family') == 'inet'
-                   and entry.get('table', {}).get('name') == TABLE
-                   for entry in document['nftables'])
-
-    def digest(self):
-        if not self.exists():
-            return None
-        return canonical_digest(json.loads(self.execute([NFT, '-j', '-s', 'list', 'table', 'inet', TABLE])))
-
-    def install(self):
-        prefix = f'delete table inet {TABLE}\n' if self.exists() else ''
-        # One nft transaction: replacing our own table never creates an open gap.
-        self.execute([NFT, '-f', '-'], input=prefix + rules(self.uid))
-        digest = self.digest()
-        if digest is None:
-            raise GuardError('Firewall transaction completed but guard table is absent')
-        return digest
+    def arm(self, phase="confirmed", migrate=False):
+        if migrate:
+            # Migration requires a locked v1 state, not an implicit unlock.
+            old = json.loads(self.path.read_text())
+            if old.get("version") != 1 or old.get("phase") != "confirmed":
+                raise GuardError("migration requires the backed-up, confirmed v1 state")
+            value = {"version": 2, "mode": "claude-only", "prefix": PREFIX, "tun": TUN}
+        else:
+            value = self.read()
+        value["phase"] = phase
+        value.pop("fingerprint", None)
+        # Persist locked intent before either kernel operation. A failure never
+        # deletes the guard or converts the state to off.
+        self.write(value)
+        self.execute(["/usr/sbin/ip", "route", "replace", "blackhole", PREFIX, "metric", "42760"])
+        # Precede Mihomo's main-table lookup, otherwise its persistent blackhole
+        # could shadow the active TUN route. Missing TUN table falls to blackhole.
+        if not self.policy_rule_present():
+            self.execute(["/usr/sbin/ip", "rule", "add", "pref", str(RULE_PRIORITY), "to", PREFIX, "lookup", str(ROUTE_TABLE)])
+        present = self.execute(["/usr/sbin/nft", "-j", "list", "table", "inet", TABLE], optional=True)
+        prefix = f"delete table inet {TABLE}\n" if present else ""
+        self.execute(["/usr/sbin/nft", "-f", "-"], input=prefix + rules())
+        current = json.loads(self.execute(["/usr/sbin/nft", "-j", "list", "table", "inet", TABLE]))
+        value["fingerprint"] = digest(current)
+        self.write(value)
+        return self.verify()
 
     def verify(self):
-        state = self.read()
-        actual = self.digest()
-        if state['phase'] == 'off':
-            if actual is not None:
-                raise GuardError('State says off but guard rules remain; explicit stop required')
-        elif not state.get('rules_digest') or actual != state['rules_digest']:
-            raise GuardError('Protection requested but firewall rules are missing or changed')
-        return state
-
-    def arm(self, phase='trial'):
-        state = self.read()
-        if phase not in ('trial', 'confirmed'):
-            raise GuardError('Invalid locked phase')
-        state.update(phase=phase, rules_digest=None)
-        self.write(state)  # Persist intent first; recovery must never assume off.
-        state['rules_digest'] = self.install()
-        self.write(state)
-        self.verify()
-
-    def restore(self):
-        state = self.read()
-        if state['phase'] == 'off':
-            self.verify()  # Do not silently remove unexpected rules.
-            return
-        if not state.get('rules_digest') or self.digest() != state['rules_digest']:
-            state['rules_digest'] = self.install()
-            self.write(state)
-        self.verify()
-
-    def confirm(self):
-        state = self.verify()
-        if state['phase'] == 'off':
-            raise GuardError('Nothing is locked; run start first')
-        state['phase'] = 'confirmed'
-        self.write(state)
-
-    def unlock(self):
-        state = self.read()
-        if self.exists():
-            self.execute([NFT, '-f', '-'], input=f'delete table inet {TABLE}\n')
-        try:
-            self.write({**state, 'phase': 'off', 'rules_digest': None})
-        except Exception:
-            # write() may have replaced state.json before its directory fsync
-            # failed. Recover from the saved intent, never the possibly-off file.
-            if state['phase'] != 'off':
-                state['rules_digest'] = self.install()
-                self.write(state)
-                self.verify()
-            raise
-        self.verify()
-
-    def status(self):
-        state = self.read()
-        actual = self.digest()
-        return {'phase': state['phase'], 'uid': self.uid, 'tun': TUN,
-                'rules_present': actual is not None,
-                'consistent': (actual is None if state['phase'] == 'off'
-                               else bool(state.get('rules_digest')) and actual == state['rules_digest'])}
+        value = self.read()
+        actual = self.execute(["/usr/sbin/nft", "-j", "list", "table", "inet", TABLE])
+        if not value.get("fingerprint") or digest(json.loads(actual)) != value["fingerprint"]:
+            raise GuardError("actual guard differs from the recorded policy")
+        routes = self.execute(["/usr/sbin/ip", "route", "show", "table", "main", "exact", PREFIX])
+        if not any(line.startswith("blackhole " + PREFIX) and "metric 42760" in line for line in routes.splitlines()):
+            raise GuardError("persistent reject route is missing")
+        if not self.policy_rule_present():
+            raise GuardError("targeted policy rule is missing")
+        return {"phase": value["phase"], "mode": value["mode"], "consistent": True, "prefix": PREFIX}
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command", choices=["render", "migrate", "restore", "verify", "status"])
+    args = parser.parse_args()
+    if args.command == "render":
+        print(rules(), end="")
+        return
     if os.geteuid() != 0:
-        raise GuardError('Run with sudo')
-    action = sys.argv[1] if len(sys.argv) == 2 else ''
-    if action not in ('initialize', 'restore', 'verify', 'status'):
-        raise GuardError('Usage: egress_guard.py {initialize|restore|verify|status}')
-    with exclusive():
+        raise SystemExit("root is required for installed guard state")
+    if STATE_DIR.is_symlink():
+        raise GuardError("guard directory must not be a symlink")
+    STATE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    for path in [STATE_DIR, STATE_DIR / "state.json"]:
+        if path.exists() and (path.stat().st_uid != 0 or path.stat().st_mode & 0o077):
+            raise GuardError("guard state must be root-owned and private")
+    with open(STATE_DIR / "control.lock", "a") as lock:
+        os.chmod(lock.name, 0o600)
+        fcntl.flock(lock, fcntl.LOCK_EX)
         guard = Guard()
-        if action == 'status':
-            status = guard.status()
-            print(json.dumps(status, sort_keys=True))
-            return 0 if status['consistent'] else 1
-        getattr(guard, action)()
-    return 0
+        if args.command == "migrate":
+            result = guard.arm(migrate=True)
+        elif args.command == "restore":
+            result = guard.arm(guard.read()["phase"])
+        else:
+            result = guard.verify()
+        print(json.dumps(result, sort_keys=True))
 
 
-if __name__ == '__main__':
-    os.umask(0o077)
-    try:
-        sys.exit(main())
-    except (GuardError, OSError, ValueError) as exc:
-        print(f'egress guard: {exc}', file=sys.stderr)
-        sys.exit(1)
+if __name__ == "__main__":
+    main()

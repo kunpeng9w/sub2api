@@ -1,4 +1,3 @@
-# Sanitized live routing policy; not an operational proxy configuration.
 mixed-port: 7890
 allow-lan: false
 bind-address: 127.0.0.1
@@ -8,51 +7,46 @@ ipv6: false
 interface-name: eth0
 external-controller: ''
 profile:
-  store-selected: true
-  store-fake-ip: false
+  store-selected: false
+  store-fake-ip: true
 tun:
   enable: true
   device: mihomo
   stack: mixed
   auto-route: true
-  auto-redirect: true
+  auto-redirect: false
   auto-detect-interface: true
-  strict-route: true
+  strict-route: false
   mtu: 1500
-  dns-hijack:
-  - any:53
-  - tcp://any:53
-  route-exclude-address:
-  - 127.0.0.0/8
-  - 172.17.0.0/18
-  - 169.254.0.0/16
-  - 100.100.100.200/32
+  dns-mode: disabled
+  dns-hijack: []
+  iproute2-table-index: 2022
+  iproute2-rule-index: 9000
+  route-address:
+  - 198.18.0.0/16
 dns:
   enable: true
   listen: 127.0.0.1:1053
   ipv6: false
-  enhanced-mode: redir-host
-  use-hosts: true
-  use-system-hosts: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-hosts: false
+  use-system-hosts: false
+  fake-ip-filter-mode: rule
+  fake-ip-filter:
+  - DOMAIN-SUFFIX,anthropic.com,fake-ip
+  - DOMAIN-SUFFIX,claude.ai,fake-ip
+  - DOMAIN-SUFFIX,claude.com,fake-ip
+  - MATCH,real-ip
   default-nameserver:
   - 100.100.2.136
   - 100.100.2.138
   proxy-server-nameserver:
   - 100.100.2.136#eth0
   - 100.100.2.138#eth0
-  direct-nameserver:
-  - 100.100.2.136#eth0
-  - 100.100.2.138#eth0
   nameserver:
-  - https://1.1.1.1/dns-query#PROXY
-  - https://8.8.8.8/dns-query#PROXY
-  nameserver-policy:
-    +.internal:
-    - 100.100.2.136#eth0
-    - 100.100.2.138#eth0
-    +.local:
-    - 100.100.2.136#eth0
-    - 100.100.2.138#eth0
+  - https://1.1.1.1/dns-query#US-Proxy
+  - https://8.8.8.8/dns-query#US-Proxy
 proxies:
 - name: US-Proxy
   type: http
@@ -60,15 +54,8 @@ proxies:
   port: 8022
   username: ${PROXY_USERNAME}
   password: ${PROXY_PASSWORD}
-proxy-groups:
-- name: PROXY
-  type: select
-  proxies:
-  - US-Proxy
 rules:
-- AND,((NETWORK,UDP),(DST-PORT,123)),DIRECT
-- IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
-- IP-CIDR,172.17.0.0/18,DIRECT,no-resolve
-- IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
-- IP-CIDR,100.100.100.200/32,DIRECT,no-resolve
-- MATCH,PROXY
+- DOMAIN-SUFFIX,anthropic.com,US-Proxy
+- DOMAIN-SUFFIX,claude.ai,US-Proxy
+- DOMAIN-SUFFIX,claude.com,US-Proxy
+- MATCH,REJECT
