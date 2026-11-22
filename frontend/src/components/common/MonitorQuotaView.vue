@@ -19,10 +19,13 @@
           :color="row.color"
           :utilization="row.tier.used_percent"
           :resets-at="row.tier.window_inactive ? null : row.tier.reset_at ?? null"
-        />
-        <div v-if="row.tier.window_inactive" class="text-right text-[10px] text-gray-500 dark:text-gray-400">
-          {{ t('usage.windowInactive') }}
-        </div>
+        >
+          <template v-if="row.tier.window_inactive" #reset-time>
+            <span class="text-[10px] text-gray-500 dark:text-gray-400">
+              {{ t('usage.windowInactive') }}
+            </span>
+          </template>
+        </UsageProgressBar>
       </div>
     </div>
 

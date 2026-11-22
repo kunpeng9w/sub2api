@@ -23,16 +23,26 @@ function makeSnapshot(overrides: Partial<MonitorQuotaSnapshot> = {}): MonitorQuo
 }
 
 describe('MonitorQuotaView', () => {
-  it('shows the inactive window status instead of a reset countdown', () => {
+  it('shows the inactive window status on the same row as the utilization', () => {
     const wrapper = mount(MonitorQuotaView, {
       props: {
         snapshot: makeSnapshot({
-          tiers: [{ window: '5h', used_percent: 0, window_inactive: true }],
+          tiers: [
+            { window: '5h', used_percent: 0, window_inactive: true, reset_at: '2000-01-01T00:00:00Z' },
+            { window: '7d', used_percent: 10, reset_at: '2000-01-01T00:00:00Z' },
+          ],
         }),
       },
     })
-    expect(wrapper.text()).toContain('0%')
-    expect(wrapper.text()).toContain('usage.windowInactive')
+    const [inactiveTier, activeTier] = wrapper.findAll('[data-testid="monitor-quota-tier"]')
+    const spans = inactiveTier.findAll('span')
+    const utilization = spans.find((span) => span.text() === '0%')
+    const status = spans.find((span) => span.text() === 'usage.windowInactive')
+    expect(utilization).toBeDefined()
+    expect(status).toBeDefined()
+    expect(status?.element.previousElementSibling).toBe(utilization?.element)
+    expect(inactiveTier.text()).not.toContain('usage.resetNow')
+    expect(activeTier.text()).toContain('usage.resetPending')
     wrapper.unmount()
   })
 
