@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "observed_at": "2026-11-21T13:48:15+08:00",
+  "observed_at": "2026-11-22T22:46:09+08:00",
   "upstream": {
     "repository": "https://github.com/Wei-Shaw/sub2api.git",
     "tag": "v0.2.24",
@@ -10,13 +10,13 @@
   "running_build": {
     "path": "/home/pk/workspace/sub2api/bin/sub2api",
     "version": "0.2.24",
-    "sha256": "02a2073bd1f68ed240b48739219b3d6875d45f89fd7e1d5781800ec61b362081",
-    "git_commit_of_build": "da86e815d09ce5b3d0b53738617663e98a5bd51d",
-    "build_time_utc": "2026-11-21T04:57:12Z",
+    "sha256": "bdeaec5b30b816483af2a1ee0099a90466d87dcbdb412fb4a04fefc438e6dedf",
+    "git_commit_of_build": "9e0b44efac8a27d07c11c9cf1b15864e73f7b673",
+    "build_time_utc": "2026-11-22T14:40:58Z",
     "target": "linux/amd64",
     "embedded_frontend": true,
     "build_type": "source",
-    "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44868415451"
+    "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/45033955181"
   },
   "runtime": {
     "run_mode": "standard",
@@ -27,53 +27,56 @@
   },
   "deployment": {
     "performed": true,
-    "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-da86e815d-1n4PPyXG",
-    "started_at": "2026-11-21T13:46:21+08:00",
-    "ready_at": "2026-11-21T13:46:29+08:00",
-    "binary_and_config_backup": "/root/sub2api-deploy-20261121-134623.SuGUky",
-    "rollback_script": "/root/sub2api-deploy-20261121-134623.SuGUky/rollback.sh",
+    "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-9e0b44efa-11bhFy6S",
+    "started_at": "2026-11-22T22:44:13+08:00",
+    "ready_at": "2026-11-22T22:44:29+08:00",
+    "binary_and_config_backup": "/root/sub2api-deploy-20261122-224416.MZ2bHG",
+    "rollback_script": "/root/sub2api-deploy-20261122-224416.MZ2bHG/rollback.sh",
     "backup_sha256_verified": true,
-    "migration_count_after": 307,
     "added_migrations": [],
     "migration_sources_match_previous_build": true,
     "https_checks": {
       "/health": {
         "status": 200,
         "bytes": 15,
-        "content_type": "application/json"
+        "content_type": "application/json; charset=utf-8"
       },
-      "/": {
+      "/monitor": {
         "status": 200,
         "bytes": 3413,
-        "content_type": "text/html"
-      },
-      "/assets/index-ByyS4XH-.js": {
-        "status": 200,
-        "bytes": 194191,
-        "content_type": "text/javascript"
+        "content_type": "text/html; charset=utf-8"
       },
       "/api/v1/settings/public": {
         "status": 200,
         "bytes": 2628,
-        "content_type": "application/json"
+        "content_type": "application/json; charset=utf-8"
       },
-      "/api/v1/admin/accounts": {
-        "status": 401,
-        "bytes": 58,
-        "content_type": "application/json"
+      "/assets/ChannelStatusView-CGMIRG3P.js": {
+        "status": 200,
+        "bytes": 82132,
+        "content_type": "text/javascript; charset=utf-8"
+      },
+      "/assets/index-BjvUHNOD.js": {
+        "status": 200,
+        "bytes": 194191,
+        "content_type": "text/javascript; charset=utf-8"
+      },
+      "/api/v1/channel-monitors": {
+        "status": 401
       }
     },
+    "channel_status_asset_matches_actions_artifact": true,
     "observed_live_successes": [
       "/v1/responses",
       "/api/v1/auth/me"
     ],
     "limitations": [
-      "Fresh interactive login, WebSocket and intentional proxy failure were not separately exercised in production."
+      "Authenticated visual verification of the channel cards was not performed."
     ],
     "previous_running_version": "0.2.24",
-    "previous_running_commit": "7480c174cc737fc0abd2b27db4021e64800f06e1",
-    "previous_running_sha256": "88baae36873e516b3a41e48322b9cf08e12e90635ff815138b737031b78e1dbe",
-    "pull_request": "https://github.com/kunpeng9w/sub2api/pull/11",
+    "previous_running_commit": "da86e815d09ce5b3d0b53738617663e98a5bd51d",
+    "previous_running_sha256": "02a2073bd1f68ed240b48739219b3d6875d45f89fd7e1d5781800ec61b362081",
+    "channel_monitor_verification": "https://github.com/kunpeng9w/sub2api/actions/runs/45033966421",
     "service_restarts": 0,
     "error_or_panic_count": 0
   },
@@ -375,6 +378,86 @@
         "https://github.com/kunpeng9w/sub2api/actions/runs/44855044636",
         "https://github.com/kunpeng9w/sub2api/actions/runs/44855044595"
       ],
+      "service_restarts": 0,
+      "error_or_panic_count": 0
+    }
+  },
+  "previous_deployment_20261121_134815": {
+    "schema_version": 2,
+    "observed_at": "2026-11-21T13:48:15+08:00",
+    "upstream": {
+      "repository": "https://github.com/Wei-Shaw/sub2api.git",
+      "tag": "v0.2.24",
+      "commit": "328db26f450edbdf9f8d4344a3ea903ac6396842",
+      "merged_commit": "328db26f450edbdf9f8d4344a3ea903ac6396842"
+    },
+    "running_build": {
+      "path": "/home/pk/workspace/sub2api/bin/sub2api",
+      "version": "0.2.24",
+      "sha256": "02a2073bd1f68ed240b48739219b3d6875d45f89fd7e1d5781800ec61b362081",
+      "git_commit_of_build": "da86e815d09ce5b3d0b53738617663e98a5bd51d",
+      "build_time_utc": "2026-11-21T04:57:12Z",
+      "target": "linux/amd64",
+      "embedded_frontend": true,
+      "build_type": "source",
+      "actions_run": "https://github.com/kunpeng9w/sub2api/actions/runs/44868415451"
+    },
+    "runtime": {
+      "run_mode": "standard",
+      "application_bind": "127.0.0.1:8080",
+      "egress_guard_phase": "confirmed",
+      "egress_mode": "claude-only",
+      "mihomo_state": "inactive"
+    },
+    "deployment": {
+      "performed": true,
+      "checkpoint": "/home/pk/workspace/sub2api/.operator/deploy-da86e815d-1n4PPyXG",
+      "started_at": "2026-11-21T13:46:21+08:00",
+      "ready_at": "2026-11-21T13:46:29+08:00",
+      "binary_and_config_backup": "/root/sub2api-deploy-20261121-134623.SuGUky",
+      "rollback_script": "/root/sub2api-deploy-20261121-134623.SuGUky/rollback.sh",
+      "backup_sha256_verified": true,
+      "migration_count_after": 307,
+      "added_migrations": [],
+      "migration_sources_match_previous_build": true,
+      "https_checks": {
+        "/health": {
+          "status": 200,
+          "bytes": 15,
+          "content_type": "application/json"
+        },
+        "/": {
+          "status": 200,
+          "bytes": 3413,
+          "content_type": "text/html"
+        },
+        "/assets/index-ByyS4XH-.js": {
+          "status": 200,
+          "bytes": 194191,
+          "content_type": "text/javascript"
+        },
+        "/api/v1/settings/public": {
+          "status": 200,
+          "bytes": 2628,
+          "content_type": "application/json"
+        },
+        "/api/v1/admin/accounts": {
+          "status": 401,
+          "bytes": 58,
+          "content_type": "application/json"
+        }
+      },
+      "observed_live_successes": [
+        "/v1/responses",
+        "/api/v1/auth/me"
+      ],
+      "limitations": [
+        "Fresh interactive login, WebSocket and intentional proxy failure were not separately exercised in production."
+      ],
+      "previous_running_version": "0.2.24",
+      "previous_running_commit": "7480c174cc737fc0abd2b27db4021e64800f06e1",
+      "previous_running_sha256": "88baae36873e516b3a41e48322b9cf08e12e90635ff815138b737031b78e1dbe",
+      "pull_request": "https://github.com/kunpeng9w/sub2api/pull/11",
       "service_restarts": 0,
       "error_or_panic_count": 0
     }
